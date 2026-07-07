@@ -25,21 +25,25 @@ public class MockJobCrawlerRoute extends RouteBuilder {
     @Override
     public void configure() {
         onException(Exception.class)
-                .handled(true)
-                .log("Mock crawler failed: ${exception.message}");
+                .handled(false)
+                .log("Mock crawler failed: ${exception.class} - ${exception.message}");
 
         from("direct:crawl-mock-jobs")
                 .routeId("mock-job-list-crawler")
+
                 .removeHeaders("*")
+                .setBody(constant(null))
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
-                .toD(properties.getListUrl())
+                .toD(properties.getListUrl() + "?httpMethod=GET")
                 .process(listPageProcessor)
+
                 .split(body())
                 .setProperty("detailUrl", body())
                 .delay(properties.getRequestDelayMs())
                 .removeHeaders("*")
+                .setBody(constant(null))
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
-                .toD("${exchangeProperty.detailUrl}")
+                .toD("${exchangeProperty.detailUrl}?httpMethod=GET")
                 .process(detailPageProcessor)
                 .end();
     }
