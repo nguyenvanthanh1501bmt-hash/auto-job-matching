@@ -1,1 +1,32 @@
-# Placeholder local application configuration.
+spring:
+  data:
+    mongodb:
+      host: 127.0.0.1
+      port: 27018
+      database: autojob
+      username: root
+      password: password
+      authentication-database: admin
+
+autojob:
+  crawler:
+    mock:
+      source-code: MOCK
+      base-url: http://localhost:18080
+      list-url: http://localhost:18080/jobs.html
+      request-delay-ms: 300
+
+logging:
+  level:
+    com.autojob: INFO
+    org.apache.camel: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
