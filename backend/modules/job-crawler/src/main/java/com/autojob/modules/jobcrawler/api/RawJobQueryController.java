@@ -1,7 +1,7 @@
 package com.autojob.modules.jobcrawler.api;
 
 import com.autojob.modules.jobcrawler.domain.RawJob;
-import com.autojob.modules.jobcrawler.domain.RawJobRepository;
+import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;

@@ -2,7 +2,7 @@ package com.autojob.modules.jobcrawler.service;
 
 import com.autojob.common.events.JobRawCollectedEvent;
 import com.autojob.modules.jobcrawler.domain.RawJob;
-import com.autojob.modules.jobcrawler.domain.RawJobRepository;
+import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;

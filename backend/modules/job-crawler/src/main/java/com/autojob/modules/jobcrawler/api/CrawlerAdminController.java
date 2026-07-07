@@ -1,6 +1,6 @@
 package com.autojob.modules.jobcrawler.api;
 
-import com.autojob.modules.jobcrawler.domain.RawJobRepository;
+import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.camel.ProducerTemplate;
 import org.springframework.web.bind.annotation.*;
