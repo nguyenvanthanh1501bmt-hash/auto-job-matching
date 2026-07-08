@@ -21,9 +21,13 @@ public class CrawlerAdminController {
 
         long after = rawJobRepository.count();
 
-        return new CrawlRunResponse(after - before, after);
+        return new CrawlRunResponse("MOCK", after - before, after);
     }
 
-    public record CrawlRunResponse(long insertedCount, long totalRawJobs) {
+    public record CrawlRunResponse(
+            String sourceCode,
+            long insertedCount,
+            long totalRawJobs
+    ) {
     }
 }

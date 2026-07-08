@@ -1,11 +1,9 @@
 package com.autojob.modules.jobcrawler.camel;
 
-import com.autojob.modules.jobcrawler.config.MockCrawlerProperties;
+import com.autojob.modules.jobcrawler.parser.JobSourceParserRegistry;
 import lombok.RequiredArgsConstructor;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -14,19 +12,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ListPageProcessor implements Processor {
 
-    private final MockCrawlerProperties properties;
+    private final JobSourceParserRegistry parserRegistry;
 
     @Override
     public void process(Exchange exchange) {
         String html = exchange.getMessage().getBody(String.class);
+        String sourceCode = exchange.getProperty("sourceCode", String.class);
+        String baseUrl = exchange.getProperty("baseUrl", String.class);
 
-        Document doc = Jsoup.parse(html, properties.getBaseUrl());
-
-        List<String> detailUrls = doc.select("[data-job-card] a.job-link[href]")
-                .eachAttr("abs:href")
-                .stream()
-                .distinct()
-                .toList();
+        List<String> detailUrls = parserRegistry
+                .getListParser(sourceCode)
+                .parseDetailUrls(baseUrl, html);
 
         exchange.getMessage().setBody(detailUrls);
     }

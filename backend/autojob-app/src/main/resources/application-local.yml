@@ -7,6 +7,7 @@ spring:
       username: root
       password: password
       authentication-database: admin
+      auto-index-creation: true
 
 autojob:
   crawler:
@@ -15,6 +16,50 @@ autojob:
       base-url: http://localhost:18080
       list-url: http://localhost:18080/jobs.html
       request-delay-ms: 300
+      store-raw-html: false
+      store-raw-text: false
+      raw-text-max-chars: 20000
+      raw-retention-days: 10
+
+    itviec:
+      source-code: ITVIEC
+      base-url: https://itviec.com
+      list-url: https://itviec.com/it-jobs
+      request-delay-ms: 3000
+      store-raw-html: false
+      store-raw-text: false
+      raw-text-max-chars: 20000
+      raw-retention-days: 3
+
+    joboko:
+      source-code: JOBOKO
+      base-url: https://vn.joboko.com
+      list-url: https://vn.joboko.com/viec-lam-moi
+      request-delay-ms: 3000
+      store-raw-html: false
+      store-raw-text: false
+      raw-text-max-chars: 20000
+      raw-retention-days: 7
+
+    topdev:
+      source-code: TOPDEV
+      base-url: https://topdev.vn
+      list-url: https://topdev.vn/jobs/search
+      request-delay-ms: 3000
+      store-raw-html: false
+      store-raw-text: false
+      raw-text-max-chars: 20000
+      raw-retention-days: 7
+
+    vieclam24h:
+      source-code: VIECLAM24H
+      base-url: https://vieclam24h.vn
+      list-url: https://vieclam24h.vn/viec-lam-toan-quoc-p136.html
+      request-delay-ms: 3000
+      store-raw-html: false
+      store-raw-text: false
+      raw-text-max-chars: 20000
+      raw-retention-days: 7
 
 logging:
   level:

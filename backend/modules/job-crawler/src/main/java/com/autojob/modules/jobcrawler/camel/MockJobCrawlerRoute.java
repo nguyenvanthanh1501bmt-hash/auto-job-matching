@@ -31,6 +31,14 @@ public class MockJobCrawlerRoute extends RouteBuilder {
         from("direct:crawl-mock-jobs")
                 .routeId("mock-job-list-crawler")
 
+                .setProperty("sourceCode", constant(properties.getSourceCode()))
+                .setProperty("baseUrl", constant(properties.getBaseUrl()))
+                .setProperty("listUrl", constant(properties.getListUrl()))
+                .setProperty("storeRawHtml", constant(properties.isStoreRawHtml()))
+                .setProperty("storeRawText", constant(properties.isStoreRawText()))
+                .setProperty("rawTextMaxChars", constant(properties.getRawTextMaxChars()))
+                .setProperty("rawRetentionDays", constant(properties.getRawRetentionDays()))
+
                 .removeHeaders("*")
                 .setBody(constant(null))
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))

@@ -1,0 +1,157 @@
+{
+  "generated_at": "2026-07-07T12:55:14.753350+00:00",
+  "note": "Each detail_*.html is the exact response.text received by this script after redirects.",
+  "headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache"
+  },
+  "sources": [
+    {
+      "code": "VIECLAM24H",
+      "source_url": "https://vieclam24h.vn",
+      "list_url": "https://vieclam24h.vn/viec-lam-toan-quoc-p136.html",
+      "page_param": "page",
+      "detail_patterns": [
+        "^https://vieclam24h\\.vn/.+id\\d+\\.html$"
+      ],
+      "source_job_id_regex": "id(\\d+)\\.html"
+    },
+    {
+      "code": "JOBOKO",
+      "source_url": "https://vn.joboko.com",
+      "list_url": "https://vn.joboko.com/viec-lam-moi",
+      "page_param": "p",
+      "detail_patterns": [
+        "^https://vn\\.joboko\\.com/viec-lam-.+-xvi\\d+$"
+      ],
+      "source_job_id_regex": "xvi(\\d+)"
+    },
+    {
+      "code": "TOPDEV",
+      "source_url": "https://topdev.vn",
+      "list_url": "https://topdev.vn/jobs/search",
+      "page_param": "page",
+      "detail_patterns": [
+        "^https://topdev\\.vn/detail-jobs/.+-\\d+$",
+        "^https://topdev\\.vn/viec-lam/.+-\\d+$"
+      ],
+      "source_job_id_regex": "-(\\d+)$"
+    },
+    {
+      "code": "ITVIEC",
+      "source_url": "https://itviec.com",
+      "list_url": "https://itviec.com/it-jobs",
+      "page_param": "page",
+      "detail_patterns": [
+        "^https://itviec\\.com/it-jobs/[^/?#]+-\\d+$"
+      ],
+      "source_job_id_regex": "/it-jobs/([^/?#]+)$"
+    },
+    {
+      "code": "JOBSGO",
+      "source_url": "https://jobsgo.vn",
+      "list_url": "https://jobsgo.vn/viec-lam.html",
+      "page_param": "page",
+      "detail_patterns": [
+        "^https://jobsgo\\.vn/viec-lam/[^?#]+-\\d+\\.html$",
+        "^https://jobsgo\\.vn/viec-lam-[^?#]+-\\d+\\.html$"
+      ],
+      "source_job_id_regex": "-(\\d+)\\.html$"
+    }
+  ],
+  "records": [
+    {
+      "source_code": "VIECLAM24H",
+      "source_url": "https://vieclam24h.vn",
+      "list_url": "https://vieclam24h.vn/viec-lam-toan-quoc-p136.html",
+      "detail_url": "https://vieclam24h.vn/it-phan-cung-mang/ky-thuat-vien-sua-chua-may-tinh-may-in-thu-nhap-den-20-trieu-thang-c7p73id200876404.html",
+      "final_url": "https://vieclam24h.vn/it-phan-cung-mang/ky-thuat-vien-sua-chua-may-tinh-may-in-thu-nhap-den-20-trieu-thang-c7p73id200876404.html",
+      "source_job_id": "200876404",
+      "file_path": "fixtures\\vieclam24h\\detail_1_200876404.html",
+      "list_file_path": "fixtures\\vieclam24h\\list_page_1.html",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "html_size_bytes": 409525,
+      "sha256": "4752bb738352c5c7d91cf891acfc8b539998e1f547eaa0df1d417c4f1c42738f",
+      "captured_at": "2026-07-07T12:55:17.430459+00:00",
+      "ok": true,
+      "error": null,
+      "note": null
+    },
+    {
+      "source_code": "JOBOKO",
+      "source_url": "https://vn.joboko.com",
+      "list_url": "https://vn.joboko.com/viec-lam-moi",
+      "detail_url": "https://vn.joboko.com/viec-lam-ky-su-xay-dung-xvi6563129",
+      "final_url": "https://vn.joboko.com/viec-lam-ky-su-xay-dung-xvi6563129",
+      "source_job_id": "6563129",
+      "file_path": "fixtures\\joboko\\detail_1_6563129.html",
+      "list_file_path": "fixtures\\joboko\\list_page_1.html",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "html_size_bytes": 203148,
+      "sha256": "b9c78164bf2d138fbb0d27d73011ba59273d9bf8b414aaaccc7f1e69c7e3f37e",
+      "captured_at": "2026-07-07T12:55:20.724948+00:00",
+      "ok": true,
+      "error": null,
+      "note": null
+    },
+    {
+      "source_code": "TOPDEV",
+      "source_url": "https://topdev.vn",
+      "list_url": "https://topdev.vn/jobs/search",
+      "detail_url": "https://topdev.vn/detail-jobs/game-live-ops-game-ui-ux-artist-supercent-vietnam-2115969",
+      "final_url": "https://topdev.vn/detail-jobs/game-live-ops-game-ui-ux-artist-supercent-vietnam-2115969",
+      "source_job_id": "2115969",
+      "file_path": "fixtures\\topdev\\detail_1_2115969.html",
+      "list_file_path": "fixtures\\topdev\\list_page_1.html",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "html_size_bytes": 670279,
+      "sha256": "f091302391674f0b7e35039a1464fb8f95e7b6af74b7053befab5b0467a11ee7",
+      "captured_at": "2026-07-07T12:55:24.071916+00:00",
+      "ok": true,
+      "error": null,
+      "note": null
+    },
+    {
+      "source_code": "ITVIEC",
+      "source_url": "https://itviec.com",
+      "list_url": "https://itviec.com/it-jobs",
+      "detail_url": "https://itviec.com/it-jobs/lead-java-engineer-itviec-recruitment-consulting-3714",
+      "final_url": "https://itviec.com/it-jobs/lead-java-engineer-itviec-recruitment-consulting-3714",
+      "source_job_id": "lead-java-engineer-itviec-recruitment-consulting-3714",
+      "file_path": "fixtures\\itviec\\detail_1_lead-java-engineer-itviec-recruitment-consulting-3714.html",
+      "list_file_path": "fixtures\\itviec\\list_page_1.html",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "html_size_bytes": 347815,
+      "sha256": "ab133ba210e7b2dede9fe67109ada7c3fab15d961949924c05c06c709924c52e",
+      "captured_at": "2026-07-07T12:55:26.723426+00:00",
+      "ok": true,
+      "error": null,
+      "note": null
+    },
+    {
+      "source_code": "JOBSGO",
+      "source_url": "https://jobsgo.vn",
+      "list_url": "https://jobsgo.vn/viec-lam.html",
+      "detail_url": null,
+      "final_url": null,
+      "source_job_id": null,
+      "file_path": null,
+      "list_file_path": null,
+      "status_code": null,
+      "content_type": null,
+      "html_size_bytes": null,
+      "sha256": null,
+      "captured_at": "2026-07-07T12:55:34.607560+00:00",
+      "ok": false,
+      "error": "No detail URL matched configured patterns. See candidate_links.txt and adjust patterns.",
+      "note": null
+    }
+  ]
+}

@@ -93,7 +93,7 @@ public class RawJob {
      * Ví dụ raw giữ 10 ngày:
      * expiresAt = collectedAt + 10 days
      */
-    @Indexed
+    @Indexed(name = "idx_raw_jobs_expires_at_ttl", expireAfter = "0s")
     private Instant expiresAt;
 
     private Instant collectedAt;

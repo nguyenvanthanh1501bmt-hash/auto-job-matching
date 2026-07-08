@@ -2,18 +2,18 @@ package com.autojob.modules.jobcrawler.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "autojob.crawler.mock")
-public class MockCrawlerProperties {
+@ConfigurationProperties(prefix = "autojob.crawler.vieclam24h")
+public class Vieclam24hCrawlerProperties {
 
     private String sourceCode;
     private String baseUrl;
     private String listUrl;
-    private long requestDelayMs = 300;
+    private long requestDelayMs = 3000;
 
     private boolean storeRawHtml = false;
     private boolean storeRawText = false;
     private int rawTextMaxChars = 20000;
-    private int rawRetentionDays = 10;
+    private int rawRetentionDays = 7;
 
     public String getSourceCode() {
         return sourceCode;

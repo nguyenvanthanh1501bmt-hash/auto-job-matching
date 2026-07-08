@@ -1,73 +1,117 @@
 package com.autojob.modules.jobcrawler.camel;
 
-import com.autojob.common.dtos.ApplyType;
-import com.autojob.modules.jobcrawler.config.MockCrawlerProperties;
 import com.autojob.modules.jobcrawler.domain.RawJob;
+import com.autojob.modules.jobcrawler.parser.JobSourceParserRegistry;
+import com.autojob.modules.jobcrawler.parser.ParsedRawJob;
 import com.autojob.modules.jobcrawler.service.RawJobService;
 import com.autojob.modules.jobcrawler.util.FingerprintUtil;
 import lombok.RequiredArgsConstructor;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Component
 @RequiredArgsConstructor
 public class DetailPageProcessor implements Processor {
 
-    private final MockCrawlerProperties properties;
     private final RawJobService rawJobService;
+    private final JobSourceParserRegistry parserRegistry;
 
     @Override
     public void process(Exchange exchange) {
-        String detailUrl = exchange.getProperty("detailUrl", String.class);
         String html = exchange.getMessage().getBody(String.class);
 
-        Document doc = Jsoup.parse(html, detailUrl);
+        String detailUrl = exchange.getProperty("detailUrl", String.class);
+        String listUrl = exchange.getProperty("listUrl", String.class);
+        String sourceCode = exchange.getProperty("sourceCode", String.class);
 
-        String title = text(doc, ".job-title");
-        String company = text(doc, ".company");
+        boolean storeRawHtml = Boolean.TRUE.equals(exchange.getProperty("storeRawHtml", Boolean.class));
+        boolean storeRawText = Boolean.TRUE.equals(exchange.getProperty("storeRawText", Boolean.class));
 
-        String applyUrl = doc.selectFirst("a.apply-url[href]") != null
-                ? doc.selectFirst("a.apply-url[href]").absUrl("href")
-                : detailUrl;
+        Integer rawTextMaxCharsValue = exchange.getProperty("rawTextMaxChars", Integer.class);
+        Integer rawRetentionDaysValue = exchange.getProperty("rawRetentionDays", Integer.class);
 
-        String fingerprint = FingerprintUtil.sha256(
-                properties.getSourceCode() + "|" + title + "|" + company + "|" + detailUrl
+        int rawTextMaxChars = rawTextMaxCharsValue != null ? rawTextMaxCharsValue : 20000;
+        int rawRetentionDays = rawRetentionDaysValue != null ? rawRetentionDaysValue : 3;
+
+        ParsedRawJob parsed = parserRegistry
+                .getDetailParser(sourceCode)
+                .parseDetail(detailUrl, html);
+
+        Instant now = Instant.now();
+
+        String fingerprint = buildFingerprint(
+                sourceCode,
+                parsed.sourceJobId(),
+                detailUrl,
+                parsed.title(),
+                parsed.companyName()
         );
 
         RawJob rawJob = RawJob.builder()
-                .sourceCode(properties.getSourceCode())
+                .sourceCode(sourceCode)
+                .sourceJobId(parsed.sourceJobId())
                 .sourceUrl(detailUrl)
-                .listUrl(properties.getListUrl())
+                .listUrl(listUrl)
                 .detailUrl(detailUrl)
-                .applyUrl(applyUrl)
-                .applyType(ApplyType.DETAIL_PAGE)
-                .title(title)
-                .companyName(company)
-                .salaryText(text(doc, ".salary"))
-                .locationText(text(doc, ".location"))
-                .experienceText(text(doc, ".experience"))
-                .skills(doc.select(".skills .skill").eachText())
-                .descriptionText(text(doc, ".description"))
-                .requirementsText(text(doc, ".requirements"))
-                .benefitsText(text(doc, ".benefits"))
-                .rawHtml(html)
-                .rawText(doc.text())
+                .applyUrl(parsed.applyUrl() != null ? parsed.applyUrl() : detailUrl)
+                .applyType(parsed.applyType())
+                .title(parsed.title())
+                .companyName(parsed.companyName())
+                .salaryText(parsed.salaryText())
+                .locationText(parsed.locationText())
+                .experienceText(parsed.experienceText())
+                .seniorityText(parsed.seniorityText())
+                .jobTypeText(parsed.jobTypeText())
+                .deadlineText(parsed.deadlineText())
+                .postedText(parsed.postedText())
+                .skills(parsed.skills())
+                .descriptionText(parsed.descriptionText())
+                .requirementsText(parsed.requirementsText())
+                .benefitsText(parsed.benefitsText())
+
+                // Config false thì Mongo không lưu HTML/text.
+                .rawHtml(storeRawHtml ? html : null)
+                .rawText(storeRawText ? truncate(Jsoup.parse(html, detailUrl).text(), rawTextMaxChars) : null)
+
                 .fingerprint(fingerprint)
-                .collectedAt(Instant.now())
+                .firstSeenAt(now)
+                .lastSeenAt(now)
+                .collectedAt(now)
+                .expiresAt(now.plus(rawRetentionDays, ChronoUnit.DAYS))
                 .build();
 
-        RawJob saved = rawJobService.saveIfNew(rawJob);
+        RawJob saved = rawJobService.upsertSeen(rawJob);
+
+        // Method kết thúc thì html chỉ còn là local variable, không save vào DB nếu config false.
         exchange.getMessage().setBody(saved.getId());
     }
 
-    private String text(Document doc, String selector) {
-        return doc.selectFirst(selector) != null
-                ? doc.selectFirst(selector).text()
-                : null;
+    private String buildFingerprint(
+            String sourceCode,
+            String sourceJobId,
+            String detailUrl,
+            String title,
+            String companyName
+    ) {
+        if (sourceJobId != null && !sourceJobId.isBlank()) {
+            return sourceCode + ":" + sourceJobId;
+        }
+
+        return sourceCode + ":URL:" + FingerprintUtil.sha256(
+                sourceCode + "|" + detailUrl + "|" + title + "|" + companyName
+        );
+    }
+
+    private String truncate(String value, int maxChars) {
+        if (value == null || maxChars <= 0 || value.length() <= maxChars) {
+            return value;
+        }
+
+        return value.substring(0, maxChars);
     }
 }
