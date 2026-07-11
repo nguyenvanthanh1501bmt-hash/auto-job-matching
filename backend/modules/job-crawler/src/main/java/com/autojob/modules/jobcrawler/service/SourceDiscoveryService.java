@@ -1,5 +1,8 @@
-package com.autojob.modules.jobcrawler.sourcediscovery;
+package com.autojob.modules.jobcrawler.service;
 
+import com.autojob.modules.jobcrawler.repository.SourceDiscoveryResultRepository;
+import com.autojob.modules.jobcrawler.repository.WebsiteSourceRepository;
+import com.autojob.modules.jobcrawler.sourcediscovery.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

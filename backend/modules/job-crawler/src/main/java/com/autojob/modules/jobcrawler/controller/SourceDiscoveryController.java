@@ -1,5 +1,9 @@
-package com.autojob.modules.jobcrawler.sourcediscovery;
+package com.autojob.modules.jobcrawler.controller;
 
+import com.autojob.modules.jobcrawler.repository.SourceDiscoveryResultRepository;
+import com.autojob.modules.jobcrawler.service.SourceDiscoveryService;
+import com.autojob.modules.jobcrawler.sourcediscovery.SourceDiscoveryResult;
+import com.autojob.modules.jobcrawler.sourcediscovery.WebsiteSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

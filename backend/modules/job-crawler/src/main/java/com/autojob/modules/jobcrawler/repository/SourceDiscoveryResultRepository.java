@@ -1,5 +1,6 @@
-package com.autojob.modules.jobcrawler.sourcediscovery;
+package com.autojob.modules.jobcrawler.repository;
 
+import com.autojob.modules.jobcrawler.sourcediscovery.SourceDiscoveryResult;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;

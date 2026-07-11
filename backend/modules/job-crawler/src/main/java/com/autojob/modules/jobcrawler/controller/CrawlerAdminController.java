@@ -1,4 +1,4 @@
-package com.autojob.modules.jobcrawler.api;
+package com.autojob.modules.jobcrawler.controller;
 
 import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import lombok.RequiredArgsConstructor;

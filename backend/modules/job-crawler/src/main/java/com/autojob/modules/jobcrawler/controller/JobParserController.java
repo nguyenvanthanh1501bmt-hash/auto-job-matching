@@ -1,4 +1,4 @@
-package com.autojob.modules.jobcrawler.api;
+package com.autojob.modules.jobcrawler.controller;
 
 import com.autojob.common.dtos.ApplyType;
 import com.autojob.modules.jobcrawler.domain.RawJob;
