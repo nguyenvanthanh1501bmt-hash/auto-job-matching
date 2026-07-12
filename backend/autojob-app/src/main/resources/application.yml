@@ -1,10 +1,21 @@
-# Placeholder application configuration.
 spring:
   application:
     name: autojob-app
 
+  data:
+    mongodb:
+      auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}
+
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+
+autojob:
+  normalization:
+    version: ${NORMALIZATION_VERSION:rule-v1}
+    timezone: ${NORMALIZATION_TIMEZONE:Asia/Ho_Chi_Minh}
+    embedding-description-max-chars: ${NORMALIZATION_DESCRIPTION_MAX_CHARS:6000}
+    embedding-requirements-max-chars: ${NORMALIZATION_REQUIREMENTS_MAX_CHARS:4000}
+    embedding-benefits-max-chars: ${NORMALIZATION_BENEFITS_MAX_CHARS:2000}
 
 management:
   endpoints:

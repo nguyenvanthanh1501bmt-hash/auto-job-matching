@@ -13,6 +13,7 @@
         <module>common/common-dtos</module>
         <module>common/common-events</module>
         <module>modules/job-crawler</module>
+        <module>modules/job-normalizer</module>
         <module>autojob-app</module>
     </modules>
 
