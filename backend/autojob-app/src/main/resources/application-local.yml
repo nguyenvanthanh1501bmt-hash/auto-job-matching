@@ -19,7 +19,7 @@ autojob:
       store-raw-html: false
       store-raw-text: false
       raw-text-max-chars: 20000
-      raw-retention-days: 10
+      raw-retention-days: 30
 
     itviec:
       source-code: ITVIEC
@@ -29,7 +29,7 @@ autojob:
       store-raw-html: false
       store-raw-text: false
       raw-text-max-chars: 20000
-      raw-retention-days: 3
+      raw-retention-days: 30
 
     joboko:
       source-code: JOBOKO
@@ -39,7 +39,7 @@ autojob:
       store-raw-html: false
       store-raw-text: false
       raw-text-max-chars: 20000
-      raw-retention-days: 7
+      raw-retention-days: 30
 
     topdev:
       source-code: TOPDEV
@@ -49,7 +49,7 @@ autojob:
       store-raw-html: false
       store-raw-text: false
       raw-text-max-chars: 20000
-      raw-retention-days: 7
+      raw-retention-days: 30
 
     vieclam24h:
       source-code: VIECLAM24H
@@ -59,7 +59,7 @@ autojob:
       store-raw-html: false
       store-raw-text: false
       raw-text-max-chars: 20000
-      raw-retention-days: 7
+      raw-retention-days: 30
 
 logging:
   level:

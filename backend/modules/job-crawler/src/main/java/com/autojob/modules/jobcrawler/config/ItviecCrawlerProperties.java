@@ -13,7 +13,7 @@ public class ItviecCrawlerProperties {
     private boolean storeRawHtml = false;
     private boolean storeRawText = false;
     private int rawTextMaxChars = 20000;
-    private int rawRetentionDays = 3;
+    private int rawRetentionDays = 30;
 
     public String getSourceCode() {
         return sourceCode;
@@ -76,6 +76,12 @@ public class ItviecCrawlerProperties {
     }
 
     public void setRawRetentionDays(int rawRetentionDays) {
+        if (rawRetentionDays < 1) {
+            throw new IllegalArgumentException(
+                    "rawRetentionDays must be greater than or equal to 1"
+            );
+        }
+
         this.rawRetentionDays = rawRetentionDays;
     }
 }

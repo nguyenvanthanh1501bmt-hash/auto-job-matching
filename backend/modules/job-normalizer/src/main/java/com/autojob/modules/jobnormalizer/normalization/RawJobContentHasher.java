@@ -19,107 +19,73 @@ public class RawJobContentHasher {
     public String hash(RawJob rawJob) {
         StringBuilder canonicalContent = new StringBuilder();
 
-        appendInline(
-                canonicalContent,
-                "sourceCode",
-                rawJob.getSourceCode()
-        );
-
-        appendInline(
-                canonicalContent,
-                "sourceJobId",
-                rawJob.getSourceJobId()
-        );
-
-        appendInline(
-                canonicalContent,
-                "title",
-                rawJob.getTitle()
-        );
-
+        appendInline(canonicalContent, "title", rawJob.getTitle());
         appendInline(
                 canonicalContent,
                 "companyName",
                 rawJob.getCompanyName()
         );
-
         appendInline(
                 canonicalContent,
                 "salaryText",
                 rawJob.getSalaryText()
         );
-
         appendInline(
                 canonicalContent,
                 "locationText",
                 rawJob.getLocationText()
         );
-
         appendInline(
                 canonicalContent,
                 "experienceText",
                 rawJob.getExperienceText()
         );
-
         appendInline(
                 canonicalContent,
                 "seniorityText",
                 rawJob.getSeniorityText()
         );
-
         appendInline(
                 canonicalContent,
                 "jobTypeText",
                 rawJob.getJobTypeText()
         );
-
         appendInline(
                 canonicalContent,
                 "deadlineText",
                 rawJob.getDeadlineText()
         );
-
         appendInline(
                 canonicalContent,
                 "postedText",
                 rawJob.getPostedText()
         );
-
-        appendSkills(
-                canonicalContent,
-                rawJob.getSkills()
-        );
-
+        appendSkills(canonicalContent, rawJob.getSkills());
         appendMultiline(
                 canonicalContent,
                 "descriptionText",
                 rawJob.getDescriptionText()
         );
-
         appendMultiline(
                 canonicalContent,
                 "requirementsText",
                 rawJob.getRequirementsText()
         );
-
         appendMultiline(
                 canonicalContent,
                 "benefitsText",
                 rawJob.getBenefitsText()
         );
-
         appendInline(
                 canonicalContent,
                 "detailUrl",
                 rawJob.getDetailUrl()
         );
-
         appendInline(
                 canonicalContent,
                 "applyUrl",
                 rawJob.getApplyUrl()
         );
-
         appendValue(
                 canonicalContent,
                 "applyType",
@@ -147,8 +113,9 @@ public class RawJobContentHasher {
         );
 
         for (int index = 0; index < skills.size(); index++) {
-            String cleanedSkill =
-                    textNormalizer.normalizeInline(skills.get(index));
+            String cleanedSkill = textNormalizer.normalizeInline(
+                    skills.get(index)
+            );
 
             appendValue(
                     builder,
@@ -205,8 +172,9 @@ public class RawJobContentHasher {
 
     private String sha256(String value) {
         try {
-            MessageDigest messageDigest =
-                    MessageDigest.getInstance("SHA-256");
+            MessageDigest messageDigest = MessageDigest.getInstance(
+                    "SHA-256"
+            );
 
             byte[] hash = messageDigest.digest(
                     value.getBytes(StandardCharsets.UTF_8)

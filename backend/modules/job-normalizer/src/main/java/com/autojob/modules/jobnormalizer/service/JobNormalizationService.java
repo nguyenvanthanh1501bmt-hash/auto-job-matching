@@ -3,7 +3,10 @@ package com.autojob.modules.jobnormalizer.service;
 import com.autojob.common.events.JobNormalizedReadyEvent;
 import com.autojob.modules.jobcrawler.domain.RawJob;
 import com.autojob.modules.jobcrawler.repository.RawJobRepository;
+import com.autojob.modules.jobcrawler.service.RawPayloadPurgeResult;
+import com.autojob.modules.jobcrawler.service.RawPayloadPurgeService;
 import com.autojob.modules.jobnormalizer.config.NormalizationProperties;
+import com.autojob.modules.jobnormalizer.domain.NormalizationAction;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJobType;
 import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
@@ -30,6 +33,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -52,9 +56,19 @@ public class JobNormalizationService {
 
     private final NormalizationProperties normalizationProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final RawPayloadPurgeService rawPayloadPurgeService;
     private final Clock normalizationClock;
 
-    public NormalizedJob normalizeByRawJobId(String rawJobId) {
+    public NormalizationRunResult normalizeByRawJobId(
+            String rawJobId
+    ) {
+        return normalizeByRawJobId(rawJobId, false);
+    }
+
+    public NormalizationRunResult normalizeByRawJobId(
+            String rawJobId,
+            boolean force
+    ) {
         validateRawJobId(rawJobId);
 
         long startedAtNanos = System.nanoTime();
@@ -65,19 +79,8 @@ public class JobNormalizationService {
                             () -> new RawJobNotFoundException(rawJobId)
                     );
 
-            String normalizationVersion =
-                    textNormalizer.normalizeInline(
-                            normalizationProperties.getVersion()
-                    );
-
-            if (normalizationVersion == null) {
-                throw new IllegalStateException(
-                        "Normalization version must not be blank"
-                );
-            }
-
-            Instant normalizedAt =
-                    Instant.now(normalizationClock);
+            String normalizationVersion = currentVersion();
+            Instant normalizedAt = Instant.now(normalizationClock);
 
             NormalizedJob normalizedCandidate = normalize(
                     rawJob,
@@ -85,36 +88,39 @@ public class JobNormalizationService {
                     normalizedAt
             );
 
-            NormalizedJob saved =
-                    saveIdempotently(normalizedCandidate);
+            NormalizationExecution execution = saveIdempotently(
+                    normalizedCandidate,
+                    force
+            );
 
-            eventPublisher.publishEvent(
-                    new JobNormalizedReadyEvent(
-                            saved.getId(),
-                            saved.getRawJobId(),
-                            saved.getSourceCode(),
-                            saved.getNormalizationVersion(),
-                            Instant.now(normalizationClock)
-                    )
+            publishReadyEventWhenChanged(execution);
+
+            NormalizationRunResult result = purgeAfterSuccess(
+                    execution
             );
 
             log.info(
                     "Normalized raw job rawJobId={}, normalizedJobId={}, "
                             + "sourceCode={}, normalizationVersion={}, "
+                            + "action={}, force={}, purgeFailed={}, "
                             + "durationMs={}, status=SUCCESS",
-                    saved.getRawJobId(),
-                    saved.getId(),
-                    saved.getSourceCode(),
-                    saved.getNormalizationVersion(),
+                    execution.normalizedJob().getRawJobId(),
+                    execution.normalizedJob().getId(),
+                    execution.normalizedJob().getSourceCode(),
+                    execution.normalizedJob().getNormalizationVersion(),
+                    execution.action(),
+                    force,
+                    result.purgeFailed(),
                     elapsedMilliseconds(startedAtNanos)
             );
 
-            return saved;
+            return result;
         } catch (RuntimeException exception) {
             log.error(
-                    "Failed to normalize raw job rawJobId={}, "
+                    "Failed to normalize raw job rawJobId={}, force={}, "
                             + "durationMs={}, status=FAILED, error={}",
                     rawJobId,
+                    force,
                     elapsedMilliseconds(startedAtNanos),
                     exception.getMessage(),
                     exception
@@ -124,89 +130,148 @@ public class JobNormalizationService {
         }
     }
 
+    public String getNormalizationVersion() {
+        return currentVersion();
+    }
+
+    private String currentVersion() {
+        String normalizationVersion = textNormalizer.normalizeInline(
+                normalizationProperties.getVersion()
+        );
+
+        if (normalizationVersion == null) {
+            throw new IllegalStateException(
+                    "Normalization version must not be blank"
+            );
+        }
+
+        return normalizationVersion;
+    }
+
+    private NormalizationRunResult purgeAfterSuccess(
+            NormalizationExecution execution
+    ) {
+        String rawJobId = execution.normalizedJob().getRawJobId();
+
+        try {
+            RawPayloadPurgeResult purgeResult =
+                    rawPayloadPurgeService.purgeRawPayload(rawJobId);
+
+            return new NormalizationRunResult(
+                    execution,
+                    purgeResult,
+                    null
+            );
+        } catch (RuntimeException exception) {
+            log.error(
+                    "Normalization succeeded but raw payload purge failed "
+                            + "rawJobId={}, normalizedJobId={}, action={}, error={}",
+                    rawJobId,
+                    execution.normalizedJob().getId(),
+                    execution.action(),
+                    exception.getMessage(),
+                    exception
+            );
+
+            return new NormalizationRunResult(
+                    execution,
+                    null,
+                    exception.getMessage()
+            );
+        }
+    }
+
+    private void publishReadyEventWhenChanged(
+            NormalizationExecution execution
+    ) {
+        if (execution.action() == NormalizationAction.UNCHANGED) {
+            return;
+        }
+
+        NormalizedJob normalizedJob = execution.normalizedJob();
+
+        eventPublisher.publishEvent(
+                new JobNormalizedReadyEvent(
+                        normalizedJob.getId(),
+                        normalizedJob.getRawJobId(),
+                        normalizedJob.getSourceCode(),
+                        normalizedJob.getNormalizationVersion(),
+                        Instant.now(normalizationClock)
+                )
+        );
+    }
+
     private NormalizedJob normalize(
             RawJob rawJob,
             String normalizationVersion,
             Instant normalizedAt
     ) {
-        String title =
-                textNormalizer.normalizeInline(rawJob.getTitle());
+        String title = textNormalizer.normalizeInline(
+                rawJob.getTitle()
+        );
 
-        String companyName =
-                textNormalizer.normalizeInline(
-                        rawJob.getCompanyName()
-                );
+        String companyName = textNormalizer.normalizeInline(
+                rawJob.getCompanyName()
+        );
 
-        String salaryText =
-                textNormalizer.normalizeInline(
-                        rawJob.getSalaryText()
-                );
+        String salaryText = textNormalizer.normalizeInline(
+                rawJob.getSalaryText()
+        );
 
-        SalaryNormalizationResult salary =
-                salaryNormalizer.normalize(
-                        rawJob.getSalaryText()
-                );
+        SalaryNormalizationResult salary = salaryNormalizer.normalize(
+                rawJob.getSalaryText()
+        );
 
-        String locationText =
-                textNormalizer.normalizeInline(
-                        rawJob.getLocationText()
-                );
+        String locationText = textNormalizer.normalizeInline(
+                rawJob.getLocationText()
+        );
 
-        List<String> locations =
-                locationNormalizer.normalize(
-                        rawJob.getLocationText()
-                );
+        List<String> locations = locationNormalizer.normalize(
+                rawJob.getLocationText()
+        );
 
-        List<String> skills =
-                skillNormalizer.normalize(
-                        rawJob.getSkills()
-                );
+        List<String> skills = skillNormalizer.normalize(
+                rawJob.getSkills()
+        );
 
         ExperienceNormalizationResult experience =
                 experienceNormalizer.normalize(
                         rawJob.getExperienceText()
                 );
 
-        SeniorityLevel seniority =
-                seniorityNormalizer.normalize(
-                        rawJob.getSeniorityText(),
-                        title,
-                        experience
-                );
+        SeniorityLevel seniority = seniorityNormalizer.normalize(
+                rawJob.getSeniorityText(),
+                title,
+                experience
+        );
 
-        NormalizedJobType jobType =
-                jobTypeNormalizer.normalize(
-                        rawJob.getJobTypeText(),
-                        title
-                );
+        NormalizedJobType jobType = jobTypeNormalizer.normalize(
+                rawJob.getJobTypeText(),
+                title
+        );
 
-        String descriptionText =
-                textNormalizer.normalizeMultiline(
-                        rawJob.getDescriptionText()
-                );
+        String descriptionText = textNormalizer.normalizeMultiline(
+                rawJob.getDescriptionText()
+        );
 
-        String requirementsText =
-                textNormalizer.normalizeMultiline(
-                        rawJob.getRequirementsText()
-                );
+        String requirementsText = textNormalizer.normalizeMultiline(
+                rawJob.getRequirementsText()
+        );
 
-        String benefitsText =
-                textNormalizer.normalizeMultiline(
-                        rawJob.getBenefitsText()
-                );
+        String benefitsText = textNormalizer.normalizeMultiline(
+                rawJob.getBenefitsText()
+        );
 
-        String detailUrl =
-                textNormalizer.normalizeInline(
-                        rawJob.getDetailUrl()
-                );
+        String detailUrl = textNormalizer.normalizeInline(
+                rawJob.getDetailUrl()
+        );
 
         ApplyInformationNormalizer.ApplyInformationResult
-                applyInformation =
-                applyInformationNormalizer.normalize(
-                        rawJob.getApplyUrl(),
-                        rawJob.getApplyType(),
-                        detailUrl
-                );
+                applyInformation = applyInformationNormalizer.normalize(
+                rawJob.getApplyUrl(),
+                rawJob.getApplyType(),
+                detailUrl
+        );
 
         return NormalizedJob.builder()
                 .rawJobId(rawJob.getId())
@@ -225,9 +290,7 @@ public class JobNormalizationService {
                                 rawJob.getFingerprint()
                         )
                 )
-                .rawContentHash(
-                        rawJobContentHasher.hash(rawJob)
-                )
+                .rawContentHash(rawJobContentHasher.hash(rawJob))
                 .title(title)
                 .companyName(companyName)
                 .skills(skills)
@@ -247,12 +310,7 @@ public class JobNormalizationService {
                 .detailUrl(detailUrl)
                 .applyUrl(applyInformation.applyUrl())
                 .applyType(applyInformation.applyType())
-
-                /*
-                 * Hôm nay chưa triển khai embedding.
-                 */
                 .embeddingText(null)
-
                 .normalizationVersion(normalizationVersion)
                 .postedAt(
                         dateNormalizer.normalizePostedAt(
@@ -268,37 +326,73 @@ public class JobNormalizationService {
                 .build();
     }
 
-    private NormalizedJob saveIdempotently(
-            NormalizedJob candidate
+    private NormalizationExecution saveIdempotently(
+            NormalizedJob candidate,
+            boolean force
     ) {
         return normalizedJobRepository
                 .findByRawJobIdAndNormalizationVersion(
                         candidate.getRawJobId(),
                         candidate.getNormalizationVersion()
                 )
-                .map(existing ->
-                        updateAndSave(existing, candidate))
-                .orElseGet(() ->
-                        insertSafely(candidate));
+                .map(
+                        existing -> resolveExisting(
+                                existing,
+                                candidate,
+                                force
+                        )
+                )
+                .orElseGet(() -> insertSafely(candidate, force));
     }
 
-    private NormalizedJob insertSafely(
-            NormalizedJob candidate
+    private NormalizationExecution insertSafely(
+            NormalizedJob candidate,
+            boolean force
     ) {
         try {
-            return normalizedJobRepository.save(candidate);
-        } catch (DuplicateKeyException exception) {
-            NormalizedJob existing =
-                    normalizedJobRepository
-                            .findByRawJobIdAndNormalizationVersion(
-                                    candidate.getRawJobId(),
-                                    candidate
-                                            .getNormalizationVersion()
-                            )
-                            .orElseThrow(() -> exception);
+            NormalizedJob inserted = normalizedJobRepository.insert(
+                    candidate
+            );
 
-            return updateAndSave(existing, candidate);
+            return new NormalizationExecution(
+                    inserted,
+                    NormalizationAction.CREATED
+            );
+        } catch (DuplicateKeyException exception) {
+            NormalizedJob existing = normalizedJobRepository
+                    .findByRawJobIdAndNormalizationVersion(
+                            candidate.getRawJobId(),
+                            candidate.getNormalizationVersion()
+                    )
+                    .orElseThrow(() -> exception);
+
+            return resolveExisting(existing, candidate, force);
         }
+    }
+
+    private NormalizationExecution resolveExisting(
+            NormalizedJob existing,
+            NormalizedJob candidate,
+            boolean force
+    ) {
+        boolean contentChanged = !Objects.equals(
+                existing.getRawContentHash(),
+                candidate.getRawContentHash()
+        );
+
+        if (!force && !contentChanged) {
+            return new NormalizationExecution(
+                    existing,
+                    NormalizationAction.UNCHANGED
+            );
+        }
+
+        NormalizedJob updated = updateAndSave(existing, candidate);
+
+        return new NormalizationExecution(
+                updated,
+                NormalizationAction.UPDATED
+        );
     }
 
     private NormalizedJob updateAndSave(
@@ -311,9 +405,7 @@ public class JobNormalizationService {
         existing.setSourceFingerprint(
                 candidate.getSourceFingerprint()
         );
-        existing.setRawContentHash(
-                candidate.getRawContentHash()
-        );
+        existing.setRawContentHash(candidate.getRawContentHash());
 
         existing.setTitle(candidate.getTitle());
         existing.setCompanyName(candidate.getCompanyName());
@@ -326,24 +418,14 @@ public class JobNormalizationService {
         existing.setSalaryMax(candidate.getSalaryMax());
         existing.setCurrency(candidate.getCurrency());
 
-        existing.setExperienceMin(
-                candidate.getExperienceMin()
-        );
-        existing.setExperienceMax(
-                candidate.getExperienceMax()
-        );
+        existing.setExperienceMin(candidate.getExperienceMin());
+        existing.setExperienceMax(candidate.getExperienceMax());
         existing.setSeniority(candidate.getSeniority());
         existing.setJobType(candidate.getJobType());
 
-        existing.setDescriptionText(
-                candidate.getDescriptionText()
-        );
-        existing.setRequirementsText(
-                candidate.getRequirementsText()
-        );
-        existing.setBenefitsText(
-                candidate.getBenefitsText()
-        );
+        existing.setDescriptionText(candidate.getDescriptionText());
+        existing.setRequirementsText(candidate.getRequirementsText());
+        existing.setBenefitsText(candidate.getBenefitsText());
 
         existing.setDetailUrl(candidate.getDetailUrl());
         existing.setApplyUrl(candidate.getApplyUrl());
@@ -356,9 +438,7 @@ public class JobNormalizationService {
         );
         existing.setPostedAt(candidate.getPostedAt());
         existing.setDeadlineAt(candidate.getDeadlineAt());
-        existing.setNormalizedAt(
-                candidate.getNormalizedAt()
-        );
+        existing.setNormalizedAt(candidate.getNormalizedAt());
 
         return normalizedJobRepository.save(existing);
     }
@@ -371,10 +451,7 @@ public class JobNormalizationService {
         }
     }
 
-    private long elapsedMilliseconds(
-            long startedAtNanos
-    ) {
-        return (System.nanoTime() - startedAtNanos)
-                / 1_000_000L;
+    private long elapsedMilliseconds(long startedAtNanos) {
+        return (System.nanoTime() - startedAtNanos) / 1_000_000L;
     }
 }

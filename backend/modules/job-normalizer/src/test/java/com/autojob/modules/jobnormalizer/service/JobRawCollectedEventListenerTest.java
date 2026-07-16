@@ -1,13 +1,19 @@
 package com.autojob.modules.jobnormalizer.listener;
 
 import com.autojob.common.events.JobRawCollectedEvent;
+import com.autojob.modules.jobcrawler.service.RawPayloadPurgeResult;
+import com.autojob.modules.jobnormalizer.domain.NormalizationAction;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.service.JobNormalizationService;
+import com.autojob.modules.jobnormalizer.service.NormalizationExecution;
+import com.autojob.modules.jobnormalizer.service.NormalizationRunResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -53,10 +59,33 @@ class JobRawCollectedEventListenerTest {
                 .normalizationVersion("rule-v1")
                 .build();
 
+        NormalizationExecution execution =
+                new NormalizationExecution(
+                        normalizedJob,
+                        NormalizationAction.CREATED
+                );
+
+        RawPayloadPurgeResult purgeResult =
+                new RawPayloadPurgeResult(
+                        "raw-001",
+                        1,
+                        1,
+                        Instant.parse(
+                                "2026-07-16T01:30:00Z"
+                        )
+                );
+
+        NormalizationRunResult runResult =
+                new NormalizationRunResult(
+                        execution,
+                        purgeResult,
+                        null
+                );
+
         when(
                 jobNormalizationService
                         .normalizeByRawJobId("raw-001")
-        ).thenReturn(normalizedJob);
+        ).thenReturn(runResult);
 
         listener.onJobRawCollected(event);
 

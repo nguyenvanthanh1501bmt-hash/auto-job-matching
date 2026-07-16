@@ -31,7 +31,10 @@ public class RawJobQueryController {
                 .findAll(PageRequest.of(
                         0,
                         safeLimit,
-                        Sort.by(Sort.Direction.DESC, "collectedAt")
+                        Sort.by(
+                                Sort.Direction.DESC,
+                                "collectedAt"
+                        )
                 ))
                 .getContent()
                 .stream()
@@ -56,7 +59,8 @@ public class RawJobQueryController {
             Instant firstSeenAt,
             Instant lastSeenAt,
             Instant collectedAt,
-            Instant expiresAt
+            Instant expiresAt,
+            Instant rawPayloadPurgedAt
     ) {
         static RawJobSummaryResponse from(RawJob rawJob) {
             return new RawJobSummaryResponse(
@@ -76,7 +80,8 @@ public class RawJobQueryController {
                     rawJob.getFirstSeenAt(),
                     rawJob.getLastSeenAt(),
                     rawJob.getCollectedAt(),
-                    rawJob.getExpiresAt()
+                    rawJob.getExpiresAt(),
+                    rawJob.getRawPayloadPurgedAt()
             );
         }
     }

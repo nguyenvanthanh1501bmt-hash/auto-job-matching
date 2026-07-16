@@ -12,7 +12,6 @@ import org.jsoup.Jsoup;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 @Component
 @RequiredArgsConstructor
@@ -25,18 +24,41 @@ public class DetailPageProcessor implements Processor {
     public void process(Exchange exchange) {
         String html = exchange.getMessage().getBody(String.class);
 
-        String detailUrl = exchange.getProperty("detailUrl", String.class);
-        String listUrl = exchange.getProperty("listUrl", String.class);
-        String sourceCode = exchange.getProperty("sourceCode", String.class);
+        String detailUrl = exchange.getProperty(
+                "detailUrl",
+                String.class
+        );
+        String listUrl = exchange.getProperty(
+                "listUrl",
+                String.class
+        );
+        String sourceCode = exchange.getProperty(
+                "sourceCode",
+                String.class
+        );
 
-        boolean storeRawHtml = Boolean.TRUE.equals(exchange.getProperty("storeRawHtml", Boolean.class));
-        boolean storeRawText = Boolean.TRUE.equals(exchange.getProperty("storeRawText", Boolean.class));
+        boolean storeRawHtml = Boolean.TRUE.equals(
+                exchange.getProperty("storeRawHtml", Boolean.class)
+        );
+        boolean storeRawText = Boolean.TRUE.equals(
+                exchange.getProperty("storeRawText", Boolean.class)
+        );
 
-        Integer rawTextMaxCharsValue = exchange.getProperty("rawTextMaxChars", Integer.class);
-        Integer rawRetentionDaysValue = exchange.getProperty("rawRetentionDays", Integer.class);
+        Integer rawTextMaxCharsValue = exchange.getProperty(
+                "rawTextMaxChars",
+                Integer.class
+        );
+        Integer rawRetentionDaysValue = exchange.getProperty(
+                "rawRetentionDays",
+                Integer.class
+        );
 
-        int rawTextMaxChars = rawTextMaxCharsValue != null ? rawTextMaxCharsValue : 20000;
-        int rawRetentionDays = rawRetentionDaysValue != null ? rawRetentionDaysValue : 3;
+        int rawTextMaxChars = rawTextMaxCharsValue != null
+                ? rawTextMaxCharsValue
+                : 20_000;
+        int rawRetentionDays = rawRetentionDaysValue != null
+                ? rawRetentionDaysValue
+                : RawJobService.DEFAULT_RAW_RETENTION_DAYS;
 
         ParsedRawJob parsed = parserRegistry
                 .getDetailParser(sourceCode)
@@ -58,7 +80,11 @@ public class DetailPageProcessor implements Processor {
                 .sourceUrl(detailUrl)
                 .listUrl(listUrl)
                 .detailUrl(detailUrl)
-                .applyUrl(parsed.applyUrl() != null ? parsed.applyUrl() : detailUrl)
+                .applyUrl(
+                        parsed.applyUrl() != null
+                                ? parsed.applyUrl()
+                                : detailUrl
+                )
                 .applyType(parsed.applyType())
                 .title(parsed.title())
                 .companyName(parsed.companyName())
@@ -73,21 +99,24 @@ public class DetailPageProcessor implements Processor {
                 .descriptionText(parsed.descriptionText())
                 .requirementsText(parsed.requirementsText())
                 .benefitsText(parsed.benefitsText())
-
-                // Config false thì Mongo không lưu HTML/text.
                 .rawHtml(storeRawHtml ? html : null)
-                .rawText(storeRawText ? truncate(Jsoup.parse(html, detailUrl).text(), rawTextMaxChars) : null)
-
+                .rawText(
+                        storeRawText
+                                ? truncate(
+                                Jsoup.parse(html, detailUrl).text(),
+                                rawTextMaxChars
+                        )
+                                : null
+                )
                 .fingerprint(fingerprint)
-                .firstSeenAt(now)
-                .lastSeenAt(now)
                 .collectedAt(now)
-                .expiresAt(now.plus(rawRetentionDays, ChronoUnit.DAYS))
                 .build();
 
-        RawJob saved = rawJobService.upsertSeen(rawJob);
+        RawJob saved = rawJobService.upsertSeen(
+                rawJob,
+                rawRetentionDays
+        );
 
-        // Method kết thúc thì html chỉ còn là local variable, không save vào DB nếu config false.
         exchange.getMessage().setBody(saved.getId());
     }
 
@@ -103,12 +132,20 @@ public class DetailPageProcessor implements Processor {
         }
 
         return sourceCode + ":URL:" + FingerprintUtil.sha256(
-                sourceCode + "|" + detailUrl + "|" + title + "|" + companyName
+                sourceCode
+                        + "|"
+                        + detailUrl
+                        + "|"
+                        + title
+                        + "|"
+                        + companyName
         );
     }
 
     private String truncate(String value, int maxChars) {
-        if (value == null || maxChars <= 0 || value.length() <= maxChars) {
+        if (value == null
+                || maxChars <= 0
+                || value.length() <= maxChars) {
             return value;
         }
 

@@ -7,13 +7,16 @@ import com.autojob.modules.jobcrawler.parser.ParsedRawJob;
 import com.autojob.modules.jobcrawler.service.RawJobService;
 import com.autojob.modules.jobcrawler.util.FingerprintUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 
@@ -31,7 +34,10 @@ public class JobParserController {
             @RequestBody ListFileParseRequest request
     ) throws Exception {
         String normalizedSourceCode = normalizeSourceCode(sourceCode);
-        String html = Files.readString(Path.of(request.filePath()), StandardCharsets.UTF_8);
+        String html = Files.readString(
+                Path.of(request.filePath()),
+                StandardCharsets.UTF_8
+        );
 
         List<String> detailUrls = parserRegistry
                 .getListParser(normalizedSourceCode)
@@ -50,7 +56,10 @@ public class JobParserController {
             @RequestBody DetailFileParseRequest request
     ) throws Exception {
         String normalizedSourceCode = normalizeSourceCode(sourceCode);
-        String html = Files.readString(Path.of(request.filePath()), StandardCharsets.UTF_8);
+        String html = Files.readString(
+                Path.of(request.filePath()),
+                StandardCharsets.UTF_8
+        );
 
         ParsedRawJob parsed = parserRegistry
                 .getDetailParser(normalizedSourceCode)
@@ -86,7 +95,7 @@ public class JobParserController {
 
         int rawRetentionDays = rawRetentionDaysValue != null
                 ? rawRetentionDaysValue
-                : 7;
+                : RawJobService.DEFAULT_RAW_RETENTION_DAYS;
 
         RawJob rawJob = RawJob.builder()
                 .sourceCode(sourceCode)
@@ -95,8 +104,11 @@ public class JobParserController {
                 .listUrl(listUrl)
                 .detailUrl(detailUrl)
                 .applyUrl(valueOrDefault(parsed.applyUrl(), detailUrl))
-                .applyType(parsed.applyType() != null ? parsed.applyType() : ApplyType.DETAIL_PAGE)
-
+                .applyType(
+                        parsed.applyType() != null
+                                ? parsed.applyType()
+                                : ApplyType.DETAIL_PAGE
+                )
                 .title(parsed.title())
                 .companyName(parsed.companyName())
                 .salaryText(parsed.salaryText())
@@ -110,18 +122,16 @@ public class JobParserController {
                 .descriptionText(parsed.descriptionText())
                 .requirementsText(parsed.requirementsText())
                 .benefitsText(parsed.benefitsText())
-
                 .rawHtml(null)
                 .rawText(null)
-
                 .fingerprint(fingerprint)
-                .firstSeenAt(now)
-                .lastSeenAt(now)
                 .collectedAt(now)
-                .expiresAt(now.plus(rawRetentionDays, ChronoUnit.DAYS))
                 .build();
 
-        return rawJobService.upsertSeen(rawJob);
+        return rawJobService.upsertSeen(
+                rawJob,
+                rawRetentionDays
+        );
     }
 
     private String buildFingerprint(
@@ -136,7 +146,13 @@ public class JobParserController {
         }
 
         return sourceCode + ":URL:" + FingerprintUtil.sha256(
-                sourceCode + "|" + detailUrl + "|" + title + "|" + companyName
+                sourceCode
+                        + "|"
+                        + detailUrl
+                        + "|"
+                        + title
+                        + "|"
+                        + companyName
         );
     }
 
@@ -146,8 +162,13 @@ public class JobParserController {
                 : sourceCode.trim().toUpperCase(Locale.ROOT);
     }
 
-    private String valueOrDefault(String value, String defaultValue) {
-        return value == null || value.isBlank() ? defaultValue : value;
+    private String valueOrDefault(
+            String value,
+            String defaultValue
+    ) {
+        return value == null || value.isBlank()
+                ? defaultValue
+                : value;
     }
 
     public record ListFileParseRequest(

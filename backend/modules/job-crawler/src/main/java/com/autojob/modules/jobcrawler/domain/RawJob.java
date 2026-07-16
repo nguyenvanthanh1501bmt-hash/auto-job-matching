@@ -1,7 +1,11 @@
 package com.autojob.modules.jobcrawler.domain;
 
 import com.autojob.common.dtos.ApplyType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
@@ -65,17 +69,21 @@ public class RawJob {
     private String benefitsText;
 
     /**
-     * Free DB policy:
-     * - rawHtml nên để null ở production/free DB
-     * - chỉ bật khi debug crawler
+     * Chỉ lưu tạm khi bật debug crawler. Field này được $unset ngay sau
+     * khi normalization thành công.
      */
     private String rawHtml;
 
     /**
-     * Text gốc đã strip từ HTML/detail page.
-     * Có thể truncate 10k-30k chars nếu cần tiết kiệm DB.
+     * Text gốc đã strip từ HTML/detail page. Field này được $unset ngay
+     * sau khi normalization thành công.
      */
     private String rawText;
+
+    /**
+     * Thời điểm rawHtml/rawText được purge gần nhất.
+     */
+    private Instant rawPayloadPurgedAt;
 
     /**
      * Unique key chống duplicate.
@@ -89,9 +97,10 @@ public class RawJob {
     private Instant lastSeenAt;
 
     /**
-     * Raw retention.
-     * Ví dụ raw giữ 10 ngày:
-     * expiresAt = collectedAt + 10 days
+     * Absolute expiration time của toàn bộ RawJob document.
+     * Giá trị được tính một lần khi insert:
+     * expiresAt = firstSeenAt + rawRetentionDays.
+     * Crawler update không được refresh field này.
      */
     @Indexed(name = "idx_raw_jobs_expires_at_ttl", expireAfter = "0s")
     private Instant expiresAt;

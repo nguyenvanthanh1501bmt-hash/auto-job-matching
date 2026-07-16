@@ -1,8 +1,8 @@
 package com.autojob.modules.jobnormalizer.listener;
 
 import com.autojob.common.events.JobRawCollectedEvent;
-import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.service.JobNormalizationService;
+import com.autojob.modules.jobnormalizer.service.NormalizationRunResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -29,24 +29,22 @@ public class JobRawCollectedEventListener {
         );
 
         try {
-            NormalizedJob normalizedJob =
+            NormalizationRunResult result =
                     jobNormalizationService.normalizeByRawJobId(rawJobId);
 
             log.info(
                     "Handled JobRawCollectedEvent rawJobId={}, "
                             + "normalizedJobId={}, normalizationVersion={}, "
-                            + "status=SUCCESS",
+                            + "action={}, purgeFailed={}, status=SUCCESS",
                     rawJobId,
-                    normalizedJob.getId(),
-                    normalizedJob.getNormalizationVersion()
+                    result.execution().normalizedJob().getId(),
+                    result.execution()
+                            .normalizedJob()
+                            .getNormalizationVersion(),
+                    result.execution().action(),
+                    result.purgeFailed()
             );
         } catch (RuntimeException exception) {
-            /*
-             * Không swallow exception.
-             *
-             * ApplicationEventPublisher đang chạy synchronous,
-             * nên lỗi normalize sẽ được propagate về luồng crawler.
-             */
             log.error(
                     "Failed to handle JobRawCollectedEvent "
                             + "rawJobId={}, sourceCode={}, status=FAILED",
