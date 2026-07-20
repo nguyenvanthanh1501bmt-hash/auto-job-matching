@@ -2,7 +2,7 @@ package com.autojob.modules.jobnormalizer.service;
 
 import com.autojob.modules.jobcrawler.domain.RawJob;
 import com.autojob.modules.jobcrawler.repository.RawJobRepository;
-import com.autojob.modules.jobcrawler.service.RawPayloadPurgeResult;
+import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
 import com.autojob.modules.jobnormalizer.domain.NormalizationAction;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,7 @@ package com.autojob.modules.jobcrawler.parser.mockjob;
 
 import com.autojob.common.dtos.ApplyType;
 import com.autojob.modules.jobcrawler.parser.JobDetailPageParser;
-import com.autojob.modules.jobcrawler.parser.ParsedRawJob;
+import com.autojob.modules.jobcrawler.domain.ParsedRawJob;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Component;

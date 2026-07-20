@@ -1,5 +1,6 @@
 package com.autojob.modules.jobcrawler.parser;
 
+import com.autojob.modules.jobcrawler.domain.ParsedRawJob;
 import com.autojob.modules.jobcrawler.parser.topdev.TopdevJobDetailPageParser;
 import com.autojob.modules.jobcrawler.parser.topdev.TopdevJobListPageParser;
 import com.autojob.modules.jobcrawler.parser.vieclam24h.Vieclam24hJobDetailPageParser;

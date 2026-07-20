@@ -1,5 +1,6 @@
 package com.autojob.modules.jobcrawler.parser;
 
+import com.autojob.modules.jobcrawler.domain.ParsedRawJob;
 import com.autojob.modules.jobcrawler.parser.itviec.ItviecJobDetailPageParser;
 import com.autojob.modules.jobcrawler.parser.itviec.ItviecJobListPageParser;
 import com.fasterxml.jackson.databind.ObjectMapper;

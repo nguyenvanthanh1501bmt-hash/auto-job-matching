@@ -1,4 +1,4 @@
-package com.autojob.modules.jobcrawler.sourcediscovery;
+package com.autojob.modules.jobcrawler.domain;
 
 public enum WebsiteSourceStatus {
     PENDING_DISCOVERY,

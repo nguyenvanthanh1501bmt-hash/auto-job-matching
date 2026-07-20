@@ -1,5 +1,7 @@
 package com.autojob.modules.jobcrawler.service;
 
+import com.autojob.modules.jobcrawler.domain.SourceDiscoveryResultStatus;
+import com.autojob.modules.jobcrawler.domain.WebsiteSourceStatus;
 import com.autojob.modules.jobcrawler.repository.SourceDiscoveryResultRepository;
 import com.autojob.modules.jobcrawler.repository.WebsiteSourceRepository;
 import com.autojob.modules.jobcrawler.sourcediscovery.*;

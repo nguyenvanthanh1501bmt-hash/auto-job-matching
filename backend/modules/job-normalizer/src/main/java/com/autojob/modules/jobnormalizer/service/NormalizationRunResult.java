@@ -1,6 +1,6 @@
 package com.autojob.modules.jobnormalizer.service;
 
-import com.autojob.modules.jobcrawler.service.RawPayloadPurgeResult;
+import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
 
 public record NormalizationRunResult(
         NormalizationExecution execution,

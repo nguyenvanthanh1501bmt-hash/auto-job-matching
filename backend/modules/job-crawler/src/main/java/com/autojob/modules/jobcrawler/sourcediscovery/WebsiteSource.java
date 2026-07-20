@@ -1,5 +1,6 @@
 package com.autojob.modules.jobcrawler.sourcediscovery;
 
+import com.autojob.modules.jobcrawler.domain.WebsiteSourceStatus;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;

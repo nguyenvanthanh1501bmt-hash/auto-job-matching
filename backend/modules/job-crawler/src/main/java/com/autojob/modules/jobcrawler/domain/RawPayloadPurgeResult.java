@@ -1,4 +1,4 @@
-package com.autojob.modules.jobcrawler.service;
+package com.autojob.modules.jobcrawler.domain;
 
 import java.time.Instant;
 

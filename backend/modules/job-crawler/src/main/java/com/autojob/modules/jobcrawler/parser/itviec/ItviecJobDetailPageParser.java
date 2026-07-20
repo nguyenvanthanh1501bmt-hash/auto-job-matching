@@ -2,7 +2,7 @@ package com.autojob.modules.jobcrawler.parser.itviec;
 
 import com.autojob.common.dtos.ApplyType;
 import com.autojob.modules.jobcrawler.parser.JobDetailPageParser;
-import com.autojob.modules.jobcrawler.parser.ParsedRawJob;
+import com.autojob.modules.jobcrawler.domain.ParsedRawJob;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

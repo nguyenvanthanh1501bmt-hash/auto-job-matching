@@ -2,7 +2,7 @@ package com.autojob.modules.jobcrawler.camel;
 
 import com.autojob.modules.jobcrawler.domain.RawJob;
 import com.autojob.modules.jobcrawler.parser.JobSourceParserRegistry;
-import com.autojob.modules.jobcrawler.parser.ParsedRawJob;
+import com.autojob.modules.jobcrawler.domain.ParsedRawJob;
 import com.autojob.modules.jobcrawler.service.RawJobService;
 import com.autojob.modules.jobcrawler.util.FingerprintUtil;
 import lombok.RequiredArgsConstructor;

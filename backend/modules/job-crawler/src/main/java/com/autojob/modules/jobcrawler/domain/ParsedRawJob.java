@@ -1,4 +1,4 @@
-package com.autojob.modules.jobcrawler.parser;
+package com.autojob.modules.jobcrawler.domain;
 
 import com.autojob.common.dtos.ApplyType;
 import lombok.Builder;

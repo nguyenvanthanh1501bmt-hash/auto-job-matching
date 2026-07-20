@@ -3,7 +3,7 @@ package com.autojob.modules.jobnormalizer.service;
 import com.autojob.common.events.JobNormalizedReadyEvent;
 import com.autojob.modules.jobcrawler.domain.RawJob;
 import com.autojob.modules.jobcrawler.repository.RawJobRepository;
-import com.autojob.modules.jobcrawler.service.RawPayloadPurgeResult;
+import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
 import com.autojob.modules.jobcrawler.service.RawPayloadPurgeService;
 import com.autojob.modules.jobnormalizer.config.NormalizationProperties;
 import com.autojob.modules.jobnormalizer.domain.NormalizationAction;

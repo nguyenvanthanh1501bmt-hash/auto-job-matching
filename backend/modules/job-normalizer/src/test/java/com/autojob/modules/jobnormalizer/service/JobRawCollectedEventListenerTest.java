@@ -1,7 +1,7 @@
 package com.autojob.modules.jobnormalizer.listener;
 
 import com.autojob.common.events.JobRawCollectedEvent;
-import com.autojob.modules.jobcrawler.service.RawPayloadPurgeResult;
+import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
 import com.autojob.modules.jobnormalizer.domain.NormalizationAction;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.service.JobNormalizationService;

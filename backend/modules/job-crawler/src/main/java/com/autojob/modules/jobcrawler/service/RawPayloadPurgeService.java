@@ -1,6 +1,7 @@
 package com.autojob.modules.jobcrawler.service;
 
 import com.autojob.modules.jobcrawler.domain.RawJob;
+import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

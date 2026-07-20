@@ -2,7 +2,7 @@ package com.autojob.modules.jobcrawler.parser.topdev;
 
 import com.autojob.common.dtos.ApplyType;
 import com.autojob.modules.jobcrawler.parser.JobDetailPageParser;
-import com.autojob.modules.jobcrawler.parser.ParsedRawJob;
+import com.autojob.modules.jobcrawler.domain.ParsedRawJob;
 import com.autojob.modules.jobcrawler.parser.SchemaOrgJobPostingParserSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
