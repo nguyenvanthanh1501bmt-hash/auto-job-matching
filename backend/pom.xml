@@ -14,6 +14,7 @@
         <module>common/common-events</module>
         <module>modules/job-crawler</module>
         <module>modules/job-normalizer</module>
+        <module>modules/job-embedding</module>
         <module>autojob-app</module>
     </modules>
 

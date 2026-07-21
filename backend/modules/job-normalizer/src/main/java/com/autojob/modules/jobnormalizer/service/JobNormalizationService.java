@@ -2,8 +2,8 @@ package com.autojob.modules.jobnormalizer.service;
 
 import com.autojob.common.events.JobNormalizedReadyEvent;
 import com.autojob.modules.jobcrawler.domain.RawJob;
-import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
+import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import com.autojob.modules.jobcrawler.service.RawPayloadPurgeService;
 import com.autojob.modules.jobnormalizer.config.NormalizationProperties;
 import com.autojob.modules.jobnormalizer.domain.NormalizationAction;
@@ -15,6 +15,7 @@ import com.autojob.modules.jobnormalizer.normalization.ApplyInformationNormalize
 import com.autojob.modules.jobnormalizer.normalization.DateNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.ExperienceNormalizationResult;
 import com.autojob.modules.jobnormalizer.normalization.ExperienceNormalizer;
+import com.autojob.modules.jobnormalizer.normalization.JobEmbeddingTextBuilder;
 import com.autojob.modules.jobnormalizer.normalization.JobTypeNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.LocationNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.RawJobContentHasher;
@@ -53,6 +54,7 @@ public class JobNormalizationService {
     private final DateNormalizer dateNormalizer;
     private final ApplyInformationNormalizer applyInformationNormalizer;
     private final RawJobContentHasher rawJobContentHasher;
+    private final JobEmbeddingTextBuilder jobEmbeddingTextBuilder;
 
     private final NormalizationProperties normalizationProperties;
     private final ApplicationEventPublisher eventPublisher;
@@ -273,7 +275,7 @@ public class JobNormalizationService {
                 detailUrl
         );
 
-        return NormalizedJob.builder()
+        NormalizedJob normalizedJob = NormalizedJob.builder()
                 .rawJobId(rawJob.getId())
                 .sourceCode(
                         textNormalizer.normalizeInline(
@@ -310,7 +312,6 @@ public class JobNormalizationService {
                 .detailUrl(detailUrl)
                 .applyUrl(applyInformation.applyUrl())
                 .applyType(applyInformation.applyType())
-                .embeddingText(null)
                 .normalizationVersion(normalizationVersion)
                 .postedAt(
                         dateNormalizer.normalizePostedAt(
@@ -324,6 +325,12 @@ public class JobNormalizationService {
                 )
                 .normalizedAt(normalizedAt)
                 .build();
+
+        normalizedJob.setEmbeddingText(
+                jobEmbeddingTextBuilder.build(normalizedJob)
+        );
+
+        return normalizedJob;
     }
 
     private NormalizationExecution saveIdempotently(
@@ -431,7 +438,7 @@ public class JobNormalizationService {
         existing.setApplyUrl(candidate.getApplyUrl());
         existing.setApplyType(candidate.getApplyType());
 
-        existing.setEmbeddingText(null);
+        existing.setEmbeddingText(candidate.getEmbeddingText());
 
         existing.setNormalizationVersion(
                 candidate.getNormalizationVersion()

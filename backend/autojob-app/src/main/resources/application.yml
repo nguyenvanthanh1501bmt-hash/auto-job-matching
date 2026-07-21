@@ -13,9 +13,26 @@ autojob:
   normalization:
     version: ${NORMALIZATION_VERSION:rule-v1}
     timezone: ${NORMALIZATION_TIMEZONE:Asia/Ho_Chi_Minh}
+    embedding-text-max-chars: ${NORMALIZATION_EMBEDDING_TEXT_MAX_CHARS:2400}
     embedding-description-max-chars: ${NORMALIZATION_DESCRIPTION_MAX_CHARS:6000}
     embedding-requirements-max-chars: ${NORMALIZATION_REQUIREMENTS_MAX_CHARS:4000}
     embedding-benefits-max-chars: ${NORMALIZATION_BENEFITS_MAX_CHARS:2000}
+
+  embedding:
+    base-url: ${EMBEDDING_SERVICE_BASE_URL:http://localhost:8002}
+    expected-dimension: ${EMBEDDING_EXPECTED_DIMENSION:384}
+    expected-version: "${EMBEDDING_EXPECTED_VERSION:intfloat/multilingual-e5-small@c007d7ef6fd86656326059b28395a7a03a7c5846|prep-v1|l2}"
+    connect-timeout: ${EMBEDDING_CONNECT_TIMEOUT:3s}
+    response-timeout: ${EMBEDDING_RESPONSE_TIMEOUT:30s}
+    max-error-length: ${EMBEDDING_MAX_ERROR_LENGTH:1000}
+
+  qdrant:
+    base-url: ${QDRANT_BASE_URL:http://localhost:6333}
+    collection: ${QDRANT_JOB_COLLECTION:job_vectors_v1}
+    dimension: ${QDRANT_VECTOR_DIMENSION:384}
+    distance: ${QDRANT_DISTANCE:Cosine}
+    connect-timeout: ${QDRANT_CONNECT_TIMEOUT:3s}
+    response-timeout: ${QDRANT_RESPONSE_TIMEOUT:10s}
 
 management:
   endpoints:

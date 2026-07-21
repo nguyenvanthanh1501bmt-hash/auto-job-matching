@@ -1,0 +1,1 @@
+"""Generic multilingual embedding service."""

@@ -3,8 +3,8 @@ package com.autojob.modules.jobnormalizer.service;
 import com.autojob.common.dtos.ApplyType;
 import com.autojob.common.events.JobNormalizedReadyEvent;
 import com.autojob.modules.jobcrawler.domain.RawJob;
-import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
+import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import com.autojob.modules.jobcrawler.service.RawPayloadPurgeService;
 import com.autojob.modules.jobnormalizer.config.NormalizationProperties;
 import com.autojob.modules.jobnormalizer.domain.NormalizationAction;
@@ -13,6 +13,7 @@ import com.autojob.modules.jobnormalizer.exception.RawJobNotFoundException;
 import com.autojob.modules.jobnormalizer.normalization.ApplyInformationNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.DateNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.ExperienceNormalizer;
+import com.autojob.modules.jobnormalizer.normalization.JobEmbeddingTextBuilder;
 import com.autojob.modules.jobnormalizer.normalization.JobTypeNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.LocationNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.RawJobContentHasher;
@@ -144,6 +145,18 @@ class JobNormalizationServiceTest {
                         .getRawContentHash()
         ).hasSize(64);
 
+        assertThat(
+                result.execution()
+                        .normalizedJob()
+                        .getEmbeddingText()
+        )
+                .isNotBlank()
+                .startsWith(
+                        "query: Title: Senior Java Backend Engineer"
+                )
+                .contains("Skills: Java, MongoDB, Spring Boot")
+                .contains("Requirements: Java 21 Spring Boot 3");
+
         assertThat(result.rawPayloadPurged()).isTrue();
         assertThat(result.purgeFailed()).isFalse();
 
@@ -200,6 +213,12 @@ class JobNormalizationServiceTest {
                         .normalizedJob()
                         .getRawContentHash()
         ).isNotEqualTo(oldHash);
+
+        assertThat(
+                result.execution()
+                        .normalizedJob()
+                        .getEmbeddingText()
+        ).isNotBlank();
 
         verify(normalizedJobRepository).save(existing);
         verify(eventPublisher).publishEvent(any(Object.class));
@@ -514,6 +533,12 @@ class JobNormalizationServiceTest {
                 textNormalizer
         );
 
+        JobEmbeddingTextBuilder embeddingTextBuilder =
+                new JobEmbeddingTextBuilder(
+                        textNormalizer,
+                        normalizationProperties
+                );
+
         return new JobNormalizationService(
                 rawJobRepository,
                 normalizedJobRepository,
@@ -530,6 +555,7 @@ class JobNormalizationServiceTest {
                 ),
                 new ApplyInformationNormalizer(textNormalizer),
                 hasher,
+                embeddingTextBuilder,
                 normalizationProperties,
                 eventPublisher,
                 purgeService,

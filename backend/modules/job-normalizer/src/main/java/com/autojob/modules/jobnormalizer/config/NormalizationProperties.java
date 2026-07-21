@@ -34,6 +34,15 @@ public class NormalizationProperties {
     private String timezone = "Asia/Ho_Chi_Minh";
 
     /**
+     * Giới hạn tổng số ký tự của embeddingText sau khi đã ghép các field.
+     *
+     * Giới hạn này giúp normalizer chủ động ưu tiên nội dung nghiệp vụ
+     * quan trọng thay vì để embedding model tự truncate ở cuối input.
+     */
+    @Min(500)
+    private int embeddingTextMaxChars = 2_400;
+
+    /**
      * Giới hạn description khi tạo embeddingText.
      */
     @Min(100)

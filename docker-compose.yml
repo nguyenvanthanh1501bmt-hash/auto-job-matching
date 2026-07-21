@@ -34,6 +34,41 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  embedding-service:
+    build:
+      context: ./ai-services/embedding-service
+      dockerfile: Dockerfile
+    image: autojob-embedding-service:local
+    container_name: autojob-embedding-service
+    restart: unless-stopped
+    ports:
+      - "${EMBEDDING_SERVICE_PORT:-8002}:8002"
+    environment:
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-sentence-transformer}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-intfloat/multilingual-e5-small}
+      EMBEDDING_MODEL_REVISION: ${EMBEDDING_MODEL_REVISION:-c007d7ef6fd86656326059b28395a7a03a7c5846}
+      EMBEDDING_EXPECTED_DIMENSION: ${EMBEDDING_EXPECTED_DIMENSION:-384}
+      EMBEDDING_PREPROCESSING_VERSION: ${EMBEDDING_PREPROCESSING_VERSION:-prep-v1}
+      EMBEDDING_NORMALIZATION_STRATEGY: ${EMBEDDING_NORMALIZATION_STRATEGY:-l2}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
+      EMBEDDING_MODEL_CACHE_DIR: /models/huggingface
+      EMBEDDING_MAX_TEXT_CHARS: ${EMBEDDING_MAX_TEXT_CHARS:-20000}
+      EMBEDDING_LOAD_ON_STARTUP: ${EMBEDDING_LOAD_ON_STARTUP:-true}
+      LOG_LEVEL: ${EMBEDDING_LOG_LEVEL:-INFO}
+    volumes:
+      - embedding_model_cache:/models/huggingface
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:8002/ready
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
+
   minio:
     image: minio/minio:RELEASE.2024-07-16T23-46-41Z
     container_name: autojob-minio
@@ -78,7 +113,11 @@ services:
     volumes:
       - ./mock-sites/mock-job-site:/usr/share/nginx/html:ro
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/jobs.html"]
+      test:
+        - CMD
+        - wget
+        - -qO-
+        - http://localhost/jobs.html
       interval: 10s
       timeout: 5s
       retries: 10
@@ -88,3 +127,4 @@ volumes:
   mongo_data:
   qdrant_data:
   minio_data:
+  embedding_model_cache:
