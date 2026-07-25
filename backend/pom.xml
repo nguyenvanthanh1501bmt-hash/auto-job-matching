@@ -15,6 +15,8 @@
         <module>modules/job-crawler</module>
         <module>modules/job-normalizer</module>
         <module>modules/job-embedding</module>
+        <module>modules/auth</module>
+        <module>modules/cv</module>
         <module>autojob-app</module>
     </modules>
 
@@ -24,6 +26,8 @@
         <camel.version>4.10.0</camel.version>
         <jsoup.version>1.18.3</jsoup.version>
         <lombok.version>1.18.38</lombok.version>
+        <minio-java.version>9.0.3</minio-java.version>
+        <okhttp.version>5.1.0</okhttp.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

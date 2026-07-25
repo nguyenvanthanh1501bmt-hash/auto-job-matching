@@ -9,9 +9,15 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication(scanBasePackages = "com.autojob")
-@EnableMongoRepositories(basePackages = "com.autojob")
+@SpringBootApplication(
+        scanBasePackages = "com.autojob"
+)
+@EnableMongoRepositories(
+        basePackages = "com.autojob"
+)
+@EnableScheduling
 @EnableConfigurationProperties({
         MockCrawlerProperties.class,
         ItviecCrawlerProperties.class,
@@ -22,6 +28,9 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 public class AutoJobApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(AutoJobApplication.class, args);
+        SpringApplication.run(
+                AutoJobApplication.class,
+                args
+        );
     }
 }

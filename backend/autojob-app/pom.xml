@@ -45,6 +45,18 @@
         </dependency>
 
         <dependency>
+            <groupId>com.autojob</groupId>
+            <artifactId>auth</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.autojob</groupId>
+            <artifactId>cv</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>

@@ -6,6 +6,11 @@ spring:
     mongodb:
       auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}
 
+  servlet:
+    multipart:
+      max-file-size: ${CV_MAX_FILE_SIZE:10MB}
+      max-request-size: ${CV_MAX_REQUEST_SIZE:11MB}
+
 server:
   port: ${SERVER_PORT:8080}
 
@@ -33,6 +38,58 @@ autojob:
     distance: ${QDRANT_DISTANCE:Cosine}
     connect-timeout: ${QDRANT_CONNECT_TIMEOUT:3s}
     response-timeout: ${QDRANT_RESPONSE_TIMEOUT:10s}
+
+  auth:
+    # true: tất cả API vẫn public.
+    # JWT hợp lệ vẫn được parse để lấy userId.
+    public-api-mode: ${AUTH_PUBLIC_API_MODE:true}
+
+    issuer: ${AUTH_JWT_ISSUER:autojob-app}
+
+    # Secret mặc định chỉ dùng local.
+    # Production phải truyền JWT_SECRET_BASE64 bằng environment variable.
+    jwt-secret-base64: ${JWT_SECRET_BASE64:YXV0b2pvYi1sb2NhbC1kZXYtc2VjcmV0LWNoYW5nZS1tZS0zMmJ5dGVzLXBsdXMhIQ==}
+
+    access-token-ttl: ${AUTH_ACCESS_TOKEN_TTL:15m}
+    refresh-token-ttl: ${AUTH_REFRESH_TOKEN_TTL:30d}
+
+    allowed-origins:
+      - ${FRONTEND_ORIGIN:http://localhost:5173}
+
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+
+    # Local chạy trực tiếp thì để false.
+    # Deploy sau Nginx mới chuyển true.
+    trust-forwarded-headers: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:false}
+
+    general:
+      capacity: ${RATE_LIMIT_GENERAL_CAPACITY:120}
+      refill-period: ${RATE_LIMIT_GENERAL_PERIOD:1m}
+
+    login:
+      capacity: ${RATE_LIMIT_LOGIN_CAPACITY:10}
+      refill-period: ${RATE_LIMIT_LOGIN_PERIOD:1m}
+
+    register:
+      capacity: ${RATE_LIMIT_REGISTER_CAPACITY:5}
+      refill-period: ${RATE_LIMIT_REGISTER_PERIOD:1h}
+
+    refresh:
+      capacity: ${RATE_LIMIT_REFRESH_CAPACITY:30}
+      refill-period: ${RATE_LIMIT_REFRESH_PERIOD:1m}
+
+    cv-upload:
+      capacity: ${RATE_LIMIT_CV_UPLOAD_CAPACITY:10}
+      refill-period: ${RATE_LIMIT_CV_UPLOAD_PERIOD:1h}
+
+  cv:
+    storage:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ROOT_USER:minioadmin}
+      secret-key: ${MINIO_ROOT_PASSWORD:minioadmin}
+      bucket: ${MINIO_BUCKET_CVS:autojob-cvs}
+      max-file-size-mb: ${CV_MAX_FILE_SIZE_MB:10}
 
 management:
   endpoints:
