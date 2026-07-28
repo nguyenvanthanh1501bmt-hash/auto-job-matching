@@ -1,0 +1,138 @@
+version: rule-v1
+
+items:
+  - canonical: Ho Chi Minh City
+    aliases:
+      - Ho Chi Minh City
+      - Ho Chi Minh
+      - HCMC
+      - TP HCM
+      - TP.HCM
+      - Thành phố Hồ Chí Minh
+      - Hồ Chí Minh
+      - Sài Gòn
+      - Saigon
+
+  - canonical: Hanoi
+    aliases:
+      - Hanoi
+      - Ha Noi
+      - Hà Nội
+      - TP Hà Nội
+
+  - canonical: Da Nang
+    aliases:
+      - Da Nang
+      - Đà Nẵng
+      - TP Đà Nẵng
+
+  - canonical: Hai Phong
+    aliases:
+      - Hai Phong
+      - Hải Phòng
+      - TP Hải Phòng
+
+  - canonical: Can Tho
+    aliases:
+      - Can Tho
+      - Cần Thơ
+      - TP Cần Thơ
+
+  - canonical: Binh Duong
+    aliases:
+      - Binh Duong
+      - Bình Dương
+
+  - canonical: Dong Nai
+    aliases:
+      - Dong Nai
+      - Đồng Nai
+
+  - canonical: Bac Ninh
+    aliases:
+      - Bac Ninh
+      - Bắc Ninh
+
+  - canonical: Quang Ninh
+    aliases:
+      - Quang Ninh
+      - Quảng Ninh
+
+  - canonical: Ba Ria - Vung Tau
+    aliases:
+      - Ba Ria Vung Tau
+      - Bà Rịa - Vũng Tàu
+      - Vung Tau
+      - Vũng Tàu
+
+  - canonical: Hue
+    aliases:
+      - Hue
+      - Huế
+      - Thừa Thiên Huế
+
+  - canonical: Nha Trang
+    aliases:
+      - Nha Trang
+      - Khánh Hòa
+
+  - canonical: Vietnam
+    aliases:
+      - Vietnam
+      - Viet Nam
+      - Việt Nam
+
+  - canonical: Singapore
+    aliases:
+      - Singapore
+
+  - canonical: Bangkok
+    aliases:
+      - Bangkok
+
+  - canonical: Kuala Lumpur
+    aliases:
+      - Kuala Lumpur
+
+  - canonical: Tokyo
+    aliases:
+      - Tokyo
+
+  - canonical: Seoul
+    aliases:
+      - Seoul
+
+  - canonical: London
+    aliases:
+      - London
+
+  - canonical: New York
+    aliases:
+      - New York
+      - NYC
+
+  - canonical: California
+    aliases:
+      - California
+      - CA
+
+  - canonical: Texas
+    aliases:
+      - Texas
+      - TX
+
+  - canonical: Ontario
+    aliases:
+      - Ontario
+
+  - canonical: Toronto
+    aliases:
+      - Toronto
+
+  - canonical: Sydney
+    aliases:
+      - Sydney
+
+  - canonical: Melbourne
+    aliases:
+      - Melbourne

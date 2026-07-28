@@ -1,0 +1,64 @@
+version: rule-v1
+
+items:
+  - canonical: BASIC
+    aliases:
+      - basic
+      - beginner
+      - sơ cấp
+      - cơ bản
+      - biết cơ bản
+
+  - canonical: ELEMENTARY
+    aliases:
+      - elementary
+      - limited working proficiency
+      - trình độ sơ cấp
+
+  - canonical: INTERMEDIATE
+    aliases:
+      - intermediate
+      - conversational
+      - working proficiency
+      - giao tiếp
+      - giao tiếp khá
+      - trung cấp
+      - khá
+
+  - canonical: UPPER_INTERMEDIATE
+    aliases:
+      - upper intermediate
+      - upper-intermediate
+      - good working proficiency
+      - giao tiếp tốt
+      - khá tốt
+
+  - canonical: ADVANCED
+    aliases:
+      - advanced
+      - professional working proficiency
+      - proficient
+      - thành thạo
+      - nâng cao
+      - chuyên nghiệp
+
+  - canonical: FLUENT
+    aliases:
+      - fluent
+      - full professional proficiency
+      - lưu loát
+      - thông thạo
+
+  - canonical: NATIVE
+    aliases:
+      - native
+      - native speaker
+      - mother tongue
+      - bản ngữ
+      - tiếng mẹ đẻ
+
+  - canonical: UNKNOWN
+    aliases:
+      - unknown
+      - unspecified
+      - không xác định

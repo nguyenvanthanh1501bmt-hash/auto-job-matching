@@ -1,0 +1,655 @@
+version: rule-v1
+
+items:
+  - canonical: SOFTWARE_ENGINEER
+    aliases:
+      - Software Engineer
+      - Software Developer
+      - Application Developer
+      - Kỹ sư phần mềm
+      - Lập trình viên phần mềm
+
+  - canonical: BACKEND_DEVELOPER
+    aliases:
+      - Backend Developer
+      - Back-end Developer
+      - Backend Engineer
+      - Server-side Developer
+      - Lập trình viên backend
+
+  - canonical: FRONTEND_DEVELOPER
+    aliases:
+      - Frontend Developer
+      - Front-end Developer
+      - Frontend Engineer
+      - Lập trình viên frontend
+
+  - canonical: FULL_STACK_DEVELOPER
+    aliases:
+      - Full Stack Developer
+      - Full-stack Developer
+      - Fullstack Developer
+      - Full Stack Engineer
+
+  - canonical: DATA_ANALYST
+    aliases:
+      - Data Analyst
+      - Business Data Analyst
+      - Chuyên viên phân tích dữ liệu
+
+  - canonical: DATA_ENGINEER
+    aliases:
+      - Data Engineer
+      - Kỹ sư dữ liệu
+
+  - canonical: DATA_SCIENTIST
+    aliases:
+      - Data Scientist
+      - Nhà khoa học dữ liệu
+
+  - canonical: SYSTEM_ADMINISTRATOR
+    aliases:
+      - System Administrator
+      - Systems Administrator
+      - IT Administrator
+      - Quản trị hệ thống
+
+  - canonical: CYBERSECURITY_SPECIALIST
+    aliases:
+      - Cybersecurity Specialist
+      - Information Security Specialist
+      - Security Analyst
+      - Chuyên viên an toàn thông tin
+
+  - canonical: ACCOUNTANT
+    aliases:
+      - Accountant
+      - General Accountant
+      - Staff Accountant
+      - Kế toán viên
+      - Kế toán tổng hợp
+
+  - canonical: SENIOR_ACCOUNTANT
+    aliases:
+      - Senior Accountant
+      - Kế toán viên cao cấp
+      - Kế toán tổng hợp cao cấp
+
+  - canonical: CHIEF_ACCOUNTANT
+    aliases:
+      - Chief Accountant
+      - Head Accountant
+      - Kế toán trưởng
+
+  - canonical: COST_ACCOUNTANT
+    aliases:
+      - Cost Accountant
+      - Management Accountant
+      - Kế toán giá thành
+      - Kế toán quản trị
+
+  - canonical: ACCOUNTS_PAYABLE_ACCOUNTANT
+    aliases:
+      - Accounts Payable Accountant
+      - AP Accountant
+      - Kế toán công nợ phải trả
+
+  - canonical: ACCOUNTS_RECEIVABLE_ACCOUNTANT
+    aliases:
+      - Accounts Receivable Accountant
+      - AR Accountant
+      - Kế toán công nợ phải thu
+
+  - canonical: FINANCIAL_ANALYST
+    aliases:
+      - Financial Analyst
+      - Finance Analyst
+      - Chuyên viên phân tích tài chính
+
+  - canonical: AUDITOR
+    aliases:
+      - Auditor
+      - Internal Auditor
+      - External Auditor
+      - Kiểm toán viên
+
+  - canonical: BANK_TELLER
+    aliases:
+      - Bank Teller
+      - Teller
+      - Giao dịch viên ngân hàng
+
+  - canonical: CREDIT_ANALYST
+    aliases:
+      - Credit Analyst
+      - Credit Officer
+      - Chuyên viên tín dụng
+
+  - canonical: INSURANCE_ADVISOR
+    aliases:
+      - Insurance Advisor
+      - Insurance Consultant
+      - Tư vấn bảo hiểm
+
+  - canonical: SALES_REPRESENTATIVE
+    aliases:
+      - Sales Representative
+      - Sales Executive
+      - Salesperson
+      - Nhân viên kinh doanh
+      - Chuyên viên bán hàng
+
+  - canonical: ACCOUNT_EXECUTIVE
+    aliases:
+      - Account Executive
+      - Client Account Executive
+      - Chuyên viên quản lý khách hàng
+
+  - canonical: BUSINESS_DEVELOPMENT_EXECUTIVE
+    aliases:
+      - Business Development Executive
+      - Business Development Representative
+      - Business Development Specialist
+      - Chuyên viên phát triển kinh doanh
+
+  - canonical: SALES_MANAGER
+    aliases:
+      - Sales Manager
+      - Regional Sales Manager
+      - Area Sales Manager
+      - Trưởng phòng kinh doanh
+      - Quản lý bán hàng
+
+  - canonical: MARKETING_SPECIALIST
+    aliases:
+      - Marketing Specialist
+      - Marketing Executive
+      - Chuyên viên marketing
+      - Chuyên viên tiếp thị
+
+  - canonical: DIGITAL_MARKETING_SPECIALIST
+    aliases:
+      - Digital Marketing Specialist
+      - Digital Marketing Executive
+      - Chuyên viên digital marketing
+      - Chuyên viên tiếp thị số
+
+  - canonical: CONTENT_MARKETING_SPECIALIST
+    aliases:
+      - Content Marketing Specialist
+      - Content Marketer
+      - Chuyên viên content marketing
+
+  - canonical: BRAND_MANAGER
+    aliases:
+      - Brand Manager
+      - Brand Lead
+      - Quản lý thương hiệu
+
+  - canonical: HUMAN_RESOURCES_SPECIALIST
+    aliases:
+      - Human Resources Specialist
+      - HR Specialist
+      - HR Executive
+      - Chuyên viên nhân sự
+
+  - canonical: RECRUITER
+    aliases:
+      - Recruiter
+      - Recruitment Specialist
+      - Talent Acquisition Specialist
+      - Chuyên viên tuyển dụng
+
+  - canonical: HUMAN_RESOURCES_MANAGER
+    aliases:
+      - Human Resources Manager
+      - HR Manager
+      - Trưởng phòng nhân sự
+
+  - canonical: ADMINISTRATIVE_ASSISTANT
+    aliases:
+      - Administrative Assistant
+      - Admin Assistant
+      - Trợ lý hành chính
+      - Nhân viên hành chính
+
+  - canonical: OFFICE_MANAGER
+    aliases:
+      - Office Manager
+      - Administration Manager
+      - Quản lý văn phòng
+      - Trưởng phòng hành chính
+
+  - canonical: OPERATIONS_SPECIALIST
+    aliases:
+      - Operations Specialist
+      - Operations Executive
+      - Chuyên viên vận hành
+
+  - canonical: OPERATIONS_MANAGER
+    aliases:
+      - Operations Manager
+      - Head of Operations
+      - Quản lý vận hành
+      - Trưởng phòng vận hành
+
+  - canonical: CUSTOMER_SERVICE_REPRESENTATIVE
+    aliases:
+      - Customer Service Representative
+      - Customer Support Representative
+      - Customer Care Representative
+      - Nhân viên chăm sóc khách hàng
+
+  - canonical: CUSTOMER_SERVICE_MANAGER
+    aliases:
+      - Customer Service Manager
+      - Customer Care Manager
+      - Quản lý chăm sóc khách hàng
+
+  - canonical: STORE_MANAGER
+    aliases:
+      - Store Manager
+      - Retail Store Manager
+      - Shop Manager
+      - Quản lý cửa hàng
+
+  - canonical: CASHIER
+    aliases:
+      - Cashier
+      - Thu ngân
+
+  - canonical: RETAIL_SALES_ASSOCIATE
+    aliases:
+      - Retail Sales Associate
+      - Shop Assistant
+      - Store Associate
+      - Nhân viên bán hàng
+
+  - canonical: WAREHOUSE_WORKER
+    aliases:
+      - Warehouse Worker
+      - Warehouse Associate
+      - Warehouse Operator
+      - Nhân viên kho
+
+  - canonical: WAREHOUSE_SUPERVISOR
+    aliases:
+      - Warehouse Supervisor
+      - Warehouse Team Leader
+      - Giám sát kho
+      - Trưởng nhóm kho
+
+  - canonical: WAREHOUSE_MANAGER
+    aliases:
+      - Warehouse Manager
+      - Distribution Center Manager
+      - Quản lý kho
+      - Trưởng kho
+
+  - canonical: LOGISTICS_COORDINATOR
+    aliases:
+      - Logistics Coordinator
+      - Logistics Executive
+      - Logistics Specialist
+      - Chuyên viên logistics
+
+  - canonical: SUPPLY_CHAIN_SPECIALIST
+    aliases:
+      - Supply Chain Specialist
+      - Supply Chain Executive
+      - Chuyên viên chuỗi cung ứng
+
+  - canonical: PROCUREMENT_OFFICER
+    aliases:
+      - Procurement Officer
+      - Procurement Specialist
+      - Purchasing Officer
+      - Nhân viên thu mua
+      - Chuyên viên mua hàng
+
+  - canonical: PRODUCTION_OPERATOR
+    aliases:
+      - Production Operator
+      - Machine Operator
+      - Manufacturing Operator
+      - Công nhân sản xuất
+      - Nhân viên vận hành máy
+
+  - canonical: PRODUCTION_SUPERVISOR
+    aliases:
+      - Production Supervisor
+      - Manufacturing Supervisor
+      - Giám sát sản xuất
+      - Quản đốc sản xuất
+
+  - canonical: QUALITY_CONTROL_INSPECTOR
+    aliases:
+      - Quality Control Inspector
+      - QC Inspector
+      - Quality Inspector
+      - Nhân viên kiểm soát chất lượng
+
+  - canonical: QUALITY_ASSURANCE_SPECIALIST
+    aliases:
+      - Quality Assurance Specialist
+      - QA Specialist
+      - Chuyên viên đảm bảo chất lượng
+
+  - canonical: MECHANICAL_ENGINEER
+    aliases:
+      - Mechanical Engineer
+      - Kỹ sư cơ khí
+
+  - canonical: MECHANICAL_TECHNICIAN
+    aliases:
+      - Mechanical Technician
+      - Mechanical Maintenance Technician
+      - Maintenance Mechanic
+      - Kỹ thuật viên cơ khí
+      - Kỹ thuật viên bảo trì cơ khí
+
+  - canonical: ELECTRICAL_ENGINEER
+    aliases:
+      - Electrical Engineer
+      - Kỹ sư điện
+
+  - canonical: ELECTRICAL_TECHNICIAN
+    aliases:
+      - Electrical Technician
+      - Electrical Maintenance Technician
+      - Kỹ thuật viên điện
+      - Kỹ thuật viên bảo trì điện
+
+  - canonical: CIVIL_ENGINEER
+    aliases:
+      - Civil Engineer
+      - Construction Engineer
+      - Kỹ sư xây dựng
+      - Kỹ sư công trình
+
+  - canonical: SITE_ENGINEER
+    aliases:
+      - Site Engineer
+      - Construction Site Engineer
+      - Kỹ sư hiện trường
+
+  - canonical: CONSTRUCTION_SUPERVISOR
+    aliases:
+      - Construction Supervisor
+      - Site Supervisor
+      - Giám sát xây dựng
+      - Giám sát công trình
+
+  - canonical: ARCHITECT
+    aliases:
+      - Architect
+      - Building Architect
+      - Kiến trúc sư
+
+  - canonical: QUANTITY_SURVEYOR
+    aliases:
+      - Quantity Surveyor
+      - Cost Estimator
+      - Kỹ sư dự toán
+      - Kỹ sư khối lượng
+
+  - canonical: REGISTERED_NURSE
+    aliases:
+      - Registered Nurse
+      - Staff Nurse
+      - Clinical Nurse
+      - Điều dưỡng viên
+      - Điều dưỡng
+
+  - canonical: NURSING_SUPERVISOR
+    aliases:
+      - Nursing Supervisor
+      - Head Nurse
+      - Charge Nurse
+      - Điều dưỡng trưởng
+
+  - canonical: PHARMACIST
+    aliases:
+      - Pharmacist
+      - Community Pharmacist
+      - Hospital Pharmacist
+      - Dược sĩ
+
+  - canonical: PHARMACY_TECHNICIAN
+    aliases:
+      - Pharmacy Technician
+      - Pharmacy Assistant
+      - Kỹ thuật viên dược
+      - Phụ tá dược
+
+  - canonical: MEDICAL_LABORATORY_TECHNICIAN
+    aliases:
+      - Medical Laboratory Technician
+      - Laboratory Technician
+      - Kỹ thuật viên xét nghiệm
+
+  - canonical: DOCTOR
+    aliases:
+      - Medical Doctor
+      - Physician
+      - General Practitioner
+      - Bác sĩ
+
+  - canonical: TEACHER
+    aliases:
+      - Teacher
+      - School Teacher
+      - Giáo viên
+
+  - canonical: PRIMARY_SCHOOL_TEACHER
+    aliases:
+      - Primary School Teacher
+      - Elementary School Teacher
+      - Primary Teacher
+      - Giáo viên tiểu học
+
+  - canonical: ENGLISH_TEACHER
+    aliases:
+      - English Teacher
+      - ESL Teacher
+      - EFL Teacher
+      - Giáo viên tiếng Anh
+
+  - canonical: TEACHING_ASSISTANT
+    aliases:
+      - Teaching Assistant
+      - Teacher Assistant
+      - Trợ giảng
+
+  - canonical: LECTURER
+    aliases:
+      - Lecturer
+      - University Lecturer
+      - Giảng viên
+
+  - canonical: TRAINER
+    aliases:
+      - Trainer
+      - Corporate Trainer
+      - Training Specialist
+      - Chuyên viên đào tạo
+
+  - canonical: LAWYER
+    aliases:
+      - Lawyer
+      - Attorney
+      - Legal Counsel
+      - Luật sư
+
+  - canonical: LEGAL_SPECIALIST
+    aliases:
+      - Legal Specialist
+      - Legal Executive
+      - Legal Officer
+      - Chuyên viên pháp lý
+
+  - canonical: REAL_ESTATE_AGENT
+    aliases:
+      - Real Estate Agent
+      - Property Consultant
+      - Real Estate Broker
+      - Nhân viên môi giới bất động sản
+
+  - canonical: GRAPHIC_DESIGNER
+    aliases:
+      - Graphic Designer
+      - Visual Designer
+      - Thiết kế đồ họa
+      - Chuyên viên thiết kế đồ họa
+
+  - canonical: UX_UI_DESIGNER
+    aliases:
+      - UX Designer
+      - UI Designer
+      - UX/UI Designer
+      - Product Designer
+
+  - canonical: CONTENT_WRITER
+    aliases:
+      - Content Writer
+      - Copywriter
+      - Web Content Writer
+      - Nhân viên viết nội dung
+
+  - canonical: VIDEO_EDITOR
+    aliases:
+      - Video Editor
+      - Film Editor
+      - Biên tập video
+
+  - canonical: PHOTOGRAPHER
+    aliases:
+      - Photographer
+      - Nhiếp ảnh gia
+
+  - canonical: CHEF
+    aliases:
+      - Chef
+      - Cook
+      - Đầu bếp
+
+  - canonical: EXECUTIVE_CHEF
+    aliases:
+      - Executive Chef
+      - Head Chef
+      - Bếp trưởng
+
+  - canonical: WAITER
+    aliases:
+      - Waiter
+      - Waitress
+      - Server
+      - Nhân viên phục vụ
+
+  - canonical: FRONT_OFFICE_RECEPTIONIST
+    aliases:
+      - Receptionist
+      - Front Desk Receptionist
+      - Front Office Receptionist
+      - Nhân viên lễ tân
+
+  - canonical: HOUSEKEEPING_ATTENDANT
+    aliases:
+      - Housekeeping Attendant
+      - Room Attendant
+      - Nhân viên buồng phòng
+
+  - canonical: HOTEL_MANAGER
+    aliases:
+      - Hotel Manager
+      - Hospitality Manager
+      - Quản lý khách sạn
+
+  - canonical: DRIVER
+    aliases:
+      - Driver
+      - Delivery Driver
+      - Truck Driver
+      - Tài xế
+      - Lái xe
+
+  - canonical: ELECTRICIAN
+    aliases:
+      - Electrician
+      - Electrical Worker
+      - Thợ điện
+
+  - canonical: WELDER
+    aliases:
+      - Welder
+      - Welding Technician
+      - Thợ hàn
+
+  - canonical: PLUMBER
+    aliases:
+      - Plumber
+      - Plumbing Technician
+      - Thợ sửa ống nước
+
+  - canonical: CARPENTER
+    aliases:
+      - Carpenter
+      - Woodworker
+      - Thợ mộc
+
+  - canonical: MACHINIST
+    aliases:
+      - Machinist
+      - CNC Machinist
+      - Thợ gia công cơ khí
+      - Thợ máy CNC
+
+  - canonical: FARM_WORKER
+    aliases:
+      - Farm Worker
+      - Agricultural Worker
+      - Công nhân nông nghiệp
+
+  - canonical: AGRICULTURAL_ENGINEER
+    aliases:
+      - Agricultural Engineer
+      - Agronomist
+      - Kỹ sư nông nghiệp
+
+  - canonical: SECURITY_GUARD
+    aliases:
+      - Security Guard
+      - Security Officer
+      - Nhân viên bảo vệ
+
+  - canonical: GENERAL_LABORER
+    aliases:
+      - General Laborer
+      - General Worker
+      - Manual Laborer
+      - Lao động phổ thông
+      - Công nhân phổ thông
+
+  - canonical: PROJECT_MANAGER
+    aliases:
+      - Project Manager
+      - Program Manager
+      - Quản lý dự án
+
+  - canonical: GENERAL_MANAGER
+    aliases:
+      - General Manager
+      - Tổng quản lý
+      - Giám đốc điều hành đơn vị
+
+  - canonical: DIRECTOR
+    aliases:
+      - Director
+      - Department Director
+      - Giám đốc
+
+  - canonical: CHIEF_EXECUTIVE_OFFICER
+    aliases:
+      - Chief Executive Officer
+      - CEO
+      - Tổng giám đốc

@@ -1,0 +1,87 @@
+version: rule-v1
+
+employmentTypes:
+  FULL_TIME:
+    - full time
+    - full-time
+    - permanent
+    - permanent position
+    - toàn thời gian
+    - chính thức
+    - nhân viên chính thức
+
+  PART_TIME:
+    - part time
+    - part-time
+    - bán thời gian
+
+  CONTRACT:
+    - contract
+    - contractual
+    - fixed term
+    - fixed-term
+    - hợp đồng
+    - có thời hạn
+
+  TEMPORARY:
+    - temporary
+    - temp
+    - tạm thời
+    - thời vụ ngắn hạn
+
+  INTERNSHIP:
+    - internship
+    - intern position
+    - thực tập
+    - thực tập sinh
+
+  FREELANCE:
+    - freelance
+    - freelancer
+    - self-employed
+    - independent contractor
+    - tự do
+    - cộng tác viên
+
+  SEASONAL:
+    - seasonal
+    - seasonal work
+    - thời vụ
+    - theo mùa
+
+  SHIFT_WORK:
+    - shift work
+    - rotating shift
+    - night shift
+    - day shift
+    - làm việc theo ca
+    - xoay ca
+    - ca đêm
+    - ca ngày
+
+workModes:
+  ONSITE:
+    - onsite
+    - on-site
+    - office based
+    - office-based
+    - work at office
+    - tại văn phòng
+    - làm việc tại chỗ
+    - làm việc trực tiếp
+
+  REMOTE:
+    - remote
+    - remote work
+    - work from home
+    - wfh
+    - từ xa
+    - làm việc từ xa
+    - làm việc tại nhà
+
+  HYBRID:
+    - hybrid
+    - hybrid work
+    - flexible workplace
+    - kết hợp
+    - làm việc kết hợp

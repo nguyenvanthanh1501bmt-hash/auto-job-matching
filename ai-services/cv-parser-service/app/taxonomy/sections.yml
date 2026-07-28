@@ -1,0 +1,208 @@
+version: rule-v1
+
+items:
+  - type: CONTACT
+    headings:
+      - Contact
+      - Contact Information
+      - Personal Information
+      - Personal Details
+      - Thông tin liên hệ
+      - Thông tin cá nhân
+      - Liên hệ
+
+  - type: SUMMARY
+    headings:
+      - Summary
+      - Profile
+      - Professional Summary
+      - Career Summary
+      - Executive Summary
+      - About Me
+      - Personal Profile
+      - Giới thiệu
+      - Tóm tắt
+      - Tóm tắt nghề nghiệp
+      - Hồ sơ nghề nghiệp
+
+  - type: OBJECTIVE
+    headings:
+      - Objective
+      - Career Objective
+      - Professional Objective
+      - Career Goal
+      - Career Goals
+      - Mục tiêu
+      - Mục tiêu nghề nghiệp
+      - Định hướng nghề nghiệp
+
+  - type: SKILLS
+    headings:
+      - Skills
+      - Key Skills
+      - Core Skills
+      - Professional Skills
+      - Technical Skills
+      - Competencies
+      - Core Competencies
+      - Areas of Expertise
+      - Expertise
+      - Kỹ năng
+      - Kỹ năng chuyên môn
+      - Năng lực
+      - Năng lực chuyên môn
+      - Chuyên môn
+
+  - type: WORK_EXPERIENCE
+    headings:
+      - Work Experience
+      - Professional Experience
+      - Employment History
+      - Career History
+      - Experience
+      - Work History
+      - Relevant Experience
+      - Kinh nghiệm làm việc
+      - Kinh nghiệm
+      - Quá trình công tác
+      - Lịch sử làm việc
+      - Kinh nghiệm nghề nghiệp
+
+  - type: PROJECTS
+    headings:
+      - Projects
+      - Selected Projects
+      - Personal Projects
+      - Key Projects
+      - Professional Projects
+      - Project Experience
+      - Dự án
+      - Dự án tiêu biểu
+      - Dự án cá nhân
+      - Kinh nghiệm dự án
+
+  - type: EDUCATION
+    headings:
+      - Education
+      - Academic Background
+      - Qualifications
+      - Academic Qualifications
+      - Educational Background
+      - Học vấn
+      - Giáo dục
+      - Trình độ học vấn
+      - Quá trình học tập
+      - Trình độ chuyên môn
+
+  - type: CERTIFICATIONS
+    headings:
+      - Certifications
+      - Certificates
+      - Professional Certifications
+      - Professional Certificates
+      - Chứng chỉ
+      - Chứng nhận
+      - Chứng chỉ nghề
+      - Chứng chỉ chuyên môn
+
+  - type: LICENSES
+    headings:
+      - Licenses
+      - Professional Licenses
+      - Practice Licenses
+      - Professional Registration
+      - Giấy phép
+      - Giấy phép hành nghề
+      - Chứng chỉ hành nghề
+      - Bằng lái
+      - Giấy phép chuyên môn
+
+  - type: TRAINING
+    headings:
+      - Training
+      - Courses
+      - Professional Development
+      - Training Courses
+      - Additional Training
+      - Đào tạo
+      - Khóa học
+      - Bồi dưỡng
+      - Phát triển chuyên môn
+
+  - type: LANGUAGES
+    headings:
+      - Languages
+      - Language Skills
+      - Foreign Languages
+      - Language Proficiency
+      - Ngôn ngữ
+      - Ngoại ngữ
+      - Trình độ ngoại ngữ
+
+  - type: AWARDS
+    headings:
+      - Awards
+      - Honors
+      - Recognition
+      - Awards and Honors
+      - Achievements and Awards
+      - Thành tích
+      - Giải thưởng
+      - Khen thưởng
+      - Danh hiệu
+
+  - type: PUBLICATIONS
+    headings:
+      - Publications
+      - Research
+      - Research Work
+      - Research Publications
+      - Articles
+      - Papers
+      - Bài báo
+      - Nghiên cứu
+      - Công trình nghiên cứu
+      - Công bố khoa học
+
+  - type: VOLUNTEERING
+    headings:
+      - Volunteer Experience
+      - Volunteering
+      - Community Service
+      - Volunteer Work
+      - Hoạt động tình nguyện
+      - Tình nguyện
+      - Hoạt động cộng đồng
+      - Công tác xã hội
+
+  - type: ACTIVITIES
+    headings:
+      - Activities
+      - Professional Activities
+      - Memberships
+      - Organizations
+      - Associations
+      - Extracurricular Activities
+      - Hoạt động
+      - Tổ chức
+      - Câu lạc bộ
+      - Hiệp hội
+      - Hoạt động ngoại khóa
+
+  - type: INTERESTS
+    headings:
+      - Interests
+      - Hobbies
+      - Personal Interests
+      - Sở thích
+      - Mối quan tâm
+      - Sở thích cá nhân
+
+  - type: REFERENCES
+    headings:
+      - References
+      - Professional References
+      - Referees
+      - Người tham chiếu
+      - Người giới thiệu
+      - Tham chiếu
