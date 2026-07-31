@@ -5,9 +5,6 @@ from pathlib import PurePath
 from app.config import Settings
 from app.exceptions import CvUnsupportedFormatError
 from app.extraction.base import DocumentExtractor
-from app.extraction.doc_extractor import DocExtractor
-from app.extraction.docx_extractor import DocxExtractor
-from app.extraction.pdf_extractor import PdfExtractor
 
 
 PDF_CONTENT_TYPES = {
@@ -39,9 +36,7 @@ class ExtractorFactory:
             self,
             settings: Settings,
     ) -> None:
-        self._pdf_extractor = PdfExtractor(settings)
-        self._docx_extractor = DocxExtractor(settings)
-        self._doc_extractor = DocExtractor(settings)
+        self._settings = settings
 
     def create(
             self,
@@ -50,9 +45,18 @@ class ExtractorFactory:
             data: bytes,
             raw_cv_id: str | None = None,
     ) -> DocumentExtractor:
-        extension = PurePath(original_filename).suffix.lower()
+        del data
+
+        extension = PurePath(
+            original_filename
+        ).suffix.lower()
+
         normalized_content_type = (
-            content_type.split(";", maxsplit=1)[0]
+            content_type
+            .split(
+                ";",
+                maxsplit=1,
+            )[0]
             .strip()
             .lower()
         )
@@ -69,7 +73,12 @@ class ExtractorFactory:
                 extension,
                 raw_cv_id,
             )
-            return self._pdf_extractor
+
+            from app.extraction.pdf_extractor import PdfExtractor
+
+            return PdfExtractor(
+                self._settings
+            )
 
         if extension == ".docx":
             self._validate_content_type(
@@ -78,7 +87,12 @@ class ExtractorFactory:
                 extension,
                 raw_cv_id,
             )
-            return self._docx_extractor
+
+            from app.extraction.docx_extractor import DocxExtractor
+
+            return DocxExtractor(
+                self._settings
+            )
 
         self._validate_content_type(
             normalized_content_type,
@@ -86,7 +100,12 @@ class ExtractorFactory:
             extension,
             raw_cv_id,
         )
-        return self._doc_extractor
+
+        from app.extraction.doc_extractor import DocExtractor
+
+        return DocExtractor(
+            self._settings
+        )
 
     @staticmethod
     def _validate_content_type(
@@ -98,8 +117,8 @@ class ExtractorFactory:
         if content_type not in allowed_types:
             raise CvUnsupportedFormatError(
                 message=(
-                    f"The content type does not match the {extension} "
-                    "document format"
+                    "The content type does not match "
+                    f"the {extension} document format"
                 ),
                 raw_cv_id=raw_cv_id,
             )

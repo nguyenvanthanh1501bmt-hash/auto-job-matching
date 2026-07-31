@@ -1,0 +1,1 @@
+"""Generated test fixtures for the CV parser service."""

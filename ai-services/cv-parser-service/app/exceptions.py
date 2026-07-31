@@ -65,7 +65,7 @@ class CvUnsupportedFormatError(CvParserError):
         super().__init__(
             code="CV_UNSUPPORTED_FORMAT",
             message=message,
-            http_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            http_status=status.HTTP_422_UNPROCESSABLE_CONTENT,
             raw_cv_id=raw_cv_id,
         )
 
@@ -79,7 +79,7 @@ class CvCorruptFileError(CvParserError):
         super().__init__(
             code="CV_CORRUPT_FILE",
             message=message,
-            http_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            http_status=status.HTTP_422_UNPROCESSABLE_CONTENT,
             raw_cv_id=raw_cv_id,
         )
 
@@ -92,7 +92,7 @@ class CvTextNotExtractableError(CvParserError):
         super().__init__(
             code="CV_TEXT_NOT_EXTRACTABLE",
             message="No extractable text was found in the document",
-            http_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            http_status=status.HTTP_422_UNPROCESSABLE_CONTENT,
             raw_cv_id=raw_cv_id,
         )
 
@@ -106,7 +106,7 @@ class CvDocExtractionFailedError(CvParserError):
         super().__init__(
             code="CV_DOC_EXTRACTION_FAILED",
             message=message,
-            http_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            http_status=status.HTTP_422_UNPROCESSABLE_CONTENT,
             raw_cv_id=raw_cv_id,
         )
 

@@ -15,7 +15,6 @@ items:
     category: TECHNICAL
     aliases:
       - JavaScript
-      - Javascript
       - JS
 
   - canonical: Spring Boot
@@ -461,8 +460,10 @@ items:
     category: EQUIPMENT
     aliases:
       - Forklift Operation
+      - Forklift Operations
       - Forklift Driving
       - Forklift
+      - Forklifts
       - Vận hành xe nâng
       - Lái xe nâng
 
@@ -470,7 +471,9 @@ items:
     category: EQUIPMENT
     aliases:
       - Barcode Scanner
+      - Barcode Scanners
       - Handheld Scanner
+      - Handheld Scanners
       - Máy quét mã vạch
 
   - canonical: Warehouse Management System

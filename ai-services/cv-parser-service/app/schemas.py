@@ -728,11 +728,20 @@ class HealthResponse(StrictModel):
 
 class ReadyResponse(StrictModel):
     status: Literal["UP", "DOWN"]
-    parser_version: str = Field(alias="parserVersion")
+    parser_version: str = Field(
+        alias="parserVersion",
+    )
     taxonomy_version: str | None = Field(
         default=None,
         alias="taxonomyVersion",
     )
     minio: Literal["UP", "DOWN"]
-    doc_extractor: Literal["UP", "DOWN"]
-    details: list[str] = Field(default_factory=list)
+    doc_extractor: Literal[
+        "UP",
+        "DOWN",
+    ] = Field(
+        alias="docExtractor",
+    )
+    details: list[str] = Field(
+        default_factory=list,
+    )
