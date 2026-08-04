@@ -653,3 +653,473 @@ items:
       - Chief Executive Officer
       - CEO
       - Tổng giám đốc
+
+  # Executive support and leadership
+  - canonical: EXECUTIVE_ASSISTANT
+    aliases:
+      - Executive Assistant
+      - Executive Administrative Assistant
+      - Assistant to the Director
+      - Assistant to the CEO
+      - Trợ lý giám đốc
+      - Trợ lí giám đốc
+      - Trợ lý tổng giám đốc
+      - Trợ lý điều hành
+
+  - canonical: PERSONAL_ASSISTANT
+    aliases:
+      - Personal Assistant
+      - Private Assistant
+      - Trợ lý cá nhân
+      - Thư ký riêng
+
+  - canonical: SECRETARY
+    aliases:
+      - Secretary
+      - Executive Secretary
+      - Administrative Secretary
+      - Thư ký
+      - Thư ký hành chính
+
+  - canonical: CHIEF_OF_STAFF
+    aliases:
+      - Chief of Staff
+      - CEO Office Manager
+      - Chánh văn phòng CEO
+      - Trưởng ban trợ lý
+
+  - canonical: DEPUTY_DIRECTOR
+    aliases:
+      - Deputy Director
+      - Assistant Director
+      - Phó giám đốc
+
+  - canonical: MANAGING_DIRECTOR
+    aliases:
+      - Managing Director
+      - Executive Director
+      - Giám đốc điều hành
+      - Giám đốc điều hành doanh nghiệp
+
+  - canonical: CHIEF_OPERATING_OFFICER
+    aliases:
+      - Chief Operating Officer
+      - COO
+      - Giám đốc vận hành
+
+  - canonical: CHIEF_TECHNOLOGY_OFFICER
+    aliases:
+      - Chief Technology Officer
+      - CTO
+      - Giám đốc công nghệ
+
+  - canonical: CHIEF_INFORMATION_OFFICER
+    aliases:
+      - Chief Information Officer
+      - CIO
+      - Giám đốc thông tin
+
+  - canonical: CHIEF_FINANCIAL_OFFICER
+    aliases:
+      - Chief Financial Officer
+      - CFO
+      - Giám đốc tài chính
+
+  - canonical: CHIEF_MARKETING_OFFICER
+    aliases:
+      - Chief Marketing Officer
+      - CMO
+      - Giám đốc marketing
+      - Giám đốc tiếp thị
+
+  - canonical: CHIEF_HUMAN_RESOURCES_OFFICER
+    aliases:
+      - Chief Human Resources Officer
+      - CHRO
+      - Chief People Officer
+      - Giám đốc nhân sự
+
+  - canonical: TEAM_LEADER
+    aliases:
+      - Team Leader
+      - Team Lead
+      - Group Leader
+      - Trưởng nhóm
+      - Tổ trưởng
+
+  - canonical: BRANCH_MANAGER
+    aliases:
+      - Branch Manager
+      - Branch Director
+      - Giám đốc chi nhánh
+      - Quản lý chi nhánh
+
+  - canonical: REGIONAL_MANAGER
+    aliases:
+      - Regional Manager
+      - Regional Director
+      - Giám đốc khu vực
+      - Quản lý vùng
+
+  - canonical: COUNTRY_MANAGER
+    aliases:
+      - Country Manager
+      - Country Director
+      - Giám đốc quốc gia
+
+  # Technology leadership and engineering
+  - canonical: TECHNICAL_LEAD
+    aliases:
+      - Technical Lead
+      - Tech Lead
+      - Software Technical Lead
+      - Engineering Lead
+      - Trưởng nhóm kỹ thuật
+      - Trưởng nhóm công nghệ
+
+  - canonical: HEAD_OF_ENGINEERING
+    aliases:
+      - Head of Engineering
+      - Engineering Department Head
+      - Trưởng bộ phận kỹ thuật phần mềm
+
+  - canonical: VICE_PRESIDENT_ENGINEERING
+    aliases:
+      - Vice President of Engineering
+      - VP of Engineering
+      - Phó chủ tịch kỹ thuật
+
+  - canonical: ENGINEERING_MANAGER
+    aliases:
+      - Engineering Manager
+      - Software Engineering Manager
+      - Development Manager
+      - Quản lý kỹ thuật phần mềm
+      - Trưởng phòng phát triển phần mềm
+
+  - canonical: SOFTWARE_ARCHITECT
+    aliases:
+      - Software Architect
+      - Application Architect
+      - Kiến trúc sư phần mềm
+
+  - canonical: SOLUTION_ARCHITECT
+    aliases:
+      - Solution Architect
+      - Solutions Architect
+      - Kiến trúc sư giải pháp
+
+  - canonical: DEVOPS_ENGINEER
+    aliases:
+      - DevOps Engineer
+      - DevOps Specialist
+      - Kỹ sư DevOps
+
+  - canonical: SITE_RELIABILITY_ENGINEER
+    aliases:
+      - Site Reliability Engineer
+      - SRE Engineer
+      - SRE
+      - Kỹ sư độ tin cậy hệ thống
+
+  - canonical: CLOUD_ENGINEER
+    aliases:
+      - Cloud Engineer
+      - Cloud Infrastructure Engineer
+      - Kỹ sư điện toán đám mây
+
+  - canonical: CLOUD_ARCHITECT
+    aliases:
+      - Cloud Architect
+      - Cloud Solutions Architect
+      - Kiến trúc sư điện toán đám mây
+
+  - canonical: MOBILE_DEVELOPER
+    aliases:
+      - Mobile Developer
+      - Mobile Application Developer
+      - Lập trình viên di động
+
+  - canonical: ANDROID_DEVELOPER
+    aliases:
+      - Android Developer
+      - Android Engineer
+      - Lập trình viên Android
+
+  - canonical: IOS_DEVELOPER
+    aliases:
+      - iOS Developer
+      - iOS Engineer
+      - Lập trình viên iOS
+
+  - canonical: EMBEDDED_SOFTWARE_ENGINEER
+    aliases:
+      - Embedded Software Engineer
+      - Embedded Systems Engineer
+      - Embedded Developer
+      - Kỹ sư phần mềm nhúng
+
+  - canonical: QA_ENGINEER
+    aliases:
+      - QA Engineer
+      - Software Quality Assurance Engineer
+      - Quality Assurance Engineer
+      - Kỹ sư kiểm thử chất lượng phần mềm
+
+  - canonical: SOFTWARE_TESTER
+    aliases:
+      - Software Tester
+      - Manual Tester
+      - QA Tester
+      - Nhân viên kiểm thử phần mềm
+      - Kiểm thử viên phần mềm
+
+  - canonical: AUTOMATION_TEST_ENGINEER
+    aliases:
+      - Automation Test Engineer
+      - Test Automation Engineer
+      - Automation QA Engineer
+      - Kỹ sư kiểm thử tự động
+
+  - canonical: BUSINESS_ANALYST
+    aliases:
+      - Business Analyst
+      - IT Business Analyst
+      - Business Process Analyst
+      - Chuyên viên phân tích nghiệp vụ
+      - Chuyên viên BA
+
+  - canonical: SYSTEM_ANALYST
+    aliases:
+      - System Analyst
+      - Systems Analyst
+      - IT Systems Analyst
+      - Chuyên viên phân tích hệ thống
+
+  - canonical: PRODUCT_MANAGER
+    aliases:
+      - Product Manager
+      - Digital Product Manager
+      - Quản lý sản phẩm
+
+  - canonical: PRODUCT_OWNER
+    aliases:
+      - Product Owner
+      - Agile Product Owner
+      - Chủ sở hữu sản phẩm
+
+  - canonical: SCRUM_MASTER
+    aliases:
+      - Scrum Master
+      - Agile Scrum Master
+      - Điều phối Scrum
+
+  - canonical: DATABASE_ADMINISTRATOR
+    aliases:
+      - Database Administrator
+      - Database Admin
+      - DBA
+      - Quản trị cơ sở dữ liệu
+
+  - canonical: NETWORK_ENGINEER
+    aliases:
+      - Network Engineer
+      - Network Infrastructure Engineer
+      - Kỹ sư mạng
+
+  - canonical: IT_SUPPORT_SPECIALIST
+    aliases:
+      - IT Support Specialist
+      - IT Support Engineer
+      - Desktop Support Specialist
+      - Chuyên viên hỗ trợ CNTT
+
+  - canonical: HELP_DESK_TECHNICIAN
+    aliases:
+      - Help Desk Technician
+      - Helpdesk Technician
+      - IT Help Desk Agent
+      - Nhân viên helpdesk
+
+  - canonical: AI_ENGINEER
+    aliases:
+      - AI Engineer
+      - Artificial Intelligence Engineer
+      - Kỹ sư trí tuệ nhân tạo
+
+  - canonical: MACHINE_LEARNING_ENGINEER
+    aliases:
+      - Machine Learning Engineer
+      - ML Engineer
+      - Kỹ sư học máy
+
+  - canonical: BUSINESS_INTELLIGENCE_ANALYST
+    aliases:
+      - Business Intelligence Analyst
+      - BI Analyst
+      - Chuyên viên phân tích BI
+      - Chuyên viên kinh doanh thông minh
+
+  - canonical: SECURITY_ENGINEER
+    aliases:
+      - Security Engineer
+      - Cyber Security Engineer
+      - Information Security Engineer
+      - Kỹ sư an ninh mạng
+
+  - canonical: PENETRATION_TESTER
+    aliases:
+      - Penetration Tester
+      - Ethical Hacker
+      - Security Penetration Tester
+      - Chuyên viên kiểm thử xâm nhập
+
+  # Customer service, customer success and sales
+  - canonical: CUSTOMER_SERVICE_SPECIALIST
+    aliases:
+      - Customer Service Specialist
+      - Customer Care Specialist
+      - Chuyên viên chăm sóc khách hàng
+
+  - canonical: CUSTOMER_SERVICE_SUPERVISOR
+    aliases:
+      - Customer Service Supervisor
+      - Customer Care Supervisor
+      - Customer Service Team Leader
+      - Giám sát chăm sóc khách hàng
+      - Trưởng nhóm chăm sóc khách hàng
+
+  - canonical: CUSTOMER_SERVICE_DIRECTOR
+    aliases:
+      - Customer Service Director
+      - Director of Customer Service
+      - Head of Customer Service
+      - Giám đốc dịch vụ khách hàng
+
+  - canonical: CUSTOMER_SUPPORT_SPECIALIST
+    aliases:
+      - Customer Support Specialist
+      - Customer Support Agent
+      - Chuyên viên hỗ trợ khách hàng
+      - Nhân viên hỗ trợ khách hàng
+
+  - canonical: CUSTOMER_SUCCESS_SPECIALIST
+    aliases:
+      - Customer Success Specialist
+      - Customer Success Executive
+      - Chuyên viên thành công khách hàng
+
+  - canonical: CUSTOMER_SUCCESS_MANAGER
+    aliases:
+      - Customer Success Manager
+      - Client Success Manager
+      - Quản lý thành công khách hàng
+
+  - canonical: CALL_CENTER_AGENT
+    aliases:
+      - Call Center Agent
+      - Contact Center Agent
+      - Call Center Representative
+      - Tổng đài viên
+      - Nhân viên tổng đài
+
+  - canonical: CONTACT_CENTER_MANAGER
+    aliases:
+      - Contact Center Manager
+      - Call Center Manager
+      - Quản lý trung tâm liên hệ
+      - Quản lý tổng đài
+
+  - canonical: CUSTOMER_EXPERIENCE_SPECIALIST
+    aliases:
+      - Customer Experience Specialist
+      - CX Specialist
+      - Chuyên viên trải nghiệm khách hàng
+
+  - canonical: CUSTOMER_EXPERIENCE_MANAGER
+    aliases:
+      - Customer Experience Manager
+      - CX Manager
+      - Quản lý trải nghiệm khách hàng
+
+  - canonical: TECHNICAL_SUPPORT_ENGINEER
+    aliases:
+      - Technical Support Engineer
+      - Technical Support Specialist
+      - Product Support Engineer
+      - Kỹ sư hỗ trợ kỹ thuật
+
+  - canonical: COMPLAINT_RESOLUTION_SPECIALIST
+    aliases:
+      - Complaint Resolution Specialist
+      - Customer Complaint Specialist
+      - Chuyên viên giải quyết khiếu nại
+
+  - canonical: ACCOUNT_MANAGER
+    aliases:
+      - Account Manager
+      - Client Account Manager
+      - Quản lý khách hàng doanh nghiệp
+
+  - canonical: KEY_ACCOUNT_MANAGER
+    aliases:
+      - Key Account Manager
+      - KAM
+      - Strategic Account Manager
+      - Quản lý khách hàng trọng điểm
+
+  - canonical: SALES_SUPPORT_SPECIALIST
+    aliases:
+      - Sales Support Specialist
+      - Sales Coordinator
+      - Chuyên viên hỗ trợ kinh doanh
+
+  - canonical: PRESALES_CONSULTANT
+    aliases:
+      - Presales Consultant
+      - Pre-sales Consultant
+      - Presales Specialist
+      - Tư vấn giải pháp trước bán hàng
+
+  - canonical: SALES_ENGINEER
+    aliases:
+      - Sales Engineer
+      - Technical Sales Engineer
+      - Kỹ sư bán hàng
+
+  - canonical: TELESALES_REPRESENTATIVE
+    aliases:
+      - Telesales Representative
+      - Telesales Executive
+      - Telephone Sales Representative
+      - Nhân viên telesales
+
+  - canonical: BUSINESS_DEVELOPMENT_MANAGER
+    aliases:
+      - Business Development Manager
+      - BD Manager
+      - Quản lý phát triển kinh doanh
+
+  - canonical: SALES_DIRECTOR
+    aliases:
+      - Sales Director
+      - Director of Sales
+      - Giám đốc kinh doanh
+
+  - canonical: PARTNERSHIPS_MANAGER
+    aliases:
+      - Partnerships Manager
+      - Strategic Partnerships Manager
+      - Quản lý đối tác
+
+  - canonical: E_COMMERCE_SPECIALIST
+    aliases:
+      - E-commerce Specialist
+      - Ecommerce Specialist
+      - Chuyên viên thương mại điện tử
+
+  - canonical: E_COMMERCE_MANAGER
+    aliases:
+      - E-commerce Manager
+      - Ecommerce Manager
+      - Quản lý thương mại điện tử

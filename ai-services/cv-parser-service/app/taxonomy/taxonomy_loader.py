@@ -68,6 +68,14 @@ SECTION_TYPES = {
     "OTHER",
 }
 
+LOCATION_KINDS = {
+    "CITY",
+    "REGION",
+    "COUNTRY",
+}
+
+
+
 DEGREE_LEVELS = {
     "SECONDARY",
     "HIGH_SCHOOL",
@@ -116,6 +124,7 @@ class DegreeTaxonomyItem:
 @dataclass(frozen=True, slots=True)
 class LocationTaxonomyItem:
     canonical: str
+    kind: str
     aliases: tuple[str, ...]
 
 
@@ -456,10 +465,22 @@ class TaxonomyLoader:
                 raw_item,
                 f"locations.yml.items[{index}]",
             )
+
             canonical = self._require_non_blank_string(
                 item.get("canonical"),
                 f"locations.yml.items[{index}].canonical",
             )
+
+            kind = self._require_non_blank_string(
+                item.get("kind"),
+                f"locations.yml.items[{index}].kind",
+            ).upper()
+
+            if kind not in LOCATION_KINDS:
+                raise TaxonomyValidationError(
+                    f"Unsupported location kind: {kind}"
+                )
+
             aliases = self._parse_aliases(
                 item.get("aliases"),
                 canonical,
@@ -469,6 +490,7 @@ class TaxonomyLoader:
             result.append(
                 LocationTaxonomyItem(
                     canonical=canonical,
+                    kind=kind,
                     aliases=aliases,
                 )
             )

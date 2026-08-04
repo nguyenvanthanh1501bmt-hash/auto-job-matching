@@ -308,3 +308,257 @@ def test_does_not_use_generic_section_heading_as_headline(
     assert result.full_name == "NGUYEN VAN AN"
     assert result.headline is None
     assert "HEADLINE_NOT_DETECTED" in result.warnings
+
+def test_extracts_address_from_single_line_contact_fields(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = (
+        "GitHub: https://github.com/example "
+        "Phone: 0769480948 "
+        "Email: candidate@example.com "
+        "Address: Thu Duc, Ho Chi Minh City"
+    )
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.address_text == (
+        "Thu Duc, Ho Chi Minh City"
+    )
+    assert result.contact.city == (
+        "Ho Chi Minh City"
+    )
+
+
+def test_stops_inline_address_at_next_contact_label(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = (
+        "Address: Da Nang, Vietnam "
+        "Phone: 0901 234 567 "
+        "Email: candidate@example.com"
+    )
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.address_text == (
+        "Da Nang, Vietnam"
+    )
+    assert result.contact.phone == (
+        "0901234567"
+    )
+
+
+def test_extracts_unaccented_vietnamese_address_label(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = (
+        "NGUYEN VAN AN\n"
+        "Dia chi lien he: Quan 1, TP.HCM\n"
+        "Email: candidate@example.com"
+    )
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.address_text == (
+        "Quan 1, TP.HCM"
+    )
+    assert result.contact.city == (
+        "Ho Chi Minh City"
+    )
+
+
+def test_extracts_address_value_from_following_line(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = """
+    JANE CARTER
+    Mailing Address:
+    221B Baker Street, London
+    Phone: +44 (7700) 900-123
+    """
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.address_text == (
+        "221B Baker Street, London"
+    )
+    assert result.contact.city == "London"
+
+
+def test_does_not_treat_project_location_as_contact_address(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = """
+    ALEX MORGAN
+    Project Location: Remote
+    alex@example.com
+    """
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.address_text is None
+
+
+def test_does_not_use_preferred_location_as_contact_location(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = """
+    ALEX MORGAN
+    Preferred Location: Singapore
+    alex@example.com
+    """
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.address_text is None
+    assert result.contact.city is None
+    assert (
+            result.contact.province_or_state
+            is None
+    )
+    assert result.contact.country is None
+
+
+def test_prefers_labelled_address_for_location_normalization(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = (
+        "Current Location: Da Nang, Vietnam "
+        "Preferred Location: Singapore"
+    )
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.address_text == (
+        "Da Nang, Vietnam"
+    )
+    assert result.contact.city == "Da Nang"
+    assert result.contact.country == "Vietnam"
+
+def test_location_kind_metadata_classifies_region_without_hardcoded_name(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = "Address: Toronto, Ontario"
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.city == "Toronto"
+    assert (
+            result.contact.province_or_state
+            == "Ontario"
+    )
+    assert result.contact.country is None
+
+
+def test_location_kind_metadata_classifies_country_without_code_change(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ContactParser(
+        settings,
+        taxonomy,
+    )
+
+    header = "Address: Singapore"
+
+    result = parser.parse(
+        header,
+        {
+            "HEADER": (header,),
+        },
+    )
+
+    assert result.contact.city is None
+    assert (
+            result.contact.province_or_state
+            is None
+    )
+    assert result.contact.country == "Singapore"

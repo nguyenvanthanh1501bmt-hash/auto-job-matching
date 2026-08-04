@@ -17,6 +17,88 @@ items:
       - JavaScript
       - JS
 
+  - canonical: TypeScript
+    category: TECHNICAL
+    aliases:
+      - TypeScript
+
+  - canonical: HTML
+    category: TECHNICAL
+    aliases:
+      - HTML
+      - HTML5
+
+  - canonical: CSS
+    category: TECHNICAL
+    aliases:
+      - CSS
+      - CSS3
+
+  - canonical: Next.js
+    category: TECHNICAL
+    aliases:
+      - Next.js
+      - NextJS
+      - Next JS
+
+  - canonical: Express
+    category: TECHNICAL
+    aliases:
+      - Express
+      - Express.js
+      - ExpressJS
+
+  - canonical: Tailwind CSS
+    category: TECHNICAL
+    aliases:
+      - Tailwind CSS
+      - TailwindCSS
+      - Tailwind
+
+  - canonical: SQL Server
+    category: TECHNICAL
+    aliases:
+      - SQL Server
+      - Microsoft SQL Server
+      - MSSQL
+
+  - canonical: PostgreSQL
+    category: TECHNICAL
+    aliases:
+      - PostgreSQL
+      - Postgres
+
+  - canonical: Supabase
+    category: TECHNICAL
+    aliases:
+      - Supabase
+
+  - canonical: Git
+    category: TOOL
+    aliases:
+      - Git
+
+  - canonical: GitHub
+    category: TOOL
+    aliases:
+      - GitHub
+
+  - canonical: Postman
+    category: TOOL
+    aliases:
+      - Postman
+
+  - canonical: Notion
+    category: TOOL
+    aliases:
+      - Notion
+
+  - canonical: Draw.io
+    category: TOOL
+    aliases:
+      - Draw.io
+      - diagrams.net
+
   - canonical: Spring Boot
     category: TECHNICAL
     aliases:
@@ -859,6 +941,22 @@ items:
       - Troubleshooting
       - Giải quyết vấn đề
       - Xử lý sự cố
+
+  - canonical: Critical Thinking
+    category: BUSINESS
+    aliases:
+      - Critical Thinking
+      - Tư duy phản biện
+      - Tu duy phan bien
+
+  - canonical: Teamwork
+    category: COMMUNICATION
+    aliases:
+      - Teamwork
+      - Team Work
+      - Collaboration
+      - Làm việc nhóm
+      - Lam viec nhom
 
   - canonical: Time Management
     category: BUSINESS

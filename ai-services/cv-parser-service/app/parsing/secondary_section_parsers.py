@@ -47,13 +47,53 @@ INLINE_SEPARATOR_PATTERN = re.compile(
     r"\s+(?:[-–—|])\s+"
 )
 
-ACHIEVEMENT_PATTERN = re.compile(
+ACHIEVEMENT_RESULT_VERB_PATTERN = re.compile(
     r"(?:"
-    r"\b(?:achieved|awarded|delivered|exceeded|generated|grew|"
-    r"improved|increased|reduced|saved|won|recognized|optimized)\b|"
-    r"\b\d+(?:[.,]\d+)?\s*%|"
-    r"(?:đạt|vượt|tăng|giảm|tiết\s+kiệm|cải\s+thiện|"
-    r"tối\s+ưu|được\s+khen\s+thưởng)"
+    r"\b(?:achieved|completed|delivered|exceeded|generated|grew|"
+    r"improved|increased|reduced|saved|optimized|decreased|cut|"
+    r"boosted|accelerated|shortened)\b|"
+    r"(?:đạt|hoàn\s+thành|hoan\s+thanh|bàn\s+giao|ban\s+giao|"
+    r"vượt|tăng|tang|giảm|giam|tiết\s+kiệm|tiet\s+kiem|"
+    r"cải\s+thiện|cai\s+thien|tối\s+ưu|toi\s+uu|"
+    r"rút\s+ngắn|rut\s+ngan)"
+    r")",
+    re.IGNORECASE,
+)
+
+ACHIEVEMENT_MEASURABLE_RESULT_PATTERN = re.compile(
+    r"(?:"
+    r"\b\d+(?:[.,]\d+)?\s*(?:%|percent|percentage\s+points?|x|times?)\b|"
+    r"\b(?:by|within|under)\s+\d+(?:[.,]\d+)?\s*"
+    r"(?:ms|milliseconds?|seconds?|minutes?|hours?|days?|weeks?|months?|"
+    r"users?|customers?|requests?|transactions?|records?|items?|features?|"
+    r"screens?|modules?|vnd|usd|dollars?)\b|"
+    r"\bfrom\s+\d+(?:[.,]\d+)?(?:\s*\w+)?\s+to\s+"
+    r"\d+(?:[.,]\d+)?(?:\s*\w+)?\b|"
+    r"\btop\s+\d+\b|"
+    r"\b(?:first|second|third)\s+place\b|"
+    r"\b(?:ahead\s+of\s+schedule|under\s+budget)\b|"
+    r"\b\d+(?:[.,]\d+)?\s*(?:phần\s+trăm|phan\s+tram|"
+    r"giây|giay|phút|phut|giờ|gio|ngày|ngay|tuần|tuan|tháng|thang|"
+    r"người\s+dùng|nguoi\s+dung|khách\s+hàng|khach\s+hang|"
+    r"yêu\s+cầu|yeu\s+cau|giao\s+dịch|giao\s+dich)\b|"
+    r"\btừ\s+\d+(?:[.,]\d+)?(?:\s*\w+)?\s+"
+    r"(?:xuống|lên|đến)\s+\d+(?:[.,]\d+)?(?:\s*\w+)?\b|"
+    r"\btu\s+\d+(?:[.,]\d+)?(?:\s*\w+)?\s+"
+    r"(?:xuong|len|den)\s+\d+(?:[.,]\d+)?(?:\s*\w+)?\b|"
+    r"\b(?:hạng|hang)\s+(?:nhất|nhat|nhì|nhi|ba|\d+)\b|"
+    r"\b(?:trước\s+tiến\s+độ|truoc\s+tien\s+do|"
+    r"dưới\s+ngân\s+sách|duoi\s+ngan\s+sach)\b"
+    r")",
+    re.IGNORECASE,
+)
+
+ACHIEVEMENT_RECOGNITION_PATTERN = re.compile(
+    r"(?:"
+    r"\b(?:won|awarded|recognized|ranked|selected\s+as)\b|"
+    r"\breceived\s+(?:an?\s+)?(?:award|prize|recognition)\b|"
+    r"(?:đạt\s+giải|dat\s+giai|giành\s+giải|gianh\s+giai|"
+    r"được\s+trao|duoc\s+trao|được\s+công\s+nhận|"
+    r"duoc\s+cong\s+nhan|xếp\s+hạng|xep\s+hang)"
     r")",
     re.IGNORECASE,
 )
@@ -88,11 +128,26 @@ DURATION_PATTERN = re.compile(
 )
 
 TEAM_SIZE_PATTERN = re.compile(
-    r"\b(?:team\s+size|team|nhóm|đội)"
+    r"^(?:"
+    r"team\s+size"
+    r"|team(?:\s+project)?"
+    r"|group\s+project"
+    r"|project\s+team"
+    r"|nhóm"
+    r"|đội"
+    r"|dự\s+án\s+nhóm"
+    r"|du\s+an\s+nhom"
+    r"|quy\s+mô\s+nhóm"
+    r"|quy\s+mo\s+nhom"
+    r"|số\s+thành\s+viên"
+    r"|so\s+thanh\s+vien"
+    r")"
     r"\s*[:：-]?\s*"
     r"(?P<value>"
-    r"\d{1,4}(?:\s*(?:members?|people|persons?|người))?"
-    r")\b",
+    r"\d{1,4}(?:\s*(?:"
+    r"members?|people|persons?|người|thành\s+viên|thanh\s+vien"
+    r"))?"
+    r")\s*$",
     re.IGNORECASE,
 )
 
@@ -198,26 +253,82 @@ AVAILABILITY_PATTERN = re.compile(
 )
 
 PROJECT_NAME_PATTERN = re.compile(
-    r"^(?:project|project\s+name|name|dự\s+án|tên\s+dự\s+án)"
+    r"^(?:project|project\s+name|name|dự\s+án|tên\s+dự\s+án|"
+    r"du\s+an|ten\s+du\s+an)"
     r"\s*[:：-]\s*(?P<value>.+)$",
     re.IGNORECASE,
 )
 
 PROJECT_ROLE_PATTERN = re.compile(
-    r"^(?:role|position|project\s+role|vai\s+trò|vị\s+trí)"
+    r"^(?:role|position|project\s+role|vai\s+trò|vị\s+trí|"
+    r"vai\s+tro|vi\s+tri)"
     r"\s*[:：-]\s*(?P<value>.+)$",
     re.IGNORECASE,
 )
 
 PROJECT_DOMAIN_PATTERN = re.compile(
-    r"^(?:domain|industry|field|sector|lĩnh\s+vực|ngành)"
+    r"^(?:domain|industry|field|sector|lĩnh\s+vực|ngành|"
+    r"linh\s+vuc|nganh)"
     r"\s*[:：-]\s*(?P<value>.+)$",
     re.IGNORECASE,
 )
 
 PROJECT_DESCRIPTION_PATTERN = re.compile(
-    r"^(?:description|overview|summary|mô\s+tả|tổng\s+quan)"
+    r"^(?:description|overview|summary|mô\s+tả|tổng\s+quan|"
+    r"mo\s+ta|tong\s+quan)"
     r"\s*[:：-]\s*(?P<value>.+)$",
+    re.IGNORECASE,
+)
+
+PROJECT_INLINE_ROLE_PATTERN = re.compile(
+    r"^(?P<name>.+?)\s*\|\s*(?P<role>[^|]+)$"
+)
+
+PROJECT_ROLE_HINT_PATTERN = re.compile(
+    r"(?:"
+    r"developer|engineer|designer|analyst|architect|tester|"
+    r"quality\s+assurance|qa|lead|leader|manager|member|intern|"
+    r"consultant|administrator|coordinator|specialist|owner|"
+    r"front[-\s]?end|back[-\s]?end|full[-\s]?stack|devops|"
+    r"lập\s+trình\s+viên|lap\s+trinh\s+vien|kỹ\s+sư|ky\s+su|"
+    r"thiết\s+kế|thiet\s+ke|phân\s+tích|phan\s+tich|"
+    r"kiểm\s+thử|kiem\s+thu|trưởng\s+nhóm|truong\s+nhom|"
+    r"quản\s+lý|quan\s+ly|thành\s+viên|thanh\s+vien|"
+    r"thực\s+tập\s+sinh|thuc\s+tap\s+sinh"
+    r")",
+    re.IGNORECASE,
+)
+
+PROJECT_TECH_STACK_PATTERN = re.compile(
+    r"^(?:"
+    r"tech\s+stack|technology\s+stack|technologies?|"
+    r"technical\s+stack|tools?|"
+    r"công\s+nghệ(?:\s+sử\s+dụng)?|"
+    r"cong\s+nghe(?:\s+su\s+dung)?|"
+    r"công\s+cụ(?:\s+sử\s+dụng)?|"
+    r"cong\s+cu(?:\s+su\s+dung)?"
+    r")\s*[:：-]\s*(?P<value>.+)$",
+    re.IGNORECASE,
+)
+
+PROJECT_LINK_LABEL_PATTERN = re.compile(
+    r"^(?:"
+    r"github|gitlab|bitbucket|repository|repo|source\s+code|"
+    r"repository\s+url|project\s+url|demo|website|link|"
+    r"mã\s+nguồn|ma\s+nguon|liên\s+kết|lien\s+ket"
+    r")\s*[:：-]?\s*$",
+    re.IGNORECASE,
+)
+
+PROJECT_TYPE_PATTERN = re.compile(
+    r"^(?:"
+    r"personal\s+project|individual\s+project|academic\s+project|"
+    r"school\s+project|course\s+project|"
+    r"dự\s+án\s+cá\s+nhân|du\s+an\s+ca\s+nhan|"
+    r"đồ\s+án\s+cá\s+nhân|do\s+an\s+ca\s+nhan|"
+    r"dự\s+án\s+học\s+tập|du\s+an\s+hoc\s+tap|"
+    r"đồ\s+án\s+môn\s+học|do\s+an\s+mon\s+hoc"
+    r")\s*$",
     re.IGNORECASE,
 )
 
@@ -233,6 +344,50 @@ CERT_ISSUER_PATTERN = re.compile(
     r"issuer|issued\s+by|provider|organization|organisation|"
     r"đơn\s+vị\s+cấp|tổ\s+chức\s+cấp"
     r")\s*[:：-]\s*(?P<value>.+)$",
+    re.IGNORECASE,
+)
+
+CERTIFICATION_NAME_HINT_PATTERN = re.compile(
+    r"(?:"
+    r"\b(?:certificate|certification|certified|credential|diploma|badge)\b|"
+    r"(?:chứng\s+chỉ|chứng\s+nhận|chung\s+chi|chung\s+nhan)"
+    r")",
+    re.IGNORECASE,
+)
+
+CERTIFICATION_EXAM_PATTERN = re.compile(
+    r"\b(?:"
+    r"TOEIC|IELTS|TOEFL|JLPT|TOPIK|HSK|CEFR|PTE"
+    r")\b",
+    re.IGNORECASE,
+)
+
+CERTIFICATION_ISSUER_ORGANIZATION_PATTERN = re.compile(
+    r"(?:"
+    r"\b(?:services?|learning|training|education|technologies?|"
+    r"solutions?|foundation|council|board|authority|group|"
+    r"international|global|inc|ltd|llc|jsc)\b|"
+    r"(?:đào\s+tạo|dao\s+tao|giáo\s+dục|giao\s+duc|"
+    r"dịch\s+vụ|dich\s+vu|hội\s+đồng|hoi\s+dong|"
+    r"tập\s+đoàn|tap\s+doan|trung\s+tâm|trung\s+tam)"
+    r")",
+    re.IGNORECASE,
+)
+
+CERTIFICATION_INLINE_SEPARATOR_PATTERN = re.compile(
+    r"\s+(?:[-–—|])\s+"
+)
+
+TRAILING_CERTIFICATION_DATE_PATTERN = re.compile(
+    r"(?P<value>"
+    r"(?:0?[1-9]|1[0-2])[/.-](?:19|20)\d{2}"
+    r"|(?:19|20)\d{2}[/.-](?:0?[1-9]|1[0-2])"
+    r"|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|"
+    r"Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|"
+    r"Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(?:19|20)\d{2}"
+    r"|Tháng\s+(?:0?[1-9]|1[0-2])\s*(?:[/.-]|năm)\s*(?:19|20)\d{2}"
+    r"|Thang\s+(?:0?[1-9]|1[0-2])\s*(?:[/.-]|nam)\s*(?:19|20)\d{2}"
+    r")\s*$",
     re.IGNORECASE,
 )
 
@@ -790,6 +945,7 @@ class ProjectParser:
         domain: str | None = None
 
         description_lines: list[str] = []
+        bullet_items: list[str] = []
         responsibilities: list[str] = []
         achievements: list[str] = []
 
@@ -822,15 +978,7 @@ class ProjectParser:
                 if value is None:
                     continue
 
-                if ACHIEVEMENT_PATTERN.search(
-                        value
-                ):
-                    achievements.append(value)
-                else:
-                    responsibilities.append(
-                        value
-                    )
-
+                bullet_items.append(value)
                 continue
 
             match = PROJECT_NAME_PATTERN.match(
@@ -838,13 +986,14 @@ class ProjectParser:
             )
 
             if match is not None:
-                name = (
-                        name
-                        or _clean(
-                    match.group("value"),
-                    500,
+                parsed_name, parsed_role = (
+                    _split_project_name_and_role(
+                        match.group("value")
+                    )
                 )
-                )
+
+                name = name or parsed_name
+                role = role or parsed_role
                 continue
 
             match = PROJECT_ROLE_PATTERN.match(
@@ -894,20 +1043,30 @@ class ProjectParser:
 
                 continue
 
-            team_match = TEAM_SIZE_PATTERN.search(
+            team_match = TEAM_SIZE_PATTERN.match(
                 line
             )
 
-            if (
-                    team_match is not None
-                    and team_size_text is None
-            ):
-                team_size_text = _clean(
-                    team_match.group("value"),
-                    100,
-                )
+            if team_match is not None:
+                if team_size_text is None:
+                    team_size_text = _clean(
+                        team_match.group("value"),
+                        100,
+                    )
 
-            for url in _extract_urls(line):
+                continue
+
+            if PROJECT_TYPE_PATTERN.match(line):
+                continue
+
+            if PROJECT_TECH_STACK_PATTERN.match(
+                    line
+            ):
+                continue
+
+            urls = _extract_urls(line)
+
+            for url in urls:
                 hostname = (
                         urlsplit(url).hostname
                         or ""
@@ -930,21 +1089,65 @@ class ProjectParser:
                             or url
                     )
 
+            without_urls = _strip_urls(line)
+
+            if (
+                    urls
+                    and PROJECT_LINK_LABEL_PATTERN.match(
+                without_urls
+            )
+            ):
+                continue
+
+            if PROJECT_LINK_LABEL_PATTERN.match(line):
+                continue
+
+            if (
+                    bullet_items
+                    and _looks_like_wrapped_bullet_continuation(
+                bullet_items[-1],
+                line,
+            )
+            ):
+                previous = bullet_items[-1]
+                separator = (
+                    ""
+                    if previous.endswith("-")
+                    else " "
+                )
+                merged = clean_optional_text(
+                    f"{previous}{separator}{line}",
+                    maximum_length=1_000,
+                )
+
+                if merged is not None:
+                    bullet_items[-1] = merged
+
+                continue
+
             if (
                     name is None
                     and _looks_like_title(line)
             ):
-                name = _clean(
-                    _strip_urls(line),
-                    500,
-                )
-            else:
-                cleaned = _strip_urls(line)
-
-                if cleaned:
-                    description_lines.append(
-                        cleaned
+                parsed_name, parsed_role = (
+                    _split_project_name_and_role(
+                        without_urls
                     )
+                )
+                name = parsed_name
+                role = role or parsed_role
+                continue
+
+            if without_urls:
+                description_lines.append(
+                    without_urls
+                )
+
+        for value in bullet_items:
+            if _is_project_achievement(value):
+                achievements.append(value)
+            else:
+                responsibilities.append(value)
 
         scoped_text = "\n".join(
             cleaned_lines
@@ -1128,20 +1331,33 @@ class CertificationParser:
             if not line:
                 continue
 
-            raw_values.append(line)
-
             match = CERT_NAME_PATTERN.match(
                 line
             )
 
             if match is not None:
-                name = (
-                        name
-                        or _clean(
-                    match.group("value"),
-                    500,
+                candidate_name, inline_date = (
+                    _extract_trailing_certification_date(
+                        match.group("value")
+                    )
                 )
-                )
+
+                if candidate_name:
+                    name = (
+                            name
+                            or _clean(
+                        candidate_name,
+                        500,
+                    )
+                    )
+                    raw_values.append(candidate_name)
+
+                if (
+                        issued_date is None
+                        and inline_date is not None
+                ):
+                    issued_date = inline_date.value
+
                 continue
 
             match = CERT_ISSUER_PATTERN.match(
@@ -1156,6 +1372,7 @@ class CertificationParser:
                     500,
                 )
                 )
+                raw_values.append(line)
                 continue
 
             match = ISSUED_DATE_PATTERN.match(
@@ -1163,15 +1380,16 @@ class CertificationParser:
             )
 
             if match is not None:
-                value = _first_date(
+                value = _first_certification_date(
                     match.group("value")
                 )
 
-                issued_date = (
-                        issued_date
-                        or value.value
-                )
-                continue
+                if value.value is not None:
+                    issued_date = (
+                            issued_date
+                            or value.value
+                    )
+                    continue
 
             match = (
                 EXPIRATION_DATE_PATTERN.match(
@@ -1180,7 +1398,7 @@ class CertificationParser:
             )
 
             if match is not None:
-                value = _first_date(
+                value = _first_certification_date(
                     match.group("value")
                 )
 
@@ -1194,8 +1412,7 @@ class CertificationParser:
                             expiration_date
                             or value.value
                     )
-
-                continue
+                    continue
 
             match = (
                 CREDENTIAL_ID_PATTERN.match(
@@ -1221,6 +1438,36 @@ class CertificationParser:
             ):
                 credential_url = urls[0]
                 line = _strip_urls(line)
+
+            line, inline_date = (
+                _extract_trailing_certification_date(
+                    line
+                )
+            )
+
+            if (
+                    issued_date is None
+                    and inline_date is not None
+            ):
+                issued_date = inline_date.value
+
+            if not line:
+                continue
+
+            raw_values.append(line)
+
+            if name is None:
+                (
+                    inline_name,
+                    inline_issuer,
+                ) = _split_certification_name_and_issuer(
+                    line
+                )
+
+                if inline_issuer is not None:
+                    name = inline_name
+                    issuer = issuer or inline_issuer
+                    continue
 
             if (
                     name is None
@@ -1255,9 +1502,28 @@ class CertificationParser:
                     or block.date_range.end
             )
         elif issued_date is None:
-            dates = _all_dates(
-                "\n".join(raw_values)
-            )
+            dates: list[DateValue] = []
+
+            for raw_value in raw_values:
+                candidate_date = (
+                    _first_certification_date(
+                        raw_value.strip(
+                            " -–—|,;()"
+                        )
+                    )
+                )
+
+                if (
+                        candidate_date.value is None
+                        or any(
+                    existing.value
+                    == candidate_date.value
+                    for existing in dates
+                )
+                ):
+                    continue
+
+                dates.append(candidate_date)
 
             if dates:
                 issued_date = dates[0].value
@@ -3481,6 +3747,314 @@ def _join_description(
         ),
     )
 
+
+def _is_project_achievement(
+        value: str,
+) -> bool:
+    if ACHIEVEMENT_RECOGNITION_PATTERN.search(
+            value
+    ):
+        return True
+
+    return (
+            ACHIEVEMENT_RESULT_VERB_PATTERN.search(
+                value
+            )
+            is not None
+            and ACHIEVEMENT_MEASURABLE_RESULT_PATTERN.search(
+        value
+    )
+            is not None
+    )
+
+
+def _looks_like_wrapped_bullet_continuation(
+        previous_value: str,
+        value: str,
+) -> bool:
+    previous = previous_value.strip()
+    cleaned = value.strip()
+
+    if (
+            not previous
+            or not cleaned
+            or len(cleaned) > 1_000
+            or BULLET_PATTERN.match(cleaned)
+            or extract_date_range(cleaned) is not None
+            or PROJECT_NAME_PATTERN.match(cleaned)
+            or PROJECT_ROLE_PATTERN.match(cleaned)
+            or PROJECT_DOMAIN_PATTERN.match(cleaned)
+            or PROJECT_DESCRIPTION_PATTERN.match(cleaned)
+            or TEAM_SIZE_PATTERN.match(cleaned)
+            or PROJECT_TYPE_PATTERN.match(cleaned)
+            or PROJECT_TECH_STACK_PATTERN.match(cleaned)
+            or PROJECT_LINK_LABEL_PATTERN.match(cleaned)
+    ):
+        return False
+
+    _, inline_role = _split_project_name_and_role(
+        cleaned
+    )
+
+    if inline_role is not None:
+        return False
+
+    first_alpha: str | None = None
+
+    for character in cleaned:
+        if character.isalpha():
+            first_alpha = character
+            break
+
+        if character.isdigit():
+            break
+
+    if (
+            first_alpha is not None
+            and first_alpha.islower()
+    ):
+        return True
+
+    previous_normalized = normalize_for_matching(
+        previous
+    )
+
+    continuation_suffix_pattern = re.compile(
+        r"(?:"
+        r"[,;:/(-]$|"
+        r"\b(?:and|or|with|using|through|including|for|to|by|of|"
+        r"in|on|from|into|via|such\s+as|"
+        r"và|va|hoặc|hoac|với|voi|bằng|bang|qua|gồm|gom|"
+        r"bao\s+gồm|bao\s+gom|cho|để|de|của|cua|trong|từ|tu)"
+        r"$"
+        r")",
+        re.IGNORECASE,
+    )
+
+    if continuation_suffix_pattern.search(
+            previous_normalized
+    ) is None:
+        return False
+
+    return (
+            re.match(
+                r"^(?:[A-ZĐ]{2,}(?:[./+#-][A-Z0-9Đ]+)*|"
+                r"[A-ZĐ][A-Za-zÀ-ỹ0-9]*(?:\s+[A-Z0-9][^.!?]{0,80})?)",
+                cleaned,
+            )
+            is not None
+    )
+
+
+def _split_project_name_and_role(
+        value: str,
+) -> tuple[str | None, str | None]:
+    cleaned = _clean(
+        value,
+        500,
+    )
+
+    if cleaned is None:
+        return None, None
+
+    match = PROJECT_INLINE_ROLE_PATTERN.match(
+        cleaned
+    )
+
+    if match is None:
+        return cleaned, None
+
+    candidate_name = _clean(
+        match.group("name"),
+        500,
+    )
+    candidate_role = _clean(
+        match.group("role"),
+        500,
+    )
+
+    if (
+            candidate_name is None
+            or candidate_role is None
+            or PROJECT_ROLE_HINT_PATTERN.search(
+        candidate_role
+    ) is None
+    ):
+        return cleaned, None
+
+    return candidate_name, candidate_role
+
+
+def _first_certification_date(
+        value: str,
+) -> DateValue:
+    normalized = normalize_date_value(
+        value.strip()
+    )
+
+    if normalized.value is not None:
+        return normalized
+
+    vietnamese_match = re.fullmatch(
+        r"(?:tháng|thang)\s+"
+        r"(?P<month>0?[1-9]|1[0-2])\s+"
+        r"(?:năm|nam)\s+"
+        r"(?P<year>(?:19|20)\d{2})",
+        value.strip(),
+        re.IGNORECASE,
+    )
+
+    if vietnamese_match is not None:
+        return normalize_date_value(
+            f"{vietnamese_match.group('month')}/"
+            f"{vietnamese_match.group('year')}"
+        )
+
+    return DateValue(
+        value=None,
+        year=None,
+        month=None,
+        precision=None,
+        current=False,
+    )
+
+
+def _extract_trailing_certification_date(
+        value: str,
+) -> tuple[str, DateValue | None]:
+    match = TRAILING_CERTIFICATION_DATE_PATTERN.search(
+        value
+    )
+
+    if match is None:
+        return value.strip(), None
+
+    normalized = _first_certification_date(
+        match.group("value")
+    )
+
+    if normalized.value is None:
+        return value.strip(), None
+
+    residue = value[:match.start()].strip(
+        " -–—|,;()"
+    )
+
+    return residue, normalized
+
+
+def _looks_like_certification_name(
+        value: str,
+) -> bool:
+    return (
+            CERTIFICATION_NAME_HINT_PATTERN.search(
+                value
+            )
+            is not None
+            or CERTIFICATION_EXAM_PATTERN.search(
+        value
+    )
+            is not None
+    )
+
+
+def _looks_like_certification_issuer_candidate(
+        value: str,
+) -> bool:
+    cleaned = value.strip()
+
+    if (
+            not _looks_like_title(cleaned)
+            or _looks_like_certification_name(cleaned)
+    ):
+        return False
+
+    if _looks_like_provider(cleaned):
+        return True
+
+    if CERTIFICATION_ISSUER_ORGANIZATION_PATTERN.search(
+            cleaned
+    ):
+        return True
+
+    words = [
+        word.strip(".,:;()[]{}")
+        for word in cleaned.split()
+        if word.strip(".,:;()[]{}")
+    ]
+
+    if len(words) == 1:
+        return bool(
+            re.fullmatch(
+                r"[A-Za-zÀ-ỹ][A-Za-zÀ-ỹ0-9.&+'-]{1,40}",
+                words[0],
+            )
+        )
+
+    return any(
+        word.isupper()
+        and 2 <= len(word) <= 12
+        for word in words
+    )
+
+
+def _split_certification_name_and_issuer(
+        value: str,
+) -> tuple[str | None, str | None]:
+    cleaned = _clean(
+        value,
+        500,
+    )
+
+    if cleaned is None:
+        return None, None
+
+    parts = CERTIFICATION_INLINE_SEPARATOR_PATTERN.split(
+        cleaned
+    )
+
+    if len(parts) != 2:
+        return cleaned, None
+
+    left = _clean(parts[0], 500)
+    right = _clean(parts[1], 500)
+
+    if left is None or right is None:
+        return cleaned, None
+
+    left_is_name = _looks_like_certification_name(
+        left
+    )
+    right_is_name = _looks_like_certification_name(
+        right
+    )
+
+    left_is_issuer = (
+        _looks_like_certification_issuer_candidate(
+            left
+        )
+    )
+    right_is_issuer = (
+        _looks_like_certification_issuer_candidate(
+            right
+        )
+    )
+
+    if (
+            right_is_name
+            and left_is_issuer
+            and not left_is_name
+    ):
+        return right, left
+
+    if (
+            left_is_name
+            and right_is_issuer
+            and not right_is_name
+    ):
+        return left, right
+
+    return cleaned, None
 
 def _looks_like_title(
         value: str,

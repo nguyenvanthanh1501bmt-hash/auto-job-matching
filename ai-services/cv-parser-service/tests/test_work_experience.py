@@ -429,3 +429,104 @@ def test_separates_responsibilities_from_achievements(
         in value
         for value in experience.achievements
     )
+
+@pytest.mark.parametrize(
+    (
+            "job_title",
+            "expected_normalized_title",
+    ),
+    [
+        (
+                "Trợ lý giám đốc",
+                "EXECUTIVE_ASSISTANT",
+        ),
+        (
+                "Tech Lead",
+                "TECHNICAL_LEAD",
+        ),
+        (
+                "Chief Technology Officer",
+                "CHIEF_TECHNOLOGY_OFFICER",
+        ),
+        (
+                "DevOps Engineer",
+                "DEVOPS_ENGINEER",
+        ),
+        (
+                "Product Owner",
+                "PRODUCT_OWNER",
+        ),
+        (
+                "Business Analyst",
+                "BUSINESS_ANALYST",
+        ),
+        (
+                "Customer Service Specialist",
+                "CUSTOMER_SERVICE_SPECIALIST",
+        ),
+        (
+                "Customer Service Team Leader",
+                "CUSTOMER_SERVICE_SUPERVISOR",
+        ),
+        (
+                "Customer Success Manager",
+                "CUSTOMER_SUCCESS_MANAGER",
+        ),
+        (
+                "Call Center Agent",
+                "CALL_CENTER_AGENT",
+        ),
+        (
+                "Key Account Manager",
+                "KEY_ACCOUNT_MANAGER",
+        ),
+        (
+                "Giám đốc kinh doanh",
+                "SALES_DIRECTOR",
+        ),
+    ],
+)
+def test_normalizes_expanded_job_title_taxonomy(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+        job_title: str,
+        expected_normalized_title: str,
+) -> None:
+    parser = _create_parser(
+        settings,
+        taxonomy,
+    )
+
+    text = f"""
+    {job_title} | Example Company
+    January 2023 - December 2024
+    - Performed the responsibilities assigned to the role.
+    """
+
+    result = parser.parse(
+        {
+            "WORK_EXPERIENCE": (
+                text,
+            ),
+        }
+    )
+
+    assert len(
+        result.work_experiences
+    ) == 1
+
+    experience = (
+        result.work_experiences[0]
+    )
+
+    assert experience.job_title == job_title
+
+    assert (
+            experience.normalized_job_title
+            == expected_normalized_title
+    )
+
+    assert (
+            experience.company_name
+            == "Example Company"
+    )

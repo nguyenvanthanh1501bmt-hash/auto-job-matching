@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -20,6 +21,14 @@ public class CvFileValidator {
     private static final byte[] PDF_SIGNATURE = {
             0x25, 0x50, 0x44, 0x46, 0x2D
     };
+
+    private static final byte[] UTF_8_BOM = {
+            (byte) 0xEF,
+            (byte) 0xBB,
+            (byte) 0xBF
+    };
+
+    private static final int MAX_PDF_PREFIX_BYTES = 32;
 
     private static final byte[] OLE_SIGNATURE = {
             (byte) 0xD0,
@@ -103,11 +112,7 @@ public class CvFileValidator {
         String detectedContentType =
                 switch (extension) {
                     case "pdf" -> {
-                        requireSignature(
-                                bytes,
-                                PDF_SIGNATURE,
-                                "Invalid PDF signature"
-                        );
+                        bytes = normalizePdf(bytes);
 
                         yield "application/pdf";
                     }
@@ -144,7 +149,101 @@ public class CvFileValidator {
         );
     }
 
-    private void requireDocx(byte[] bytes) {
+    private byte[] normalizePdf(
+            byte[] bytes
+    ) {
+        int signatureOffset =
+                findPdfSignatureOffset(bytes);
+
+        if (signatureOffset < 0) {
+            throw badRequest(
+                    "CV_FILE_SIGNATURE_INVALID",
+                    "Invalid PDF signature"
+            );
+        }
+
+        if (signatureOffset == 0) {
+            return bytes;
+        }
+
+        return Arrays.copyOfRange(
+                bytes,
+                signatureOffset,
+                bytes.length
+        );
+    }
+
+    private int findPdfSignatureOffset(
+            byte[] bytes
+    ) {
+        if (bytes.length < PDF_SIGNATURE.length) {
+            return -1;
+        }
+
+        int offset = 0;
+
+        if (startsWith(
+                bytes,
+                UTF_8_BOM,
+                0
+        )) {
+            offset = UTF_8_BOM.length;
+        }
+
+        while (offset < bytes.length
+                && offset < MAX_PDF_PREFIX_BYTES
+                && isAllowedPdfPrefixByte(
+                bytes[offset]
+        )) {
+            offset++;
+        }
+
+        return startsWith(
+                bytes,
+                PDF_SIGNATURE,
+                offset
+        )
+                ? offset
+                : -1;
+    }
+
+    private boolean isAllowedPdfPrefixByte(
+            byte value
+    ) {
+        return value == 0x00
+                || value == 0x09
+                || value == 0x0A
+                || value == 0x0C
+                || value == 0x0D
+                || value == 0x20;
+    }
+
+    private boolean startsWith(
+            byte[] bytes,
+            byte[] signature,
+            int offset
+    ) {
+        if (offset < 0
+                || bytes.length - offset
+                < signature.length) {
+            return false;
+        }
+
+        for (int index = 0;
+             index < signature.length;
+             index++) {
+            if (bytes[offset + index]
+                    != signature[index]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void requireDocx(
+            byte[] bytes
+    ) {
         boolean hasContentTypes = false;
         boolean hasWordDocument = false;
 
@@ -192,26 +291,21 @@ public class CvFileValidator {
             byte[] signature,
             String message
     ) {
-        if (bytes.length < signature.length) {
+        if (!startsWith(
+                bytes,
+                signature,
+                0
+        )) {
             throw badRequest(
                     "CV_FILE_SIGNATURE_INVALID",
                     message
             );
         }
-
-        for (int index = 0;
-             index < signature.length;
-             index++) {
-            if (bytes[index] != signature[index]) {
-                throw badRequest(
-                        "CV_FILE_SIGNATURE_INVALID",
-                        message
-                );
-            }
-        }
     }
 
-    private String extensionOf(String filename) {
+    private String extensionOf(
+            String filename
+    ) {
         int dotIndex = filename.lastIndexOf('.');
 
         if (dotIndex < 0
@@ -224,7 +318,9 @@ public class CvFileValidator {
                 .toLowerCase(Locale.ROOT);
     }
 
-    private String sanitizeFilename(String filename) {
+    private String sanitizeFilename(
+            String filename
+    ) {
         String normalized =
                 filename.replace('\\', '/');
 

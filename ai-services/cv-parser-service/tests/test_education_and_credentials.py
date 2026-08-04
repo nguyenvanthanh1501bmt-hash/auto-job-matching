@@ -292,6 +292,247 @@ def test_parses_certification_with_issuer_and_dates(
     assert warnings == ()
 
 
+def test_parses_unlabelled_issuer_name_scores_and_trailing_date(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = CertificationParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = "IIG Vietnam - TOEIC L&R 635, S&W 270 September 2025"
+
+    certifications, warnings = parser.parse(
+        {
+            "CERTIFICATIONS": (text,),
+        }
+    )
+
+    assert len(certifications) == 1
+
+    certification = certifications[0]
+
+    assert certification.name == "TOEIC L&R 635, S&W 270"
+    assert certification.issuer == "IIG Vietnam"
+    assert certification.issued_date == "2025-09"
+    assert warnings == ()
+
+
+def test_parses_provider_first_certificate_with_trailing_date(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = CertificationParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = (
+        "Google - "
+        "Data Analytics Professional Certificate "
+        "May 2024"
+    )
+
+    certifications, warnings = parser.parse(
+        {
+            "CERTIFICATIONS": (text,),
+        }
+    )
+
+    assert len(certifications) == 1
+
+    certification = certifications[0]
+
+    assert certification.name == (
+        "Data Analytics Professional Certificate"
+    )
+    assert certification.issuer == "Google"
+    assert certification.issued_date == "2024-05"
+    assert warnings == ()
+
+
+def test_parses_certificate_first_provider_second(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = CertificationParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = (
+        "AWS Certified Cloud Practitioner - "
+        "Amazon Web Services September 2024"
+    )
+
+    certifications, warnings = parser.parse(
+        {
+            "CERTIFICATIONS": (text,),
+        }
+    )
+
+    assert len(certifications) == 1
+
+    certification = certifications[0]
+
+    assert certification.name == (
+        "AWS Certified Cloud Practitioner"
+    )
+    assert certification.issuer == "Amazon Web Services"
+    assert certification.issued_date == "2024-09"
+    assert warnings == ()
+
+
+def test_parses_unaccented_vietnamese_inline_certification(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = CertificationParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = (
+        "Trung tam Dao tao ABC - "
+        "Chung chi Quan ly du an 09/2025"
+    )
+
+    certifications, warnings = parser.parse(
+        {
+            "CERTIFICATIONS": (text,),
+        }
+    )
+
+    assert len(certifications) == 1
+
+    certification = certifications[0]
+
+    assert certification.name == (
+        "Chung chi Quan ly du an"
+    )
+    assert certification.issuer == (
+        "Trung tam Dao tao ABC"
+    )
+    assert certification.issued_date == "2025-09"
+    assert warnings == ()
+
+
+def test_does_not_split_descriptive_hyphenated_certificate_title(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = CertificationParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = (
+        "Data Engineering - "
+        "Advanced Certificate May 2024"
+    )
+
+    certifications, _ = parser.parse(
+        {
+            "CERTIFICATIONS": (text,),
+        }
+    )
+
+    assert len(certifications) == 1
+
+    certification = certifications[0]
+
+    assert certification.name == (
+        "Data Engineering - Advanced Certificate"
+    )
+    assert certification.issuer is None
+    assert certification.issued_date == "2024-05"
+
+
+def test_does_not_treat_standard_version_year_as_issued_date(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = CertificationParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = "ISO 27001:2022 Lead Auditor"
+
+    certifications, warnings = parser.parse(
+        {
+            "CERTIFICATIONS": (text,),
+        }
+    )
+
+    assert len(certifications) == 1
+
+    certification = certifications[0]
+
+    assert certification.name == (
+        "ISO 27001:2022 Lead Auditor"
+    )
+    assert certification.issuer is None
+    assert certification.issued_date is None
+
+    assert warnings == (
+        "CERTIFICATION_PARTIALLY_PARSED",
+    )
+
+
+def test_does_not_split_semantic_separator_inside_exam_name(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = CertificationParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = (
+        "TOEIC L&R - "
+        "Listening and Reading September 2025"
+    )
+
+    certifications, _ = parser.parse(
+        {
+            "CERTIFICATIONS": (text,),
+        }
+    )
+
+    assert len(certifications) == 1
+
+    certification = certifications[0]
+
+    assert certification.name == (
+        "TOEIC L&R - Listening and Reading"
+    )
+    assert certification.issuer is None
+    assert certification.issued_date == "2025-09"
+
+
 def test_marks_expired_certification(
         settings: Settings,
         taxonomy: TaxonomyBundle,
@@ -859,3 +1100,622 @@ def test_parses_and_limits_interests() -> None:
         "Community volunteering",
         "Supply chain research",
     )
+
+def test_parses_inline_project_role_team_size_and_metadata(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    skill_parser = _create_skill_parser(
+        settings,
+        taxonomy,
+    )
+
+    parser = ProjectParser(
+        settings,
+        skill_parser,
+    )
+
+    text = """
+    Blockchain-Integrated Car Marketplace Platform | Full-stack Developer
+    GitHub: https://github.com/example/car-marketplace.git
+    Link: https://car-marketplace.example.com
+    Team Project - 3 members
+    Tech Stack: React, Next.js, MongoDB
+    • Developed frontend and backend marketplace workflows.
+    • Built RESTful APIs for product management.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.name == (
+        "Blockchain-Integrated Car Marketplace Platform"
+    )
+    assert project.role == "Full-stack Developer"
+    assert project.team_size_text == "3 members"
+    assert project.repository_url == (
+        "https://github.com/example/car-marketplace.git"
+    )
+    assert project.project_url == (
+        "https://car-marketplace.example.com"
+    )
+    assert "React" in project.skills
+    assert "Next.js" in project.skills
+    assert "MongoDB" in project.skills
+    assert len(project.responsibilities) == 2
+
+    assert project.description is None
+
+
+def test_parses_vietnamese_inline_project_role_and_team_size(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    skill_parser = _create_skill_parser(
+        settings,
+        taxonomy,
+    )
+
+    parser = ProjectParser(
+        settings,
+        skill_parser,
+    )
+
+    text = """
+    Hệ thống quản lý nhà hàng | Lập trình viên Full-stack
+    Dự án nhóm - 4 thành viên
+    Công nghệ sử dụng: React, Supabase
+    • Xây dựng giao diện quản lý bàn và hóa đơn.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.name == "Hệ thống quản lý nhà hàng"
+    assert project.role == "Lập trình viên Full-stack"
+    assert project.team_size_text == "4 thành viên"
+    assert "React" in project.skills
+    assert "Supabase" in project.skills
+    assert project.description is None
+
+
+def test_does_not_split_project_title_when_pipe_suffix_is_not_role(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    skill_parser = _create_skill_parser(
+        settings,
+        taxonomy,
+    )
+
+    parser = ProjectParser(
+        settings,
+        skill_parser,
+    )
+
+    text = """
+    Research | Development Platform
+    Personal Project
+    Tech Stack: React
+    • Built a proof-of-concept platform.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.name == "Research | Development Platform"
+    assert project.role is None
+    assert project.description is None
+
+
+def test_merges_wrapped_project_bullet_lines_without_polluting_description(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    skill_parser = _create_skill_parser(
+        settings,
+        taxonomy,
+    )
+
+    parser = ProjectParser(
+        settings,
+        skill_parser,
+    )
+
+    text = """
+    Marketplace Platform | Full-stack Developer
+    Tech Stack: React, MongoDB
+    • Developed frontend and backend marketplace workflows,
+    focusing on admin management and user-facing features.
+    • Reduced page loading time by 20 percent through
+    optimized data fetching.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.description is None
+    assert project.responsibilities == [
+        "Developed frontend and backend marketplace workflows, "
+        "focusing on admin management and user-facing features."
+    ]
+    assert project.achievements == [
+        "Reduced page loading time by 20 percent through "
+        "optimized data fetching."
+    ]
+
+
+def test_does_not_classify_unmeasured_improvement_as_achievement(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ProjectParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = """
+    Inventory Portal | Backend Developer
+    • Implemented and improved inventory management modules.
+    • Built 20 administrative screens for internal workflows.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.achievements == []
+    assert project.responsibilities == [
+        "Implemented and improved inventory management modules.",
+        "Built 20 administrative screens for internal workflows.",
+    ]
+
+
+def test_classifies_quantified_and_recognized_project_results_as_achievements(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ProjectParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = """
+    Document Processing Service | Software Engineer
+    • Reduced average processing time by 35 percent.
+    • Won first place in the university innovation contest.
+    • Maintained the document upload workflow.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.achievements == [
+        "Reduced average processing time by 35 percent.",
+        "Won first place in the university innovation contest.",
+    ]
+    assert project.responsibilities == [
+        "Maintained the document upload workflow."
+    ]
+
+
+def test_parses_unaccented_vietnamese_project_labels_and_standalone_role(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ProjectParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = """
+    Ten du an: He thong theo doi don hang
+    Vai tro: Lap trinh vien Backend
+    Linh vuc: Logistics
+    Du an nhom - 5 thanh vien
+    Cong nghe su dung: Java, Spring Boot
+    Mo ta: He thong ho tro theo doi trang thai giao hang.
+    • Giam thoi gian xu ly tu 10 giay xuong 4 giay.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.name == "He thong theo doi don hang"
+    assert project.role == "Lap trinh vien Backend"
+    assert project.domain == "Logistics"
+    assert project.team_size_text == "5 thanh vien"
+    assert project.description == (
+        "He thong ho tro theo doi trang thai giao hang."
+    )
+    assert project.achievements == [
+        "Giam thoi gian xu ly tu 10 giay xuong 4 giay."
+    ]
+
+
+def test_merges_uppercase_acronym_bullet_continuation_only_when_previous_is_incomplete(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ProjectParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = """
+    Identity Gateway | Backend Engineer
+    • Integrated authentication with
+    OAuth 2.0 and Google Identity services.
+    • Documented deployment procedures.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.responsibilities == [
+        "Integrated authentication with OAuth 2.0 and Google Identity services.",
+        "Documented deployment procedures.",
+    ]
+    assert project.description is None
+
+
+def test_preserves_hyphenated_project_name_without_guessing_inline_role(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ProjectParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = """
+    AI-Powered Reading and Research Platform
+    Role: Front-end Developer
+    • Built accessible reading interfaces.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.name == (
+        "AI-Powered Reading and Research Platform"
+    )
+    assert project.role == "Front-end Developer"
+
+
+def test_parses_non_software_project_using_the_same_structural_rules(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = ProjectParser(
+        settings,
+        _create_skill_parser(
+            settings,
+            taxonomy,
+        ),
+    )
+
+    text = """
+    Community Health Survey | Research Analyst
+    Team size: 6 people
+    Domain: Public Health
+    • Designed the participant questionnaire.
+    • Increased completed responses by 25 percent.
+    """
+
+    projects = parser.parse(
+        {
+            "PROJECTS": (text,),
+        }
+    )
+
+    assert len(projects) == 1
+
+    project = projects[0]
+
+    assert project.name == "Community Health Survey"
+    assert project.role == "Research Analyst"
+    assert project.team_size_text == "6 people"
+    assert project.domain == "Public Health"
+    assert project.responsibilities == [
+        "Designed the participant questionnaire."
+    ]
+    assert project.achievements == [
+        "Increased completed responses by 25 percent."
+    ]
+
+
+def test_parses_unlabelled_field_inline_gpa_and_expected_graduation(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = EducationParser(
+        settings,
+        taxonomy,
+    )
+
+    text = """
+    VNUHCM - University of Information Technology
+    Information Technology GPA: 8.03 / 10
+    Sep 2023 - Present Expected Graduation: 2027
+    """
+
+    result = parser.parse(
+        {
+            "EDUCATION": (text,),
+        }
+    )
+
+    assert len(result.educations) == 1
+
+    education = result.educations[0]
+
+    assert education.institution_name == (
+        "VNUHCM - University of Information Technology"
+    )
+    assert education.degree is None
+    assert education.normalized_degree_level is None
+    assert education.field_of_study == "Information Technology"
+    assert education.grade == "8.03 / 10"
+    assert education.start_date == "2023-09"
+    assert education.end_date is None
+    assert education.current is True
+    assert education.description == (
+        "Expected Graduation: 2027"
+    )
+    assert "EDUCATION_PARTIALLY_PARSED" not in result.warnings
+
+
+def test_parses_vietnamese_institution_field_grade_and_expected_graduation(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = EducationParser(
+        settings,
+        taxonomy,
+    )
+
+    text = """
+    Trường Đại học Công nghệ Thông tin
+    Công nghệ thông tin ĐTB: 8,03 / 10
+    09/2023 - Hiện tại Dự kiến tốt nghiệp: Tháng 6 năm 2027
+    """
+
+    result = parser.parse(
+        {
+            "EDUCATION": (text,),
+        }
+    )
+
+    assert len(result.educations) == 1
+
+    education = result.educations[0]
+
+    assert education.institution_name == (
+        "Trường Đại học Công nghệ Thông tin"
+    )
+    assert education.degree is None
+    assert education.normalized_degree_level is None
+    assert education.field_of_study == "Công nghệ thông tin"
+    assert education.grade == "8,03 / 10"
+    assert education.start_date == "2023-09"
+    assert education.end_date is None
+    assert education.current is True
+    assert education.description == (
+        "Dự kiến tốt nghiệp: Tháng 6 năm 2027"
+    )
+    assert "EDUCATION_PARTIALLY_PARSED" not in result.warnings
+
+
+def test_parses_unaccented_vietnamese_education_labels(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = EducationParser(
+        settings,
+        taxonomy,
+    )
+
+    text = """
+    Truong Dai hoc Bach khoa
+    Nganh: Ky thuat phan mem
+    Diem trung binh: 8.2/10
+    09/2022 - Present Du kien tot nghiep: 06/2026
+    """
+
+    result = parser.parse(
+        {
+            "EDUCATION": (text,),
+        }
+    )
+
+    assert len(result.educations) == 1
+
+    education = result.educations[0]
+
+    assert education.institution_name == (
+        "Truong Dai hoc Bach khoa"
+    )
+    assert education.degree is None
+    assert education.normalized_degree_level is None
+    assert education.field_of_study == "Ky thuat phan mem"
+    assert education.grade == "8.2/10"
+    assert education.start_date == "2022-09"
+    assert education.end_date is None
+    assert education.current is True
+    assert education.description == (
+        "Du kien tot nghiep: 06/2026"
+    )
+    assert "EDUCATION_PARTIALLY_PARSED" not in result.warnings
+
+def test_current_education_never_emits_end_date_for_expected_graduation(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = EducationParser(
+        settings,
+        taxonomy,
+    )
+
+    text = """
+    Example University
+    Major: Computer Science
+    2024 - Present
+    Expected Graduation: 2028
+    """
+
+    result = parser.parse(
+        {
+            "EDUCATION": (text,),
+        }
+    )
+
+    assert len(result.educations) == 1
+
+    education = result.educations[0]
+
+    assert education.current is True
+    assert education.end_date is None
+    assert education.description == (
+        "Expected Graduation: 2028"
+    )
+
+
+def test_does_not_treat_vietnamese_university_name_as_degree(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = EducationParser(
+        settings,
+        taxonomy,
+    )
+
+    text = """
+    Trường Đại học Kinh tế
+    Ngành: Kế toán
+    2019 - 2023
+    """
+
+    result = parser.parse(
+        {
+            "EDUCATION": (text,),
+        }
+    )
+
+    assert len(result.educations) == 1
+
+    education = result.educations[0]
+
+    assert education.institution_name == "Trường Đại học Kinh tế"
+    assert education.degree is None
+    assert education.normalized_degree_level is None
+    assert education.field_of_study == "Kế toán"
+
+
+def test_keeps_relevant_coursework_in_description_not_field_of_study(
+        settings: Settings,
+        taxonomy: TaxonomyBundle,
+) -> None:
+    parser = EducationParser(
+        settings,
+        taxonomy,
+    )
+
+    text = """
+    University of Economics
+    Relevant Coursework: Databases, Algorithms
+    2018 - 2022
+    """
+
+    result = parser.parse(
+        {
+            "EDUCATION": (text,),
+        }
+    )
+
+    assert len(result.educations) == 1
+
+    education = result.educations[0]
+
+    assert education.field_of_study is None
+    assert education.description == (
+        "Relevant Coursework: Databases, Algorithms"
+    )
+    assert "EDUCATION_PARTIALLY_PARSED" in result.warnings

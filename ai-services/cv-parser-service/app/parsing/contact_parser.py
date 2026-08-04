@@ -34,9 +34,58 @@ URL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+ADDRESS_LABEL_TEXT = (
+    r"(?:"
+    r"(?:(?:current|home|mailing|contact|residential)\s+)?address"
+    r"|location"
+    r"|địa\s*chỉ(?:\s+(?:hiện\s+tại|liên\s+hệ|thường\s+trú))?"
+    r"|dia\s*chi(?:\s+(?:hien\s+tai|lien\s+he|thuong\s+tru))?"
+    r"|nơi\s*ở|noi\s*o"
+    r"|khu\s*vực|khu\s*vuc"
+    r")"
+)
+
+CONTACT_BOUNDARY_LABEL_TEXT = (
+    r"(?:"
+    r"e-?mail|thư\s*điện\s*tử|thu\s*dien\s*tu"
+    r"|phone|mobile|telephone|tel"
+    r"|sđt|sdt|điện\s*thoại|dien\s*thoai"
+    r"|số\s*điện\s*thoại|so\s*dien\s*thoai"
+    r"|di\s*động|di\s*dong"
+    r"|postal\s*code|zip\s*code|postcode"
+    r"|mã\s*bưu\s*chính|ma\s*buu\s*chinh"
+    r"|github|linkedin|portfolio|website"
+    r"|trang\s*cá\s*nhân|trang\s*ca\s*nhan"
+    r"|hồ\s*sơ|ho\s*so"
+    r"|address|location"
+    r"|địa\s*chỉ|dia\s*chi"
+    r"|nơi\s*ở|noi\s*o"
+    r"|(?:project|job|work|office|company|employer|"
+    r"school|university|preferred|desired)\s+location"
+    r")"
+)
+
 LABELLED_ADDRESS_PATTERN = re.compile(
-    r"^(?:address|location|địa\s*chỉ|nơi\s*ở)"
-    r"\s*[:：-]\s*(?P<value>.+)$",
+    rf"(?P<label>{ADDRESS_LABEL_TEXT})\s*[:：-]\s*"
+    rf"(?P<value>.*?)"
+    rf"(?=(?:\s+{CONTACT_BOUNDARY_LABEL_TEXT}\s*[:：-])|$)",
+    re.IGNORECASE,
+)
+
+CONTACT_LABEL_AT_START_PATTERN = re.compile(
+    rf"^(?:{CONTACT_BOUNDARY_LABEL_TEXT})\s*[:：-]",
+    re.IGNORECASE,
+)
+
+NON_CONTACT_ADDRESS_PREFIX_PATTERN = re.compile(
+    r"(?:project|job|work|office|company|employer|school|university|"
+    r"preferred|desired)\s*$",
+    re.IGNORECASE,
+)
+
+NON_CONTACT_LOCATION_LINE_PATTERN = re.compile(
+    r"^(?:project|job|work|office|company|employer|school|university|"
+    r"preferred|desired)\s+location\s*[:：-]",
     re.IGNORECASE,
 )
 
@@ -45,11 +94,6 @@ POSTAL_CODE_PATTERN = re.compile(
     r"\s*[:：-]\s*(?P<value>[A-Z0-9][A-Z0-9 -]{2,14})$",
     re.IGNORECASE,
 )
-
-COUNTRY_CANONICALS = {
-    "vietnam",
-    "singapore",
-}
 
 SOCIAL_HOSTS = {
     "facebook.com",
@@ -92,11 +136,24 @@ class ContactParser:
 
         email = self._extract_email(contact_scope)
         phone = self._extract_phone(contact_scope)
-        address_text = self._extract_labelled_address(contact_scope)
-        postal_code = self._extract_postal_code(contact_scope)
-        city, province_or_state, country = self._extract_locations(
+        address_text = self._extract_labelled_address(
             contact_scope
         )
+        postal_code = self._extract_postal_code(
+            contact_scope
+        )
+
+        location_scope = (
+                address_text
+                or self._build_location_scope(contact_scope)
+        )
+
+        city, province_or_state, country = (
+            self._extract_locations(
+                location_scope
+            )
+        )
+
         links = self._extract_links(raw_text)
 
         return ContactParseResult(
@@ -118,15 +175,35 @@ class ContactParser:
             section_texts: dict[str, tuple[str, ...]],
     ) -> str:
         values: list[str] = []
-        values.extend(section_texts.get("HEADER", ()))
-        values.extend(section_texts.get("CONTACT", ()))
+        values.extend(
+            section_texts.get("HEADER", ())
+        )
+        values.extend(
+            section_texts.get("CONTACT", ())
+        )
 
         if not values:
             values.append(
-                "\n".join(raw_text.splitlines()[:20])
+                "\n".join(
+                    raw_text.splitlines()[:20]
+                )
             )
 
         return "\n".join(values)
+
+    @staticmethod
+    def _build_location_scope(
+            contact_scope: str,
+    ) -> str:
+        lines = [
+            line
+            for line in contact_scope.splitlines()
+            if not NON_CONTACT_LOCATION_LINE_PATTERN.match(
+                line.strip()
+            )
+        ]
+
+        return "\n".join(lines)
 
     @staticmethod
     def _extract_email(
@@ -143,9 +220,15 @@ class ContactParser:
     def _extract_phone(
             text: str,
     ) -> str | None:
-        for match in PHONE_CANDIDATE_PATTERN.finditer(text):
+        for match in PHONE_CANDIDATE_PATTERN.finditer(
+                text
+        ):
             candidate = match.group(0).strip()
-            normalized = ContactParser._normalize_phone(candidate)
+            normalized = (
+                ContactParser._normalize_phone(
+                    candidate
+                )
+            )
 
             if normalized is not None:
                 return normalized
@@ -156,7 +239,10 @@ class ContactParser:
     def _normalize_phone(
             value: str,
     ) -> str | None:
-        has_leading_plus = value.lstrip().startswith("+")
+        has_leading_plus = (
+            value.lstrip().startswith("+")
+        )
+
         digits = "".join(
             character
             for character in value
@@ -169,7 +255,10 @@ class ContactParser:
         if has_leading_plus:
             return f"+{digits}"
 
-        if digits.startswith("84") and len(digits) in {11, 12}:
+        if (
+                digits.startswith("84")
+                and len(digits) in {11, 12}
+        ):
             return f"+{digits}"
 
         return digits
@@ -178,26 +267,98 @@ class ContactParser:
     def _extract_labelled_address(
             text: str,
     ) -> str | None:
-        for line in text.splitlines():
-            match = LABELLED_ADDRESS_PATTERN.match(
-                line.strip()
-            )
+        lines = text.splitlines()
 
-            if match is None:
+        for line_index, raw_line in enumerate(
+                lines
+        ):
+            line = raw_line.strip()
+
+            if not line:
                 continue
 
-            value = clean_optional_text(
-                match.group("value"),
+            for match in LABELLED_ADDRESS_PATTERN.finditer(
+                    line
+            ):
+                prefix = line[
+                    :match.start()
+                ].rstrip()
+
+                if NON_CONTACT_ADDRESS_PREFIX_PATTERN.search(
+                        prefix
+                ):
+                    continue
+
+                value = clean_optional_text(
+                    match.group("value"),
+                    maximum_length=500,
+                )
+
+                if value is None:
+                    value = (
+                        ContactParser
+                        ._address_on_following_line(
+                            lines,
+                            line_index,
+                        )
+                    )
+
+                if ContactParser._is_valid_address_value(
+                        value
+                ):
+                    return value
+
+        return None
+
+    @staticmethod
+    def _address_on_following_line(
+            lines: list[str],
+            label_line_index: int,
+    ) -> str | None:
+        for raw_line in lines[
+            label_line_index + 1:
+            label_line_index + 4
+        ]:
+            candidate = raw_line.strip()
+
+            if not candidate:
+                continue
+
+            if CONTACT_LABEL_AT_START_PATTERN.match(
+                    candidate
+            ):
+                return None
+
+            return clean_optional_text(
+                candidate,
                 maximum_length=500,
             )
 
-            if (
-                    value is not None
-                    and not EMAIL_PATTERN.search(value)
-            ):
-                return value
-
         return None
+
+    @staticmethod
+    def _is_valid_address_value(
+            value: str | None,
+    ) -> bool:
+        if value is None:
+            return False
+
+        if (
+                EMAIL_PATTERN.search(value)
+                or URL_PATTERN.search(value)
+        ):
+            return False
+
+        normalized = normalize_for_matching(
+            value
+        )
+
+        return normalized not in {
+            "remote",
+            "hybrid",
+            "onsite",
+            "on site",
+        }
 
     @staticmethod
     def _extract_postal_code(
@@ -219,70 +380,151 @@ class ContactParser:
     def _extract_locations(
             self,
             text: str,
-    ) -> tuple[str | None, str | None, str | None]:
-        normalized_text = normalize_for_matching(text)
-        matches: list[str] = []
-
-        for item in self._locations:
-            if any(
-                    self._contains_phrase(
-                        normalized_text,
-                        alias,
-                    )
-                    for alias in item.aliases
-            ):
-                matches.append(item.canonical)
-
-        matches = stable_unique(
-            matches,
-            maximum_items=5,
+    ) -> tuple[
+        str | None,
+        str | None,
+        str | None,
+    ]:
+        normalized_text = normalize_for_matching(
+            text
         )
 
-        country = next(
-            (
-                value
-                for value in matches
-                if value.casefold() in COUNTRY_CANONICALS
+        matches: list[
+            tuple[int, int, str, str]
+        ] = []
+
+        for item in self._locations:
+            best_match: tuple[
+                            int,
+                            int,
+                        ] | None = None
+
+            for alias in item.aliases:
+                position = self._phrase_position(
+                    normalized_text,
+                    alias,
+                )
+
+                if position is None:
+                    continue
+
+                candidate = (
+                    position,
+                    -len(
+                        normalize_for_matching(
+                            alias
+                        )
+                    ),
+                )
+
+                if (
+                        best_match is None
+                        or candidate < best_match
+                ):
+                    best_match = candidate
+
+            if best_match is None:
+                continue
+
+            matches.append(
+                (
+                    best_match[0],
+                    best_match[1],
+                    item.kind,
+                    item.canonical,
+                )
+            )
+
+        matches.sort(
+            key=lambda match: (
+                match[0],
+                match[1],
+                match[2],
+                match[3].casefold(),
+            )
+        )
+
+        values_by_kind: dict[
+            str,
+            list[str],
+        ] = {
+            "CITY": [],
+            "REGION": [],
+            "COUNTRY": [],
+        }
+
+        for (
+                _,
+                _,
+                kind,
+                canonical,
+        ) in matches:
+            values_by_kind[kind].append(
+                canonical
+            )
+
+        for kind in values_by_kind:
+            values_by_kind[kind] = (
+                stable_unique(
+                    values_by_kind[kind],
+                    maximum_items=5,
+                )
+            )
+
+        city = next(
+            iter(
+                values_by_kind["CITY"]
             ),
             None,
         )
 
-        place_matches = [
-            value
-            for value in matches
-            if value.casefold() not in COUNTRY_CANONICALS
-        ]
-
-        city = (
-            place_matches[0]
-            if place_matches
-            else None
+        province_or_state = next(
+            iter(
+                values_by_kind["REGION"]
+            ),
+            None,
         )
 
-        province_or_state = (
-            place_matches[1]
-            if len(place_matches) > 1
-            else None
+        country = next(
+            iter(
+                values_by_kind["COUNTRY"]
+            ),
+            None,
         )
 
-        return city, province_or_state, country
+        return (
+            city,
+            province_or_state,
+            country,
+        )
 
     @staticmethod
-    def _contains_phrase(
+    def _phrase_position(
             normalized_text: str,
             raw_phrase: str,
-    ) -> bool:
-        phrase = normalize_for_matching(raw_phrase)
+    ) -> int | None:
+        phrase = normalize_for_matching(
+            raw_phrase
+        )
 
         if not phrase:
-            return False
+            return None
 
         pattern = re.compile(
-            rf"(?<![\w]){re.escape(phrase)}(?![\w])",
+            rf"(?<![\w])"
+            rf"{re.escape(phrase)}"
+            rf"(?![\w])",
             re.UNICODE,
         )
 
-        return pattern.search(normalized_text) is not None
+        match = pattern.search(
+            normalized_text
+        )
+
+        if match is None:
+            return None
+
+        return match.start()
 
     def _extract_links(
             self,
@@ -291,25 +533,37 @@ class ContactParser:
         result: list[LinkEntry] = []
         seen: set[str] = set()
 
-        for match in URL_PATTERN.finditer(raw_text):
+        for match in URL_PATTERN.finditer(
+                raw_text
+        ):
             validated = validate_http_url(
                 match.group(0)
             )
 
-            if validated is None or validated in seen:
+            if (
+                    validated is None
+                    or validated in seen
+            ):
                 continue
 
             seen.add(validated)
 
             result.append(
                 LinkEntry(
-                    type=self._classify_link(validated),
+                    type=self._classify_link(
+                        validated
+                    ),
                     url=validated,
-                    label=self._link_label(validated),
+                    label=self._link_label(
+                        validated
+                    ),
                 )
             )
 
-            if len(result) >= self._settings.max_links:
+            if (
+                    len(result)
+                    >= self._settings.max_links
+            ):
                 break
 
         return result
@@ -319,31 +573,44 @@ class ContactParser:
             url: str,
     ) -> str:
         parsed = urlsplit(url)
+
         hostname = (
                 parsed.hostname or ""
         ).casefold()
+
         path = parsed.path.casefold()
 
-        if hostname.endswith("linkedin.com"):
+        if hostname.endswith(
+                "linkedin.com"
+        ):
             return "LINKEDIN"
 
-        if hostname.endswith("github.com"):
+        if hostname.endswith(
+                "github.com"
+        ):
             return "GITHUB"
 
-        if hostname.endswith("behance.net"):
+        if hostname.endswith(
+                "behance.net"
+        ):
             return "BEHANCE"
 
-        if hostname.endswith("dribbble.com"):
+        if hostname.endswith(
+                "dribbble.com"
+        ):
             return "DRIBBBLE"
 
-        if hostname.endswith("stackoverflow.com"):
+        if hostname.endswith(
+                "stackoverflow.com"
+        ):
             return "STACK_OVERFLOW"
 
         if hostname in SOCIAL_HOSTS:
             return "SOCIAL_PROFILE"
 
         if any(
-                token in hostname or token in path
+                token in hostname
+                or token in path
                 for token in (
                         "portfolio",
                         "works",
@@ -373,13 +640,34 @@ class ContactParser:
         ).casefold()
 
         labels = (
-            ("linkedin.com", "LinkedIn"),
-            ("github.com", "GitHub"),
-            ("behance.net", "Behance"),
-            ("dribbble.com", "Dribbble"),
-            ("stackoverflow.com", "Stack Overflow"),
-            ("researchgate.net", "ResearchGate"),
-            ("orcid.org", "ORCID"),
+            (
+                "linkedin.com",
+                "LinkedIn",
+            ),
+            (
+                "github.com",
+                "GitHub",
+            ),
+            (
+                "behance.net",
+                "Behance",
+            ),
+            (
+                "dribbble.com",
+                "Dribbble",
+            ),
+            (
+                "stackoverflow.com",
+                "Stack Overflow",
+            ),
+            (
+                "researchgate.net",
+                "ResearchGate",
+            ),
+            (
+                "orcid.org",
+                "ORCID",
+            ),
         )
 
         for suffix, label in labels:

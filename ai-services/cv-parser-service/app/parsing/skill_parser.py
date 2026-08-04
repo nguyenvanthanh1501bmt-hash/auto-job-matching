@@ -16,11 +16,30 @@ SKILL_SPLIT_PATTERN = re.compile(
 LEADING_BULLET_PATTERN = re.compile(
     r"^\s*(?:[-*]|\d{1,2}[.)])\s*"
 )
-SKILL_LABEL_PATTERN = re.compile(
-    r"^(?:skills?|key\s+skills?|core\s+skills?|competencies|"
-    r"technical\s+skills?|professional\s+skills?|kỹ\s+năng|"
-    r"kỹ\s+năng\s+chuyên\s+môn|năng\s+lực|chuyên\s+môn)"
-    r"\s*[:：-]\s*",
+SKILL_GROUP_LABEL_PATTERN = re.compile(
+    r"^(?:"
+    r"skills?|key\s+skills?|core\s+skills?|competencies|"
+    r"technical\s+skills?|professional\s+skills?|"
+    r"programming\s+languages?|languages?|"
+    r"frameworks?|libraries?|libraries\s+and\s+frameworks?|"
+    r"databases?|database\s+management\s+systems?|"
+    r"tools?|development\s+tools?|technologies?|"
+    r"cloud|platforms?|soft\s+skills?|"
+    r"kỹ\s+năng(?:\s+(?:chuyên\s+môn|kỹ\s+thuật|mềm|cá\s+nhân))?|"
+    r"ky\s+nang(?:\s+(?:chuyen\s+mon|ky\s+thuat|mem|ca\s+nhan))?|"
+    r"năng\s+lực|nang\s+luc|chuyên\s+môn|chuyen\s+mon|"
+    r"ngôn\s+ngữ(?:\s+lập\s+trình)?|"
+    r"ngon\s+ngu(?:\s+lap\s+trinh)?|"
+    r"thư\s+viện(?:\s+và\s+framework)?|"
+    r"thu\s+vien(?:\s+va\s+framework)?|"
+    r"framework|"
+    r"cơ\s+sở\s+dữ\s+liệu|co\s+so\s+du\s+lieu|"
+    r"hệ\s+quản\s+trị\s+cơ\s+sở\s+dữ\s+liệu|"
+    r"he\s+quan\s+tri\s+co\s+so\s+du\s+lieu|"
+    r"công\s+cụ(?:\s+phát\s+triển)?|"
+    r"cong\s+cu(?:\s+phat\s+trien)?|"
+    r"công\s+nghệ|cong\s+nghe"
+    r")\s*[:：-]\s*",
     re.IGNORECASE,
 )
 YEAR_OR_DATE_PATTERN = re.compile(
@@ -278,10 +297,14 @@ class SkillParser:
         if not normalized_text:
             return []
 
-        result: list[SkillMatch] = []
+        span_matches: list[
+            tuple[SkillMatch, int, int]
+        ] = []
 
         for item in self._skills:
-            best: tuple[int, int, str] | None = None
+            seen_item_spans: set[
+                tuple[int, int]
+            ] = set()
 
             for alias in sorted(
                     item.aliases,
@@ -295,64 +318,104 @@ class SkillParser:
                 pattern = self._phrase_pattern(
                     normalized_alias
                 )
-                match = pattern.search(
-                    normalized_text
-                )
 
-                if match is None:
-                    continue
-
-                candidate = (
-                    match.start(),
-                    -len(normalized_alias),
-                    alias,
-                )
-
-                if (
-                        best is None
-                        or candidate < best
+                for match in pattern.finditer(
+                        normalized_text
                 ):
-                    best = candidate
+                    span = (
+                        match.start(),
+                        match.end(),
+                    )
 
-            if best is None:
+                    if span in seen_item_spans:
+                        continue
+
+                    seen_item_spans.add(span)
+
+                    source_line = (
+                        self._line_containing_normalized_phrase(
+                            text,
+                            alias,
+                        )
+                    )
+
+                    (
+                        proficiency_text,
+                        normalized_proficiency,
+                    ) = self._extract_proficiency(
+                        source_line,
+                        alias,
+                    )
+
+                    span_matches.append(
+                        (
+                            SkillMatch(
+                                name=item.canonical,
+                                normalized_name=(
+                                    item.canonical
+                                ),
+                                category=item.category,
+                                proficiency_text=(
+                                    proficiency_text
+                                ),
+                                normalized_proficiency=(
+                                    normalized_proficiency
+                                ),
+                                evidence_source=(
+                                    evidence_source
+                                ),
+                                position=match.start(),
+                            ),
+                            match.start(),
+                            match.end(),
+                        )
+                    )
+
+        selected: list[
+            tuple[SkillMatch, int, int]
+        ] = []
+
+        for candidate in sorted(
+                span_matches,
+                key=lambda item: (
+                        item[1],
+                        -(item[2] - item[1]),
+                        item[0].normalized_name.casefold(),
+                ),
+        ):
+            _, start, end = candidate
+
+            if any(
+                    start >= selected_start
+                    and end <= selected_end
+                    and (start, end)
+                    != (selected_start, selected_end)
+                    for _, selected_start, selected_end
+                    in selected
+            ):
                 continue
 
-            source_line = (
-                self._line_containing_normalized_phrase(
-                    text,
-                    best[2],
-                )
-            )
+            selected.append(candidate)
 
-            (
-                proficiency_text,
-                normalized_proficiency,
-            ) = self._extract_proficiency(
-                source_line,
-                best[2],
-            )
+        result: list[SkillMatch] = []
+        seen_names: set[str] = set()
 
-            result.append(
-                SkillMatch(
-                    name=item.canonical,
-                    normalized_name=item.canonical,
-                    category=item.category,
-                    proficiency_text=proficiency_text,
-                    normalized_proficiency=(
-                        normalized_proficiency
-                    ),
-                    evidence_source=evidence_source,
-                    position=best[0],
-                )
-            )
+        for skill_match, _, _ in sorted(
+                selected,
+                key=lambda candidate: (
+                        candidate[0].position,
+                        candidate[0].normalized_name.casefold(),
+                ),
+        ):
+            key = skill_match.normalized_name.casefold()
 
-        return sorted(
-            result,
-            key=lambda match: (
-                match.position,
-                match.normalized_name.casefold(),
-            ),
-        )
+            if key in seen_names:
+                continue
+
+            seen_names.add(key)
+            result.append(skill_match)
+
+        return result
 
     def _extract_unknown_skills(
             self,
@@ -373,7 +436,7 @@ class SkillParser:
                 raw_line,
             ).strip()
 
-            line = SKILL_LABEL_PATTERN.sub(
+            line = SKILL_GROUP_LABEL_PATTERN.sub(
                 "",
                 line,
             ).strip()

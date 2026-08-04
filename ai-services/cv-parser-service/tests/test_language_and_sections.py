@@ -344,3 +344,74 @@ def test_text_normalizer_warns_when_extracted_text_is_truncated(
     assert result.warnings == (
         "TRUNCATED_EXTRACTED_TEXT",
     )
+
+def test_text_normalizer_repairs_utf8_decoded_as_latin1(
+        settings: Settings,
+) -> None:
+    normalizer = TextNormalizer(
+        settings
+    )
+
+    expected_text = (
+        "Ngô Thị Hồng Ánh\n"
+        "MỤC TIÊU NGHỀ NGHIỆP\n"
+        "Trường Đại Học Ngân Hàng"
+    )
+
+    mojibake_text = (
+        expected_text
+        .encode("utf-8")
+        .decode("latin1")
+    )
+
+    result = normalizer.normalize(
+        mojibake_text
+    )
+
+    assert result.text == expected_text
+
+    assert result.warnings == (
+        "TEXT_ENCODING_REPAIRED",
+    )
+
+
+def test_text_normalizer_repairs_cp1252_punctuation_mojibake(
+        settings: Settings,
+) -> None:
+    normalizer = TextNormalizer(
+        settings
+    )
+
+    result = normalizer.normalize(
+        "Senior â€“ Marketing Specialist"
+    )
+
+    assert result.text == (
+        "Senior – Marketing Specialist"
+    )
+
+    assert result.warnings == (
+        "TEXT_ENCODING_REPAIRED",
+    )
+
+
+def test_text_normalizer_does_not_modify_valid_unicode(
+        settings: Settings,
+) -> None:
+    normalizer = TextNormalizer(
+        settings
+    )
+
+    source = (
+        "NGÔ THỊ HỒNG ÁNH\n"
+        "KỸ NĂNG GIAO TIẾP\n"
+        "JOÃO SILVA\n"
+        "Café © 2026"
+    )
+
+    result = normalizer.normalize(
+        source
+    )
+
+    assert result.text == source
+    assert result.warnings == ()

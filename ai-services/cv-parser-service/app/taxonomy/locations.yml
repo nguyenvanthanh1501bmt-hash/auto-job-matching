@@ -2,6 +2,7 @@ version: rule-v1
 
 items:
   - canonical: Ho Chi Minh City
+    kind: CITY
     aliases:
       - Ho Chi Minh City
       - Ho Chi Minh
@@ -12,127 +13,180 @@ items:
       - Hồ Chí Minh
       - Sài Gòn
       - Saigon
+      - hcm
 
   - canonical: Hanoi
+    kind: CITY
     aliases:
       - Hanoi
       - Ha Noi
       - Hà Nội
       - TP Hà Nội
+      - HN
 
   - canonical: Da Nang
+    kind: CITY
     aliases:
       - Da Nang
       - Đà Nẵng
       - TP Đà Nẵng
+      - DN
 
   - canonical: Hai Phong
+    kind: CITY
     aliases:
       - Hai Phong
       - Hải Phòng
       - TP Hải Phòng
+      - HP
 
   - canonical: Can Tho
+    kind: CITY
     aliases:
       - Can Tho
       - Cần Thơ
       - TP Cần Thơ
 
   - canonical: Binh Duong
+    kind: REGION
     aliases:
       - Binh Duong
       - Bình Dương
+      - BD
 
   - canonical: Dong Nai
+    kind: REGION
     aliases:
       - Dong Nai
+      - DN
       - Đồng Nai
 
   - canonical: Bac Ninh
+    kind: REGION
     aliases:
       - Bac Ninh
       - Bắc Ninh
+      - BN
 
   - canonical: Quang Ninh
+    kind: REGION
     aliases:
       - Quang Ninh
       - Quảng Ninh
+      - QN
 
   - canonical: Ba Ria - Vung Tau
+    kind: REGION
     aliases:
       - Ba Ria Vung Tau
       - Bà Rịa - Vũng Tàu
+      - Ba Ria - Vung Tau
+      - BR-VT
+
+  - canonical: Vung Tau
+    kind: CITY
+    aliases:
       - Vung Tau
       - Vũng Tàu
 
   - canonical: Hue
+    kind: CITY
     aliases:
       - Hue
       - Huế
+      - Thành phố Huế
+      - TP Huế
+
+  - canonical: Thua Thien Hue
+    kind: REGION
+    aliases:
+      - Thua Thien Hue
       - Thừa Thiên Huế
 
   - canonical: Nha Trang
+    kind: CITY
     aliases:
       - Nha Trang
+
+  - canonical: Khanh Hoa
+    kind: REGION
+    aliases:
+      - Khanh Hoa
       - Khánh Hòa
 
   - canonical: Vietnam
+    kind: COUNTRY
     aliases:
       - Vietnam
       - Viet Nam
       - Việt Nam
+      - VN
 
   - canonical: Singapore
+    kind: COUNTRY
     aliases:
       - Singapore
+      - Sing
 
   - canonical: Bangkok
+    kind: CITY
     aliases:
       - Bangkok
 
   - canonical: Kuala Lumpur
+    kind: CITY
     aliases:
       - Kuala Lumpur
 
   - canonical: Tokyo
+    kind: CITY
     aliases:
       - Tokyo
 
   - canonical: Seoul
+    kind: CITY
     aliases:
       - Seoul
 
   - canonical: London
+    kind: CITY
     aliases:
       - London
 
   - canonical: New York
+    kind: CITY
     aliases:
       - New York
       - NYC
 
   - canonical: California
+    kind: REGION
     aliases:
       - California
       - CA
 
   - canonical: Texas
+    kind: REGION
     aliases:
       - Texas
       - TX
 
   - canonical: Ontario
+    kind: REGION
     aliases:
       - Ontario
 
   - canonical: Toronto
+    kind: CITY
     aliases:
       - Toronto
 
   - canonical: Sydney
+    kind: CITY
     aliases:
       - Sydney
 
   - canonical: Melbourne
+    kind: CITY
     aliases:
       - Melbourne

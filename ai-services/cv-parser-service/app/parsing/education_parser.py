@@ -22,12 +22,29 @@ BULLET_PATTERN = re.compile(
 LABEL_PATTERN = re.compile(
     r"^(?P<label>"
     r"institution|school|university|college|academy|institute|"
-    r"trường|học\s+viện|cơ\s+sở\s+đào\s+tạo|"
-    r"degree|qualification|bằng\s+cấp|trình\s+độ|"
-    r"major|field\s+of\s+study|field|ngành|chuyên\s+ngành|"
-    r"specialization|specialisation|concentration|định\s+hướng|"
-    r"grade|gpa|classification|xếp\s+loại|điểm"
+    r"trường|truong|học\s+viện|hoc\s+vien|"
+    r"cơ\s+sở\s+đào\s+tạo|co\s+so\s+dao\s+tao|"
+    r"degree|qualification|bằng\s+cấp|bang\s+cap|"
+    r"trình\s+độ|trinh\s+do|"
+    r"major|field\s+of\s+study|field|ngành|nganh|"
+    r"chuyên\s+ngành|chuyen\s+nganh|"
+    r"specialization|specialisation|concentration|"
+    r"định\s+hướng|dinh\s+huong|"
+    r"grade|gpa|classification|xếp\s+loại|xep\s+loai|"
+    r"điểm\s+trung\s+bình|diem\s+trung\s+binh|đtb|dtb|điểm|diem"
     r")\s*[:：-]\s*(?P<value>.+)$",
+    re.IGNORECASE,
+)
+
+STRONG_INSTITUTION_PATTERN = re.compile(
+    r"(?:^|\s[-–—|]\s)(?:"
+    r"university|college|school|academy|institute|polytechnic|"
+    r"conservatory|faculty|campus|training\s+cent(?:er|re)|"
+    r"trường(?:\s+(?:đại\s+học|cao\s+đẳng|trung\s+cấp))?|"
+    r"truong(?:\s+(?:dai\s+hoc|cao\s+dang|trung\s+cap))?|"
+    r"học\s+viện|hoc\s+vien|viện|vien|"
+    r"trung\s+tâm\s+đào\s+tạo|trung\s+tam\s+dao\s+tao"
+    r")\b",
     re.IGNORECASE,
 )
 
@@ -35,34 +52,88 @@ INSTITUTION_PATTERN = re.compile(
     r"\b(?:"
     r"university|college|school|academy|institute|polytechnic|"
     r"conservatory|faculty|campus|training\s+center|"
-    r"training\s+centre|đại\s+học|cao\s+đẳng|trung\s+cấp|"
-    r"trường|học\s+viện|viện|trung\s+tâm\s+đào\s+tạo"
+    r"training\s+centre|đại\s+học|dai\s+hoc|"
+    r"cao\s+đẳng|cao\s+dang|trung\s+cấp|trung\s+cap|"
+    r"trường|truong|học\s+viện|hoc\s+vien|viện|vien|"
+    r"trung\s+tâm\s+đào\s+tạo|trung\s+tam\s+dao\s+tao"
     r")\b",
     re.IGNORECASE,
 )
 
+GRADE_LABEL = (
+    r"(?:gpa|grade|classification|"
+    r"xếp\s+loại|xep\s+loai|"
+    r"điểm\s+trung\s+bình|diem\s+trung\s+binh|"
+    r"đtb|dtb|điểm|diem)"
+)
+
 GRADE_PATTERN = re.compile(
-    r"^(?:gpa|grade|classification|xếp\s+loại|điểm)"
-    r"\s*[:：-]\s*(?P<value>.+)$",
+    rf"^{GRADE_LABEL}\s*[:：-]\s*(?P<value>.+)$",
+    re.IGNORECASE,
+)
+
+INLINE_GRADE_PATTERN = re.compile(
+    rf"(?<![\w]){GRADE_LABEL}\s*[:：-]?\s*"
+    r"(?P<value>"
+    r"\d{1,3}(?:[.,]\d+)?(?:\s*/\s*\d{1,3}(?:[.,]\d+)?)?"
+    r"|(?:first|second|third)\s+class(?:\s+honou?rs?)?"
+    r"|distinction|merit|pass|excellent|very\s+good|good|average"
+    r"|xuất\s+sắc|xuat\s+sac|giỏi|gioi|khá|kha|trung\s+bình|trung\s+binh"
+    r")",
     re.IGNORECASE,
 )
 
 FIELD_PATTERN = re.compile(
-    r"^(?:major|field\s+of\s+study|field|ngành|chuyên\s+ngành)"
+    r"^(?:major|field\s+of\s+study|field|ngành|nganh|"
+    r"chuyên\s+ngành|chuyen\s+nganh)"
     r"\s*[:：-]\s*(?P<value>.+)$",
     re.IGNORECASE,
 )
 
 SPECIALIZATION_PATTERN = re.compile(
-    r"^(?:specialization|specialisation|concentration|định\s+hướng)"
+    r"^(?:specialization|specialisation|concentration|"
+    r"định\s+hướng|dinh\s+huong)"
     r"\s*[:：-]\s*(?P<value>.+)$",
     re.IGNORECASE,
 )
 
 INLINE_FIELD_PATTERN = re.compile(
     r"\b(?:major(?:ed)?\s+in|speciali[sz](?:ed|ation)\s+in|"
-    r"field\s+of\s+study|ngành|chuyên\s+ngành)"
+    r"field\s+of\s+study|ngành|nganh|"
+    r"chuyên\s+ngành|chuyen\s+nganh)"
     r"\s*[:：-]?\s*(?P<value>.+)$",
+    re.IGNORECASE,
+)
+
+EXPECTED_GRADUATION_PATTERN = re.compile(
+    r"(?:"
+    r"(?:expected|anticipated|projected)\s+"
+    r"(?:graduation|completion)(?:\s+date)?"
+    r"|(?:dự\s+kiến|du\s+kien)\s+"
+    r"(?:tốt\s+nghiệp|tot\s+nghiep|hoàn\s+thành|hoan\s+thanh)"
+    r"|(?:graduation|completion)\s+expected"
+    r")\s*[:：-]?\s*"
+    r"(?P<value>"
+    r"(?:0?[1-9]|1[0-2])[/.-](?:19|20)\d{2}"
+    r"|(?:19|20)\d{2}[/.-](?:0?[1-9]|1[0-2])"
+    r"|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|"
+    r"Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|"
+    r"Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(?:19|20)\d{2}"
+    r"|(?:Tháng|Thang)\s+(?:0?[1-9]|1[0-2])"
+    r"(?:\s*[/.-]\s*|\s+(?:năm|nam)\s+)(?:19|20)\d{2}"
+    r"|(?:19|20)\d{2}"
+    r")",
+    re.IGNORECASE,
+)
+
+NON_FIELD_LABEL_PATTERN = re.compile(
+    r"^(?:"
+    r"relevant\s+coursework|coursework|subjects?|modules?|"
+    r"activities|description|summary|achievements?|honou?rs?|awards?|"
+    r"môn\s+học|mon\s+hoc|học\s+phần|hoc\s+phan|"
+    r"hoạt\s+động|hoat\s+dong|mô\s+tả|mo\s+ta|"
+    r"thành\s+tích|thanh\s+tich|giải\s+thưởng|giai\s+thuong"
+    r")\s*[:：-]",
     re.IGNORECASE,
 )
 
@@ -447,6 +518,33 @@ class EducationParser:
             if not line:
                 continue
 
+            (
+                line,
+                expected_graduation_date,
+                expected_graduation_text,
+            ) = self._extract_expected_graduation(
+                line
+            )
+
+            if expected_graduation_date is not None:
+                if expected_graduation_text is not None:
+                    description_lines.append(
+                        expected_graduation_text
+                    )
+
+                if not line:
+                    continue
+
+            line, inline_grade = (
+                self._extract_inline_grade(line)
+            )
+
+            if grade is None and inline_grade is not None:
+                grade = inline_grade
+
+            if not line:
+                continue
+
             bullet = BULLET_PATTERN.match(line)
 
             if bullet is not None:
@@ -488,8 +586,11 @@ class EducationParser:
                     "academy",
                     "institute",
                     "trường",
+                    "truong",
                     "học viện",
+                    "hoc vien",
                     "cơ sở đào tạo",
+                    "co so dao tao",
                 }:
                     institution_name = (
                             institution_name
@@ -501,7 +602,9 @@ class EducationParser:
                     "degree",
                     "qualification",
                     "bằng cấp",
+                    "bang cap",
                     "trình độ",
+                    "trinh do",
                 }:
                     degree = degree or value
 
@@ -523,7 +626,9 @@ class EducationParser:
                     "field of study",
                     "field",
                     "ngành",
+                    "nganh",
                     "chuyên ngành",
+                    "chuyen nganh",
                 }:
                     field_of_study = (
                             field_of_study
@@ -536,6 +641,7 @@ class EducationParser:
                     "specialisation",
                     "concentration",
                     "định hướng",
+                    "dinh huong",
                 }:
                     specialization = (
                             specialization
@@ -548,7 +654,13 @@ class EducationParser:
                     "gpa",
                     "classification",
                     "xếp loại",
+                    "xep loai",
+                    "điểm trung bình",
+                    "diem trung binh",
+                    "đtb",
+                    "dtb",
                     "điểm",
+                    "diem",
                 }:
                     grade = grade or value
                     continue
@@ -594,6 +706,18 @@ class EducationParser:
                     ),
                     maximum_length=500,
                 )
+                )
+                continue
+
+            if (
+                    institution_name is None
+                    and self._looks_like_strong_institution(
+                line
+            )
+            ):
+                institution_name = clean_optional_text(
+                    line,
+                    maximum_length=1_000,
                 )
                 continue
 
@@ -689,6 +813,18 @@ class EducationParser:
 
                     line = residue
 
+            if (
+                    field_of_study is None
+                    and self._looks_like_unlabelled_field(
+                line
+            )
+            ):
+                field_of_study = clean_optional_text(
+                    line,
+                    maximum_length=500,
+                )
+                continue
+
             description_lines.append(line)
 
         if (
@@ -719,9 +855,19 @@ class EducationParser:
             maximum_length=MAX_DESCRIPTION_LENGTH,
         )
 
+        has_academic_detail = any(
+            value is not None
+            for value in (
+                degree,
+                normalized_degree_level,
+                field_of_study,
+                grade,
+            )
+        )
+
         partially_parsed = (
                 institution_name is None
-                or degree is None
+                or not has_academic_detail
         )
 
         return (
@@ -746,6 +892,141 @@ class EducationParser:
                 description=description,
             ),
             partially_parsed,
+        )
+
+    @staticmethod
+    def _extract_expected_graduation(
+            value: str,
+    ) -> tuple[str, str | None, str | None]:
+        match = EXPECTED_GRADUATION_PATTERN.search(
+            value
+        )
+
+        if match is None:
+            return value.strip(), None, None
+
+        normalized_date = (
+            EducationParser._normalize_education_date(
+                match.group("value")
+            )
+        )
+
+        if normalized_date is None:
+            return value.strip(), None, None
+
+        residue = (
+                value[:match.start()]
+                + " "
+                + value[match.end():]
+        ).strip(" -–—|,;")
+
+        return (
+            residue,
+            normalized_date,
+            match.group(0).strip(),
+        )
+
+    @staticmethod
+    def _normalize_education_date(
+            value: str,
+    ) -> str | None:
+        normalized = normalize_date_value(value)
+
+        if normalized.value is not None:
+            return normalized.value
+
+        vietnamese_month = re.fullmatch(
+            r"(?:tháng|thang)\s+"
+            r"(?P<month>0?[1-9]|1[0-2])"
+            r"(?:\s*[/.-]\s*|\s+(?:năm|nam)\s+)"
+            r"(?P<year>(?:19|20)\d{2})",
+            " ".join(value.strip().split()),
+            re.IGNORECASE,
+        )
+
+        if vietnamese_month is None:
+            return None
+
+        return (
+            f"{int(vietnamese_month.group('year')):04d}-"
+            f"{int(vietnamese_month.group('month')):02d}"
+        )
+
+    @staticmethod
+    def _extract_inline_grade(
+            value: str,
+    ) -> tuple[str, str | None]:
+        match = INLINE_GRADE_PATTERN.search(value)
+
+        if match is None:
+            return value.strip(), None
+
+        grade = clean_optional_text(
+            match.group("value"),
+            maximum_length=500,
+        )
+
+        residue = (
+                value[:match.start()]
+                + " "
+                + value[match.end():]
+        ).strip(" -–—|,;")
+
+        return residue, grade
+
+    @staticmethod
+    def _looks_like_strong_institution(
+            value: str,
+    ) -> bool:
+        return (
+                STRONG_INSTITUTION_PATTERN.search(
+                    value
+                )
+                is not None
+        )
+
+    def _looks_like_unlabelled_field(
+            self,
+            value: str,
+    ) -> bool:
+        candidate = value.strip()
+
+        if not candidate or len(candidate) > 160:
+            return False
+
+        if len(candidate.split()) > 14:
+            return False
+
+        if BULLET_PATTERN.match(candidate):
+            return False
+
+        if SENTENCE_END_PATTERN.search(candidate):
+            return False
+
+        if ":" in candidate or "：" in candidate:
+            return False
+
+        if NON_FIELD_LABEL_PATTERN.match(candidate):
+            return False
+
+        if ACHIEVEMENT_PATTERN.search(candidate):
+            return False
+
+        if extract_date_range(candidate) is not None:
+            return False
+
+        if SINGLE_DATE_PATTERN.fullmatch(candidate):
+            return False
+
+        if self._match_degree(candidate) is not None:
+            return False
+
+        if self._looks_like_institution(candidate):
+            return False
+
+        return any(
+            character.isalpha()
+            for character in candidate
         )
 
     def _match_degree(
