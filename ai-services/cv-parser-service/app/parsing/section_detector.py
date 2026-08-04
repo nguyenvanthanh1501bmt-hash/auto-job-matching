@@ -21,6 +21,8 @@ HEADING_NUMBER_PREFIX_PATTERN = re.compile(
 )
 
 MAX_HEADING_LENGTH = 100
+MIN_LETTER_SPACED_HEADING_LETTERS = 3
+MIN_UNCLASSIFIED_HEADING_UPPERCASE_RATIO = 0.85
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,9 +48,11 @@ class SectionDetector:
             taxonomy: TaxonomyBundle,
     ) -> None:
         self._settings = settings
-        self._heading_lookup = self._build_heading_lookup(
-            taxonomy
-        )
+
+        (
+            self._heading_lookup,
+            self._compact_heading_lookup,
+        ) = self._build_heading_lookups(taxonomy)
 
     def detect(
             self,
@@ -94,11 +98,17 @@ class SectionDetector:
                     match.content_start:next_start
                 ].strip()
 
-                if len(content) > self._settings.max_section_chars:
+                if (
+                        len(content)
+                        > self._settings.max_section_chars
+                ):
                     content = content[
                         : self._settings.max_section_chars
                     ].rstrip()
-                    warnings.append("TRUNCATED_SECTION_TEXT")
+
+                    warnings.append(
+                        "TRUNCATED_SECTION_TEXT"
+                    )
 
                 sections.append(
                     ParsedSection(
@@ -109,6 +119,7 @@ class SectionDetector:
                         text=None,
                     )
                 )
+
                 section_texts.setdefault(
                     match.section_type,
                     [],
@@ -123,23 +134,31 @@ class SectionDetector:
                     text=None,
                 )
             )
+
             section_texts["HEADER"] = [raw_text]
 
-        unclassified_count = self._count_unclassified_heading_lines(
-            raw_text,
-            matches,
+        unclassified_count = (
+            self._count_unclassified_heading_lines(
+                raw_text,
+                matches,
+            )
         )
 
         if unclassified_count > 0:
-            warnings.append("UNCLASSIFIED_SECTIONS_PRESENT")
+            warnings.append(
+                "UNCLASSIFIED_SECTIONS_PRESENT"
+            )
 
         return DetectedSections(
             sections=tuple(sections),
             section_texts={
                 section_type: tuple(values)
-                for section_type, values in section_texts.items()
+                for section_type, values
+                in section_texts.items()
             },
-            warnings=tuple(dict.fromkeys(warnings)),
+            warnings=tuple(
+                dict.fromkeys(warnings)
+            ),
         )
 
     def _find_heading_matches(
@@ -149,15 +168,38 @@ class SectionDetector:
         matches: list[_HeadingMatch] = []
         offset = 0
 
-        for line in raw_text.splitlines(keepends=True):
+        for line in raw_text.splitlines(
+                keepends=True
+        ):
             raw_line = line.rstrip("\r\n")
-            heading_candidate = self._normalize_heading_candidate(
-                raw_line
+
+            heading_candidate = (
+                self._normalize_heading_candidate(
+                    raw_line
+                )
             )
 
             section_type = self._heading_lookup.get(
                 heading_candidate
             )
+
+            if (
+                    section_type is None
+                    and self._is_letter_spaced_heading(
+                heading_candidate
+            )
+            ):
+                compact_key = (
+                    self._compact_heading_key(
+                        heading_candidate
+                    )
+                )
+
+                section_type = (
+                    self._compact_heading_lookup.get(
+                        compact_key
+                    )
+                )
 
             if section_type is not None:
                 content_start = offset + len(line)
@@ -167,14 +209,18 @@ class SectionDetector:
                         section_type=section_type,
                         heading=raw_line.strip(),
                         line_start=offset,
-                        heading_end=offset + len(raw_line),
+                        heading_end=(
+                                offset + len(raw_line)
+                        ),
                         content_start=content_start,
                     )
                 )
 
             offset += len(line)
 
-        return self._deduplicate_adjacent_matches(matches)
+        return self._deduplicate_adjacent_matches(
+            matches
+        )
 
     @staticmethod
     def _deduplicate_adjacent_matches(
@@ -185,7 +231,8 @@ class SectionDetector:
         for match in matches:
             if (
                     result
-                    and result[-1].line_start == match.line_start
+                    and result[-1].line_start
+                    == match.line_start
             ):
                 continue
 
@@ -193,20 +240,61 @@ class SectionDetector:
 
         return result
 
-    def _build_heading_lookup(
+    def _build_heading_lookups(
             self,
             taxonomy: TaxonomyBundle,
-    ) -> dict[str, str]:
-        result: dict[str, str] = {}
+    ) -> tuple[
+        dict[str, str],
+        dict[str, str],
+    ]:
+        regular_lookup: dict[str, str] = {}
+
+        compact_candidates: dict[
+            str,
+            set[str],
+        ] = {}
 
         for section in taxonomy.sections:
             for heading in section.headings:
-                normalized = self._normalize_heading_candidate(
-                    heading
+                normalized = (
+                    self._normalize_heading_candidate(
+                        heading
+                    )
                 )
-                result[normalized] = section.section_type
 
-        return result
+                if not normalized:
+                    continue
+
+                regular_lookup[normalized] = (
+                    section.section_type
+                )
+
+                compact_key = (
+                    self._compact_heading_key(
+                        normalized
+                    )
+                )
+
+                if not compact_key:
+                    continue
+
+                compact_candidates.setdefault(
+                    compact_key,
+                    set(),
+                ).add(section.section_type)
+
+        # Chỉ giữ compact key ánh xạ duy nhất tới một section type.
+        # Nếu taxonomy có collision, compact matching sẽ không đoán bừa.
+        compact_lookup = {
+            compact_key: next(
+                iter(section_types)
+            )
+            for compact_key, section_types
+            in compact_candidates.items()
+            if len(section_types) == 1
+        }
+
+        return regular_lookup, compact_lookup
 
     @staticmethod
     def _normalize_heading_candidate(
@@ -214,19 +302,57 @@ class SectionDetector:
     ) -> str:
         candidate = value.strip()
 
-        if not candidate or len(candidate) > MAX_HEADING_LENGTH:
+        if (
+                not candidate
+                or len(candidate) > MAX_HEADING_LENGTH
+        ):
             return ""
 
-        candidate = HEADING_NUMBER_PREFIX_PATTERN.sub(
-            "",
-            candidate,
-        )
-        candidate = TRAILING_HEADING_PUNCTUATION_PATTERN.sub(
-            "",
-            candidate,
+        candidate = (
+            HEADING_NUMBER_PREFIX_PATTERN.sub(
+                "",
+                candidate,
+            )
         )
 
-        return normalize_for_matching(candidate)
+        candidate = (
+            TRAILING_HEADING_PUNCTUATION_PATTERN.sub(
+                "",
+                candidate,
+            )
+        )
+
+        return normalize_for_matching(
+            candidate
+        )
+
+    @staticmethod
+    def _is_letter_spaced_heading(
+            normalized_value: str,
+    ) -> bool:
+        tokens = normalized_value.split()
+
+        if (
+                len(tokens)
+                < MIN_LETTER_SPACED_HEADING_LETTERS
+        ):
+            return False
+
+        return all(
+            len(token) == 1
+            and token.isalpha()
+            for token in tokens
+        )
+
+    @staticmethod
+    def _compact_heading_key(
+            normalized_value: str,
+    ) -> str:
+        return "".join(
+            character
+            for character in normalized_value
+            if not character.isspace()
+        )
 
     def _count_unclassified_heading_lines(
             self,
@@ -238,15 +364,31 @@ class SectionDetector:
             for match in matches
         }
 
+        first_non_empty_offset = (
+            self._first_non_empty_line_offset(
+                raw_text
+            )
+        )
+
         count = 0
         offset = 0
 
-        for line in raw_text.splitlines(keepends=True):
+        for line in raw_text.splitlines(
+                keepends=True
+        ):
             stripped = line.strip()
+
+            is_first_identity_line = (
+                    first_non_empty_offset is not None
+                    and offset == first_non_empty_offset
+            )
 
             if (
                     offset not in matched_offsets
-                    and self._looks_like_heading(stripped)
+                    and not is_first_identity_line
+                    and self._looks_like_heading(
+                stripped
+            )
             ):
                 count += 1
 
@@ -255,13 +397,32 @@ class SectionDetector:
         return count
 
     @staticmethod
+    def _first_non_empty_line_offset(
+            raw_text: str,
+    ) -> int | None:
+        offset = 0
+
+        for line in raw_text.splitlines(
+                keepends=True
+        ):
+            if line.strip():
+                return offset
+
+            offset += len(line)
+
+        return None
+
+    @staticmethod
     def _looks_like_heading(
             value: str,
     ) -> bool:
         if not value or len(value) > 80:
             return False
 
-        if any(character in value for character in ".!?"):
+        if any(
+                character in value
+                for character in ".!?"
+        ):
             return False
 
         words = value.split()
@@ -284,10 +445,7 @@ class SectionDetector:
             if character.isupper()
         ) / len(letters)
 
-        title_case_ratio = sum(
-            1
-            for word in words
-            if word[:1].isupper()
-        ) / len(words)
-
-        return uppercase_ratio >= 0.75 or title_case_ratio >= 0.9
+        return (
+                uppercase_ratio
+                >= MIN_UNCLASSIFIED_HEADING_UPPERCASE_RATIO
+        )

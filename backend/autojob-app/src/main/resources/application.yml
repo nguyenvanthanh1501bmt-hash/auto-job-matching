@@ -40,8 +40,14 @@ autojob:
     response-timeout: ${QDRANT_RESPONSE_TIMEOUT:10s}
 
   auth:
-    # true: tất cả API vẫn public.
-    # JWT hợp lệ vẫn được parse để lấy userId.
+    # true:
+    # - tất cả API public;
+    # - CV upload/parse/profile dùng public owner cố định;
+    # - không có data isolation giữa các client.
+    #
+    # false:
+    # - /api/cvs/** yêu cầu authentication;
+    # - Authentication.getName() được dùng làm ownerUserId.
     public-api-mode: ${AUTH_PUBLIC_API_MODE:true}
 
     issuer: ${AUTH_JWT_ISSUER:autojob-app}
@@ -60,7 +66,7 @@ autojob:
     enabled: ${RATE_LIMIT_ENABLED:true}
 
     # Local chạy trực tiếp thì để false.
-    # Deploy sau Nginx mới chuyển true.
+    # Deploy sau reverse proxy mới chuyển true.
     trust-forwarded-headers: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:false}
 
     general:
@@ -84,6 +90,9 @@ autojob:
       refill-period: ${RATE_LIMIT_CV_UPLOAD_PERIOD:1h}
 
   cv:
+    # Chỉ dùng khi auth public-api-mode=true.
+    public-owner-user-id: ${CV_PUBLIC_OWNER_USER_ID:public-local-user}
+
     storage:
       endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
       access-key: ${MINIO_ROOT_USER:minioadmin}
@@ -91,8 +100,20 @@ autojob:
       bucket: ${MINIO_BUCKET_CVS:autojob-cvs}
       max-file-size-mb: ${CV_MAX_FILE_SIZE_MB:10}
 
+    parser:
+      base-url: ${CV_PARSER_BASE_URL:http://localhost:8003}
+      connect-timeout: ${CV_PARSER_CONNECT_TIMEOUT:3s}
+      response-timeout: ${CV_PARSER_RESPONSE_TIMEOUT:60s}
+      expected-version: ${CV_PARSER_EXPECTED_VERSION:rule-v1}
+      max-error-length: ${CV_PARSER_MAX_ERROR_LENGTH:1000}
+      max-response-size-bytes: ${CV_PARSER_MAX_RESPONSE_SIZE_BYTES:16777216}
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:never}

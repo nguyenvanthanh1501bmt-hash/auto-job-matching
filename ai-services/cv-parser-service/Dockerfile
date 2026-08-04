@@ -54,23 +54,4 @@ HEALTHCHECK \
     --retries=3 \
     CMD ["python", "-c", "import json, urllib.request; response = urllib.request.urlopen('http://127.0.0.1:8003/ready', timeout=3); body = json.load(response); raise SystemExit(0 if body.get('status') == 'UP' else 1)"]
 
-CMD [
-    "python",
-    "-m",
-    "uvicorn",
-    "app.main:app",
-    "--host",
-    "0.0.0.0",
-    "--port",
-    "8003",
-    "--workers",
-    "1",
-    "--loop",
-    "asyncio",
-    "--http",
-    "h11",
-    "--no-access-log",
-    "--no-server-header",
-    "--timeout-keep-alive",
-    "5"
-]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8003", "--workers", "1", "--loop", "asyncio", "--http", "h11", "--no-access-log", "--no-server-header", "--timeout-keep-alive", "5"]

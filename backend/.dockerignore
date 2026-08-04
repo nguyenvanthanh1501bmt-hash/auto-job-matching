@@ -1,0 +1,15 @@
+.git
+.gitignore
+.idea
+.vscode
+
+**/target
+**/.classpath
+**/.project
+**/.settings
+
+**/*.log
+**/*.tmp
+
+mvnw.cmd
+README.md

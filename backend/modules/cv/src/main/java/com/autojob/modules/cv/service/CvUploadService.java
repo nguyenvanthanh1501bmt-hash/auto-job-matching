@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -36,6 +37,8 @@ public class CvUploadService {
             String ownerUserId,
             String sourceIp
     ) {
+        requireOwner(ownerUserId);
+
         CvFileValidator.ValidatedCvFile validated =
                 fileValidator.validate(file);
 
@@ -53,7 +56,10 @@ public class CvUploadService {
                 sha256(validated.bytes());
 
         /*
-         * Upload object trước.
+         * Object được upload trước khi lưu metadata.
+         *
+         * Nếu Mongo save thất bại, object được xóa best-effort
+         * để tránh tạo object mồ côi trong MinIO.
          */
         objectStorage.put(
                 objectKey,
@@ -89,10 +95,6 @@ public class CvUploadService {
         try {
             return rawCvRepository.save(rawCv);
         } catch (RuntimeException exception) {
-            /*
-             * Mongo save lỗi thì xóa object MinIO,
-             * tránh object mồ côi.
-             */
             objectStorage.deleteQuietly(objectKey);
 
             throw new CvUploadException(
@@ -104,17 +106,55 @@ public class CvUploadService {
         }
     }
 
-    public RawCv getById(String rawCvId) {
-        return rawCvRepository
+    public RawCv getById(
+            String rawCvId,
+            String ownerUserId
+    ) {
+        requireOwner(ownerUserId);
+
+        if (rawCvId == null || rawCvId.isBlank()) {
+            throw new CvUploadException(
+                    HttpStatus.BAD_REQUEST,
+                    "RAW_CV_ID_REQUIRED",
+                    "Raw CV id is required"
+            );
+        }
+
+        RawCv rawCv = rawCvRepository
                 .findById(rawCvId)
                 .orElseThrow(() ->
                         new CvUploadException(
                                 HttpStatus.NOT_FOUND,
                                 "RAW_CV_NOT_FOUND",
-                                "Raw CV not found: "
-                                        + rawCvId
+                                "Raw CV was not found"
                         )
                 );
+
+        if (!Objects.equals(
+                ownerUserId,
+                rawCv.getOwnerUserId()
+        )) {
+            throw new CvUploadException(
+                    HttpStatus.FORBIDDEN,
+                    "CV_ACCESS_DENIED",
+                    "You do not have access to this CV"
+            );
+        }
+
+        return rawCv;
+    }
+
+    private void requireOwner(
+            String ownerUserId
+    ) {
+        if (ownerUserId == null
+                || ownerUserId.isBlank()) {
+            throw new CvUploadException(
+                    HttpStatus.UNAUTHORIZED,
+                    "CV_AUTHENTICATION_REQUIRED",
+                    "Authentication is required to access CVs"
+            );
+        }
     }
 
     private String buildObjectKey(
@@ -130,7 +170,9 @@ public class CvUploadService {
                 + safeFilename;
     }
 
-    private String sha256(byte[] bytes) {
+    private String sha256(
+            byte[] bytes
+    ) {
         try {
             byte[] digest = MessageDigest
                     .getInstance("SHA-256")

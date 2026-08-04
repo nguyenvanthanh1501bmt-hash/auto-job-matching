@@ -104,6 +104,144 @@ services:
       echo 'MinIO bucket ready: '$$MINIO_BUCKET_CVS;
       "
 
+  cv-parser-service:
+    build:
+      context: ./ai-services/cv-parser-service
+      dockerfile: Dockerfile
+    image: autojob-cv-parser-service:local
+    container_name: autojob-cv-parser-service
+    restart: unless-stopped
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "${CV_PARSER_SERVICE_PORT:-8003}:8003"
+    environment:
+      CV_PARSER_APP_NAME: ${CV_PARSER_APP_NAME:-autojob-cv-parser-service}
+      CV_PARSER_VERSION: ${CV_PARSER_VERSION:-rule-v1}
+      LOG_LEVEL: ${CV_PARSER_LOG_LEVEL:-INFO}
+
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_SECURE: "false"
+      MINIO_BUCKET_CVS: ${MINIO_BUCKET_CVS:-autojob-cvs}
+
+      CV_MAX_OBJECT_SIZE_BYTES: ${CV_MAX_OBJECT_SIZE_BYTES:-10485760}
+      CV_MAX_EXTRACTED_CHARS: ${CV_MAX_EXTRACTED_CHARS:-200000}
+      CV_MAX_SECTION_CHARS: ${CV_MAX_SECTION_CHARS:-50000}
+
+      CV_MAX_WORK_EXPERIENCES: ${CV_MAX_WORK_EXPERIENCES:-30}
+      CV_MAX_PROJECTS: ${CV_MAX_PROJECTS:-30}
+      CV_MAX_EDUCATIONS: ${CV_MAX_EDUCATIONS:-20}
+      CV_MAX_CERTIFICATIONS: ${CV_MAX_CERTIFICATIONS:-30}
+      CV_MAX_LICENSES: ${CV_MAX_LICENSES:-20}
+      CV_MAX_TRAINING_COURSES: ${CV_MAX_TRAINING_COURSES:-30}
+      CV_MAX_SKILLS: ${CV_MAX_SKILLS:-200}
+      CV_MAX_LINKS: ${CV_MAX_LINKS:-30}
+
+      CV_MAX_DOCX_ENTRIES: ${CV_MAX_DOCX_ENTRIES:-1000}
+      CV_MAX_DOCX_UNCOMPRESSED_BYTES: ${CV_MAX_DOCX_UNCOMPRESSED_BYTES:-52428800}
+
+      CV_DOC_COMMAND_TIMEOUT_SECONDS: ${CV_DOC_COMMAND_TIMEOUT_SECONDS:-20}
+      CV_EXTRACTION_TIMEOUT_SECONDS: ${CV_EXTRACTION_TIMEOUT_SECONDS:-45}
+      CV_MIN_TEXT_CHARACTERS: ${CV_MIN_TEXT_CHARACTERS:-40}
+      CV_MAX_PDF_PAGES: ${CV_MAX_PDF_PAGES:-100}
+      CV_ALLOWED_OBJECT_PREFIXES: ${CV_ALLOWED_OBJECT_PREFIXES:-raw/,cvs/}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          response = urllib.request.urlopen(
+              'http://127.0.0.1:8003/ready',
+              timeout=3
+          );
+          body = json.load(response);
+          raise SystemExit(
+              0 if body.get('status') == 'UP' else 1
+          )
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  autojob-app:
+    build:
+      context: ./backend
+      dockerfile: autojob-app/Dockerfile
+    image: autojob-app:local
+    container_name: autojob-app
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      cv-parser-service:
+        condition: service_healthy
+      embedding-service:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    ports:
+      - "${AUTOJOB_APP_PORT:-8080}:8080"
+    environment:
+      SERVER_PORT: "8080"
+
+      SPRING_DATA_MONGODB_URI: >-
+        mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-password}@mongo:27017/${MONGO_DATABASE:-autojob}?authSource=admin
+      MONGODB_AUTO_INDEX_CREATION: ${MONGODB_AUTO_INDEX_CREATION:-true}
+
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET_CVS: ${MINIO_BUCKET_CVS:-autojob-cvs}
+
+      CV_PUBLIC_OWNER_USER_ID: ${CV_PUBLIC_OWNER_USER_ID:-public-local-user}
+      CV_MAX_FILE_SIZE_MB: ${CV_MAX_FILE_SIZE_MB:-10}
+      CV_MAX_FILE_SIZE: ${CV_MAX_FILE_SIZE:-10MB}
+      CV_MAX_REQUEST_SIZE: ${CV_MAX_REQUEST_SIZE:-11MB}
+
+      CV_PARSER_BASE_URL: http://cv-parser-service:8003
+      CV_PARSER_CONNECT_TIMEOUT: ${CV_PARSER_CONNECT_TIMEOUT:-3s}
+      CV_PARSER_RESPONSE_TIMEOUT: ${CV_PARSER_RESPONSE_TIMEOUT:-60s}
+      CV_PARSER_EXPECTED_VERSION: ${CV_PARSER_EXPECTED_VERSION:-rule-v1}
+      CV_PARSER_MAX_ERROR_LENGTH: ${CV_PARSER_MAX_ERROR_LENGTH:-1000}
+      CV_PARSER_MAX_RESPONSE_SIZE_BYTES: ${CV_PARSER_MAX_RESPONSE_SIZE_BYTES:-16777216}
+
+      EMBEDDING_SERVICE_BASE_URL: http://embedding-service:8002
+      EMBEDDING_EXPECTED_DIMENSION: ${EMBEDDING_EXPECTED_DIMENSION:-384}
+      EMBEDDING_EXPECTED_VERSION: "${EMBEDDING_EXPECTED_VERSION:-intfloat/multilingual-e5-small@c007d7ef6fd86656326059b28395a7a03a7c5846|prep-v1|l2}"
+
+      QDRANT_BASE_URL: http://qdrant:6333
+      QDRANT_JOB_COLLECTION: ${QDRANT_JOB_COLLECTION:-job_vectors_v1}
+      QDRANT_VECTOR_DIMENSION: ${QDRANT_VECTOR_DIMENSION:-384}
+      QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
+
+      AUTH_PUBLIC_API_MODE: ${AUTH_PUBLIC_API_MODE:-true}
+      AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:-autojob-app}
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:-YXV0b2pvYi1sb2NhbC1kZXYtc2VjcmV0LWNoYW5nZS1tZS0zMmJ5dGVzLXBsdXMhIQ==}
+      AUTH_ACCESS_TOKEN_TTL: ${AUTH_ACCESS_TOKEN_TTL:-15m}
+      AUTH_REFRESH_TOKEN_TTL: ${AUTH_REFRESH_TOKEN_TTL:-30d}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_TRUST_FORWARDED_HEADERS: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:-false}
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:8080/actuator/health
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   mock-job-site:
     image: nginx:1.27-alpine
     container_name: autojob-mock-job-site

@@ -26,6 +26,17 @@ autojob:
     connect-timeout: 3s
     response-timeout: 10s
 
+  cv:
+    public-owner-user-id: ${CV_PUBLIC_OWNER_USER_ID:public-local-user}
+
+    parser:
+      base-url: ${CV_PARSER_BASE_URL:http://localhost:8003}
+      connect-timeout: ${CV_PARSER_CONNECT_TIMEOUT:3s}
+      response-timeout: ${CV_PARSER_RESPONSE_TIMEOUT:60s}
+      expected-version: ${CV_PARSER_EXPECTED_VERSION:rule-v1}
+      max-error-length: ${CV_PARSER_MAX_ERROR_LENGTH:1000}
+      max-response-size-bytes: ${CV_PARSER_MAX_RESPONSE_SIZE_BYTES:16777216}
+
   crawler:
     mock:
       source-code: MOCK
@@ -87,6 +98,7 @@ management:
     web:
       exposure:
         include: health,info
+
   endpoint:
     health:
       show-details: always

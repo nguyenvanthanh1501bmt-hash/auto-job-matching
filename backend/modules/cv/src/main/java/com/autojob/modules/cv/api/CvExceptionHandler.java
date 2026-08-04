@@ -1,5 +1,6 @@
 package com.autojob.modules.cv.api;
 
+import com.autojob.modules.cv.service.CvParsingException;
 import com.autojob.modules.cv.service.CvUploadException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -16,7 +17,8 @@ import java.time.Instant;
 public class CvExceptionHandler {
 
     @ExceptionHandler(CvUploadException.class)
-    public ResponseEntity<ApiErrorResponse> handleCvUploadException(
+    public ResponseEntity<ApiErrorResponse>
+    handleCvUploadException(
             CvUploadException exception,
             HttpServletRequest request
     ) {
@@ -28,8 +30,25 @@ public class CvExceptionHandler {
         );
     }
 
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ApiErrorResponse> handleMaxUploadSize(
+    @ExceptionHandler(CvParsingException.class)
+    public ResponseEntity<ApiErrorResponse>
+    handleCvParsingException(
+            CvParsingException exception,
+            HttpServletRequest request
+    ) {
+        return build(
+                exception.getStatus(),
+                exception.getCode(),
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(
+            MaxUploadSizeExceededException.class
+    )
+    public ResponseEntity<ApiErrorResponse>
+    handleMaxUploadSize(
             MaxUploadSizeExceededException exception,
             HttpServletRequest request
     ) {
@@ -47,15 +66,18 @@ public class CvExceptionHandler {
             String message,
             String path
     ) {
-        return ResponseEntity
-                .status(status)
-                .body(new ApiErrorResponse(
+        ApiErrorResponse response =
+                new ApiErrorResponse(
                         Instant.now(),
                         status.value(),
                         code,
                         message,
                         path
-                ));
+                );
+
+        return ResponseEntity
+                .status(status)
+                .body(response);
     }
 
     public record ApiErrorResponse(
