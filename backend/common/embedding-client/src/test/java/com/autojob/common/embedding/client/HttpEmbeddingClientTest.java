@@ -1,7 +1,7 @@
-package com.autojob.modules.jobembedding.client;
+package com.autojob.common.embedding.client;
 
-import com.autojob.modules.jobembedding.client.dto.EmbeddingResponse;
-import com.autojob.modules.jobembedding.config.EmbeddingProperties;
+import com.autojob.common.embedding.client.dto.EmbeddingResponse;
+import com.autojob.common.embedding.config.EmbeddingProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -129,6 +129,7 @@ class HttpEmbeddingClientTest {
     @Test
     void shouldRejectEmptyVector() {
         ObjectNode body = validBodyNode();
+
         body.set(
                 "vector",
                 objectMapper.createArrayNode()
@@ -146,14 +147,18 @@ class HttpEmbeddingClientTest {
 
         server.enqueue(jsonResponse(body));
 
-        assertClientFailure("dimension mismatch");
+        assertClientFailure(
+                "dimension mismatch"
+        );
     }
 
     @Test
     void shouldRejectVectorLengthMismatch() {
         ObjectNode body = validBodyNode();
 
-        ArrayNode vector = objectMapper.createArrayNode();
+        ArrayNode vector =
+                objectMapper.createArrayNode();
+
         vector.add(1.0);
         vector.add(0.0);
 
@@ -161,7 +166,9 @@ class HttpEmbeddingClientTest {
 
         server.enqueue(jsonResponse(body));
 
-        assertClientFailure("vector length mismatch");
+        assertClientFailure(
+                "vector length mismatch"
+        );
     }
 
     @Test
@@ -171,7 +178,9 @@ class HttpEmbeddingClientTest {
 
         server.enqueue(jsonResponse(body));
 
-        assertClientFailure("modelName is missing");
+        assertClientFailure(
+                "modelName is missing"
+        );
     }
 
     @Test
@@ -181,7 +190,9 @@ class HttpEmbeddingClientTest {
 
         server.enqueue(jsonResponse(body));
 
-        assertClientFailure("modelRevision is missing");
+        assertClientFailure(
+                "modelRevision is missing"
+        );
     }
 
     @Test
@@ -199,6 +210,7 @@ class HttpEmbeddingClientTest {
     @Test
     void shouldRejectUnexpectedEmbeddingVersion() {
         ObjectNode body = validBodyNode();
+
         body.put(
                 "embeddingVersion",
                 "other-model@revision|prep-v1|l2"
@@ -218,13 +230,19 @@ class HttpEmbeddingClientTest {
 
         server.enqueue(jsonResponse(body));
 
-        assertClientFailure("textHash is missing");
+        assertClientFailure(
+                "textHash is missing"
+        );
     }
 
     @Test
     void shouldRejectInvalidTextHashFormat() {
         ObjectNode body = validBodyNode();
-        body.put("textHash", "invalid-hash");
+
+        body.put(
+                "textHash",
+                "invalid-hash"
+        );
 
         server.enqueue(jsonResponse(body));
 
@@ -236,7 +254,11 @@ class HttpEmbeddingClientTest {
     @Test
     void shouldRejectTextHashMismatch() {
         ObjectNode body = validBodyNode();
-        body.put("textHash", "a".repeat(64));
+
+        body.put(
+                "textHash",
+                "a".repeat(64)
+        );
 
         server.enqueue(jsonResponse(body));
 
@@ -248,7 +270,11 @@ class HttpEmbeddingClientTest {
     @Test
     void shouldRejectNormalizedFalse() {
         ObjectNode body = validBodyNode();
-        body.put("normalized", false);
+
+        body.put(
+                "normalized",
+                false
+        );
 
         server.enqueue(jsonResponse(body));
 
@@ -259,22 +285,24 @@ class HttpEmbeddingClientTest {
 
     @Test
     void shouldRejectNaNVector() {
-        server.enqueue(jsonResponse(
-                """
-                {
-                  "vector": ["NaN", 0.0, 0.0],
-                  "dimension": 3,
-                  "modelName": "test-model",
-                  "modelRevision": "revision-1",
-                  "embeddingVersion": "%s",
-                  "textHash": "%s",
-                  "normalized": true
-                }
-                """.formatted(
-                        VERSION,
-                        sha256(TEXT)
+        server.enqueue(
+                jsonResponse(
+                        """
+                        {
+                          "vector": ["NaN", 0.0, 0.0],
+                          "dimension": 3,
+                          "modelName": "test-model",
+                          "modelRevision": "revision-1",
+                          "embeddingVersion": "%s",
+                          "textHash": "%s",
+                          "normalized": true
+                        }
+                        """.formatted(
+                                VERSION,
+                                sha256(TEXT)
+                        )
                 )
-        ));
+        );
 
         assertClientFailure(
                 "vector contains a non-finite value"
@@ -283,22 +311,24 @@ class HttpEmbeddingClientTest {
 
     @Test
     void shouldRejectPositiveInfinityVector() {
-        server.enqueue(jsonResponse(
-                """
-                {
-                  "vector": ["Infinity", 0.0, 0.0],
-                  "dimension": 3,
-                  "modelName": "test-model",
-                  "modelRevision": "revision-1",
-                  "embeddingVersion": "%s",
-                  "textHash": "%s",
-                  "normalized": true
-                }
-                """.formatted(
-                        VERSION,
-                        sha256(TEXT)
+        server.enqueue(
+                jsonResponse(
+                        """
+                        {
+                          "vector": ["Infinity", 0.0, 0.0],
+                          "dimension": 3,
+                          "modelName": "test-model",
+                          "modelRevision": "revision-1",
+                          "embeddingVersion": "%s",
+                          "textHash": "%s",
+                          "normalized": true
+                        }
+                        """.formatted(
+                                VERSION,
+                                sha256(TEXT)
+                        )
                 )
-        ));
+        );
 
         assertClientFailure(
                 "vector contains a non-finite value"
@@ -309,12 +339,17 @@ class HttpEmbeddingClientTest {
     void shouldRejectNonNormalizedVector() {
         ObjectNode body = validBodyNode();
 
-        ArrayNode vector = objectMapper.createArrayNode();
+        ArrayNode vector =
+                objectMapper.createArrayNode();
+
         vector.add(1.0);
         vector.add(1.0);
         vector.add(1.0);
 
-        body.set("vector", vector);
+        body.set(
+                "vector",
+                vector
+        );
 
         server.enqueue(jsonResponse(body));
 
@@ -345,7 +380,9 @@ class HttpEmbeddingClientTest {
                 .isInstanceOf(
                         EmbeddingClientException.class
                 )
-                .hasMessageContaining("timed out");
+                .hasMessageContaining(
+                        "timed out"
+                );
     }
 
     @Test
@@ -360,7 +397,9 @@ class HttpEmbeddingClientTest {
                         "must not be blank"
                 );
 
-        assertThat(server.getRequestCount()).isZero();
+        assertThat(
+                server.getRequestCount()
+        ).isZero();
     }
 
     private HttpEmbeddingClient createClient() {
@@ -379,16 +418,22 @@ class HttpEmbeddingClientTest {
                 .isInstanceOf(
                         EmbeddingClientException.class
                 )
-                .hasMessageContaining(expectedMessage);
+                .hasMessageContaining(
+                        expectedMessage
+                );
     }
 
     private MockResponse jsonResponse(
             ObjectNode body
     ) {
-        return jsonResponse(body.toString());
+        return jsonResponse(
+                body.toString()
+        );
     }
 
-    private MockResponse jsonResponse(String body) {
+    private MockResponse jsonResponse(
+            String body
+    ) {
         return new MockResponse()
                 .setResponseCode(200)
                 .addHeader(
@@ -399,41 +444,75 @@ class HttpEmbeddingClientTest {
     }
 
     private ObjectNode validBodyNode() {
-        ObjectNode body = objectMapper.createObjectNode();
+        ObjectNode body =
+                objectMapper.createObjectNode();
 
-        ArrayNode vector = body.putArray("vector");
+        ArrayNode vector =
+                body.putArray("vector");
+
         vector.add(1.0);
         vector.add(0.0);
         vector.add(0.0);
 
-        body.put("dimension", 3);
-        body.put("modelName", "test-model");
-        body.put("modelRevision", "revision-1");
-        body.put("embeddingVersion", VERSION);
-        body.put("textHash", sha256(TEXT));
-        body.put("normalized", true);
+        body.put(
+                "dimension",
+                3
+        );
+
+        body.put(
+                "modelName",
+                "test-model"
+        );
+
+        body.put(
+                "modelRevision",
+                "revision-1"
+        );
+
+        body.put(
+                "embeddingVersion",
+                VERSION
+        );
+
+        body.put(
+                "textHash",
+                sha256(TEXT)
+        );
+
+        body.put(
+                "normalized",
+                true
+        );
 
         return body;
     }
 
     private String validBody() {
-        return validBodyNode().toString();
+        return validBodyNode()
+                .toString();
     }
 
-    private String sha256(String text) {
+    private String sha256(
+            String text
+    ) {
         try {
             MessageDigest digest =
-                    MessageDigest.getInstance("SHA-256");
+                    MessageDigest.getInstance(
+                            "SHA-256"
+                    );
 
-            return HexFormat.of().formatHex(
-                    digest.digest(
-                            text.getBytes(
-                                    StandardCharsets.UTF_8
+            return HexFormat.of()
+                    .formatHex(
+                            digest.digest(
+                                    text.getBytes(
+                                            StandardCharsets.UTF_8
+                                    )
                             )
-                    )
-            );
+                    );
         } catch (Exception exception) {
-            throw new IllegalStateException(exception);
+            throw new IllegalStateException(
+                    exception
+            );
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.autojob.modules.jobembedding.client.dto;
+package com.autojob.common.embedding.client.dto;
 
 import java.util.List;
 

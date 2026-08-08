@@ -1,5 +1,6 @@
 package com.autojob.modules.cv.service;
 
+import com.autojob.common.events.CandidateProfileReadyEvent;
 import com.autojob.modules.cv.client.CvParserClient;
 import com.autojob.modules.cv.client.CvParserClientException;
 import com.autojob.modules.cv.client.CvParserResponseValidationException;
@@ -16,8 +17,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 
@@ -33,6 +36,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -79,6 +84,9 @@ class CvParsingServiceTest {
     @Mock
     private CandidateProfileMapper profileMapper;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private CvParserProperties parserProperties;
     private CvParsingService service;
 
@@ -102,6 +110,7 @@ class CvParsingServiceTest {
                 responseValidator,
                 profileMapper,
                 parserProperties,
+                eventPublisher,
                 FIXED_CLOCK
         );
     }
@@ -215,14 +224,18 @@ class CvParsingServiceTest {
 
         assertThat(request.rawCvId())
                 .isEqualTo(RAW_CV_ID);
+
         assertThat(request.bucket())
                 .isEqualTo("autojob-cvs");
+
         assertThat(request.objectKey())
                 .isEqualTo(
                         "raw/2026/08/04/raw-cv-001/candidate.pdf"
                 );
+
         assertThat(request.originalFilename())
                 .isEqualTo("candidate.pdf");
+
         assertThat(request.contentType())
                 .isEqualTo("application/pdf");
 
@@ -253,6 +266,145 @@ class CvParsingServiceTest {
     }
 
     @Test
+    void shouldPublishCandidateProfileReadyAfterProfileSaveAndParsedStatus() {
+        RawCv rawCv = rawCv(
+                CvProcessingStatus.UPLOADED
+        );
+
+        CvParseResponse parserResponse =
+                parserResponse();
+
+        CandidateProfile mappedProfile =
+                currentProfile();
+
+        stubSuccessfulParse(
+                rawCv,
+                null,
+                parserResponse,
+                mappedProfile
+        );
+
+        service.parse(
+                RAW_CV_ID,
+                OWNER_USER_ID
+        );
+
+        ArgumentCaptor<CandidateProfileReadyEvent> eventCaptor =
+                ArgumentCaptor.forClass(
+                        CandidateProfileReadyEvent.class
+                );
+
+        InOrder inOrder = inOrder(
+                candidateProfileRepository,
+                rawCvStatusRepository,
+                eventPublisher
+        );
+
+        inOrder.verify(
+                candidateProfileRepository
+        ).save(
+                mappedProfile
+        );
+
+        inOrder.verify(
+                rawCvStatusRepository
+        ).markParsed(
+                RAW_CV_ID,
+                OWNER_USER_ID
+        );
+
+        inOrder.verify(
+                eventPublisher
+        ).publishEvent(
+                eventCaptor.capture()
+        );
+
+        CandidateProfileReadyEvent event =
+                eventCaptor.getValue();
+
+        assertThat(
+                event.getCandidateProfileId()
+        ).isEqualTo(
+                "profile-001"
+        );
+
+        assertThat(
+                event.getRawCvId()
+        ).isEqualTo(
+                RAW_CV_ID
+        );
+
+        assertThat(
+                event.getParserVersion()
+        ).isEqualTo(
+                "rule-v1"
+        );
+
+        assertThat(
+                event.getOccurredAt()
+        ).isEqualTo(
+                NOW
+        );
+    }
+
+    @Test
+    void shouldKeepParseSuccessfulWhenReadyEventPublicationFails() {
+        RawCv rawCv = rawCv(
+                CvProcessingStatus.UPLOADED
+        );
+
+        CvParseResponse parserResponse =
+                parserResponse();
+
+        CandidateProfile mappedProfile =
+                currentProfile();
+
+        stubSuccessfulParse(
+                rawCv,
+                null,
+                parserResponse,
+                mappedProfile
+        );
+
+        doThrow(
+                new RuntimeException(
+                        "listener failure"
+                )
+        )
+                .when(eventPublisher)
+                .publishEvent(
+                        any(
+                                CandidateProfileReadyEvent.class
+                        )
+                );
+
+        CandidateProfile result =
+                service.parse(
+                        RAW_CV_ID,
+                        OWNER_USER_ID
+                );
+
+        assertThat(result)
+                .isSameAs(mappedProfile);
+
+        verify(
+                rawCvStatusRepository
+        ).markParsed(
+                RAW_CV_ID,
+                OWNER_USER_ID
+        );
+
+        verify(
+                rawCvStatusRepository,
+                never()
+        ).markFailed(
+                eq(RAW_CV_ID),
+                eq(OWNER_USER_ID),
+                any(String.class)
+        );
+    }
+
+    @Test
     void shouldReturnExistingProfileIdempotently() {
         RawCv rawCv = rawCv(
                 CvProcessingStatus.PARSED
@@ -265,21 +417,27 @@ class CvParsingServiceTest {
                 rawCvRepository.findById(
                         RAW_CV_ID
                 )
-        ).thenReturn(Optional.of(rawCv));
+        ).thenReturn(
+                Optional.of(rawCv)
+        );
 
         when(
                 candidateProfileRepository
                         .findByRawCvId(
                                 RAW_CV_ID
                         )
-        ).thenReturn(Optional.of(existing));
-
-        CandidateProfile result = service.parse(
-                RAW_CV_ID,
-                OWNER_USER_ID
+        ).thenReturn(
+                Optional.of(existing)
         );
 
-        assertThat(result).isSameAs(existing);
+        CandidateProfile result =
+                service.parse(
+                        RAW_CV_ID,
+                        OWNER_USER_ID
+                );
+
+        assertThat(result)
+                .isSameAs(existing);
 
         verifyNoInteractions(
                 parserClient,
@@ -291,7 +449,9 @@ class CvParsingServiceTest {
         verify(
                 candidateProfileRepository,
                 never()
-        ).save(any(CandidateProfile.class));
+        ).save(
+                any(CandidateProfile.class)
+        );
     }
 
     @Test
@@ -320,7 +480,9 @@ class CvParsingServiceTest {
                         .findByRawCvId(
                                 RAW_CV_ID
                         )
-        ).thenReturn(Optional.of(existing));
+        ).thenReturn(
+                Optional.of(existing)
+        );
 
         when(
                 rawCvStatusRepository
@@ -338,12 +500,14 @@ class CvParsingServiceTest {
                 )
         ).thenReturn(true);
 
-        CandidateProfile result = service.parse(
-                RAW_CV_ID,
-                OWNER_USER_ID
-        );
+        CandidateProfile result =
+                service.parse(
+                        RAW_CV_ID,
+                        OWNER_USER_ID
+                );
 
-        assertThat(result).isSameAs(existing);
+        assertThat(result)
+                .isSameAs(existing);
 
         verifyNoInteractions(
                 parserClient,
@@ -354,7 +518,9 @@ class CvParsingServiceTest {
         verify(
                 candidateProfileRepository,
                 never()
-        ).save(any(CandidateProfile.class));
+        ).save(
+                any(CandidateProfile.class)
+        );
     }
 
     @Test
@@ -376,22 +542,27 @@ class CvParsingServiceTest {
                 mappedProfile
         );
 
-        CandidateProfile result = service.parse(
-                RAW_CV_ID,
-                OWNER_USER_ID
-        );
-
-        assertThat(result).isSameAs(mappedProfile);
-
-        verify(rawCvStatusRepository)
-                .acquireForParsing(
+        CandidateProfile result =
+                service.parse(
                         RAW_CV_ID,
-                        OWNER_USER_ID,
-                        false
+                        OWNER_USER_ID
                 );
 
+        assertThat(result)
+                .isSameAs(mappedProfile);
+
+        verify(
+                rawCvStatusRepository
+        ).acquireForParsing(
+                RAW_CV_ID,
+                OWNER_USER_ID,
+                false
+        );
+
         verify(parserClient)
-                .parse(any(CvParseRequest.class));
+                .parse(
+                        any(CvParseRequest.class)
+                );
     }
 
     @Test
@@ -441,7 +612,9 @@ class CvParsingServiceTest {
                 "CV_PARSE_IN_PROGRESS"
         );
 
-        verifyNoInteractions(parserClient);
+        verifyNoInteractions(
+                parserClient
+        );
     }
 
     @Test
@@ -487,7 +660,9 @@ class CvParsingServiceTest {
                 "CV_PARSE_IN_PROGRESS"
         );
 
-        verifyNoInteractions(parserClient);
+        verifyNoInteractions(
+                parserClient
+        );
     }
 
     @Test
@@ -498,7 +673,10 @@ class CvParsingServiceTest {
 
         CandidateProfile oldProfile =
                 currentProfile();
-        oldProfile.setParserVersion("rule-v0");
+
+        oldProfile.setParserVersion(
+                "rule-v0"
+        );
 
         CandidateProfile updatedProfile =
                 currentProfile();
@@ -510,14 +688,18 @@ class CvParsingServiceTest {
                 rawCvRepository.findById(
                         RAW_CV_ID
                 )
-        ).thenReturn(Optional.of(rawCv));
+        ).thenReturn(
+                Optional.of(rawCv)
+        );
 
         when(
                 candidateProfileRepository
                         .findByRawCvId(
                                 RAW_CV_ID
                         )
-        ).thenReturn(Optional.of(oldProfile));
+        ).thenReturn(
+                Optional.of(oldProfile)
+        );
 
         when(
                 rawCvStatusRepository
@@ -532,14 +714,18 @@ class CvParsingServiceTest {
                 parserClient.parse(
                         any(CvParseRequest.class)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 responseValidator.validate(
                         any(CvParseRequest.class),
                         eq(parserResponse)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 profileMapper.toDocument(
@@ -548,13 +734,17 @@ class CvParsingServiceTest {
                         eq(oldProfile),
                         eq(NOW)
                 )
-        ).thenReturn(updatedProfile);
+        ).thenReturn(
+                updatedProfile
+        );
 
         when(
                 candidateProfileRepository.save(
                         updatedProfile
                 )
-        ).thenReturn(updatedProfile);
+        ).thenReturn(
+                updatedProfile
+        );
 
         when(
                 rawCvStatusRepository.markParsed(
@@ -563,23 +753,27 @@ class CvParsingServiceTest {
                 )
         ).thenReturn(true);
 
-        CandidateProfile result = service.parse(
-                RAW_CV_ID,
-                OWNER_USER_ID
-        );
+        CandidateProfile result =
+                service.parse(
+                        RAW_CV_ID,
+                        OWNER_USER_ID
+                );
 
         assertThat(result)
                 .isSameAs(updatedProfile);
 
-        verify(rawCvStatusRepository)
-                .acquireForParsing(
-                        RAW_CV_ID,
-                        OWNER_USER_ID,
-                        true
-                );
+        verify(
+                rawCvStatusRepository
+        ).acquireForParsing(
+                RAW_CV_ID,
+                OWNER_USER_ID,
+                true
+        );
 
         verify(parserClient)
-                .parse(any(CvParseRequest.class));
+                .parse(
+                        any(CvParseRequest.class)
+                );
     }
 
     @Test
@@ -588,7 +782,9 @@ class CvParsingServiceTest {
                 CvProcessingStatus.UPLOADED
         );
 
-        stubParseAcquisition(rawCv);
+        stubParseAcquisition(
+                rawCv
+        );
 
         when(
                 parserClient.parse(
@@ -624,14 +820,17 @@ class CvParsingServiceTest {
                         String.class
                 );
 
-        verify(rawCvStatusRepository)
-                .markFailed(
-                        eq(RAW_CV_ID),
-                        eq(OWNER_USER_ID),
-                        errorCaptor.capture()
-                );
+        verify(
+                rawCvStatusRepository
+        ).markFailed(
+                eq(RAW_CV_ID),
+                eq(OWNER_USER_ID),
+                errorCaptor.capture()
+        );
 
-        assertThat(errorCaptor.getValue())
+        assertThat(
+                errorCaptor.getValue()
+        )
                 .contains(
                         "CV_TEXT_NOT_EXTRACTABLE"
                 )
@@ -646,7 +845,9 @@ class CvParsingServiceTest {
                 CvProcessingStatus.UPLOADED
         );
 
-        stubParseAcquisition(rawCv);
+        stubParseAcquisition(
+                rawCv
+        );
 
         when(
                 parserClient.parse(
@@ -684,14 +885,17 @@ class CvParsingServiceTest {
                         String.class
                 );
 
-        verify(rawCvStatusRepository)
-                .markFailed(
-                        eq(RAW_CV_ID),
-                        eq(OWNER_USER_ID),
-                        errorCaptor.capture()
-                );
+        verify(
+                rawCvStatusRepository
+        ).markFailed(
+                eq(RAW_CV_ID),
+                eq(OWNER_USER_ID),
+                errorCaptor.capture()
+        );
 
-        assertThat(errorCaptor.getValue())
+        assertThat(
+                errorCaptor.getValue()
+        )
                 .isEqualTo(
                         "PARSER_RESPONSE_TIMEOUT"
                 )
@@ -709,13 +913,17 @@ class CvParsingServiceTest {
         CvParseResponse parserResponse =
                 parserResponse();
 
-        stubParseAcquisition(rawCv);
+        stubParseAcquisition(
+                rawCv
+        );
 
         when(
                 parserClient.parse(
                         any(CvParseRequest.class)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 responseValidator.validate(
@@ -751,14 +959,17 @@ class CvParsingServiceTest {
                         String.class
                 );
 
-        verify(rawCvStatusRepository)
-                .markFailed(
-                        eq(RAW_CV_ID),
-                        eq(OWNER_USER_ID),
-                        errorCaptor.capture()
-                );
+        verify(
+                rawCvStatusRepository
+        ).markFailed(
+                eq(RAW_CV_ID),
+                eq(OWNER_USER_ID),
+                errorCaptor.capture()
+        );
 
-        assertThat(errorCaptor.getValue())
+        assertThat(
+                errorCaptor.getValue()
+        )
                 .contains(
                         "profile.workExperiences[0].durationMonths"
                 )
@@ -769,13 +980,17 @@ class CvParsingServiceTest {
 
     @Test
     void shouldTruncateSanitizedLastError() {
-        parserProperties.setMaxErrorLength(100);
+        parserProperties.setMaxErrorLength(
+                100
+        );
 
         RawCv rawCv = rawCv(
                 CvProcessingStatus.UPLOADED
         );
 
-        stubParseAcquisition(rawCv);
+        stubParseAcquisition(
+                rawCv
+        );
 
         String oversizedCode =
                 "CV_" + "A".repeat(200);
@@ -800,8 +1015,8 @@ class CvParsingServiceTest {
                 )
         ).thenReturn(true);
 
-        assertThatThrownBy(() ->
-                service.parse(
+        assertThatThrownBy(
+                () -> service.parse(
                         RAW_CV_ID,
                         OWNER_USER_ID
                 )
@@ -814,15 +1029,20 @@ class CvParsingServiceTest {
                         String.class
                 );
 
-        verify(rawCvStatusRepository)
-                .markFailed(
-                        eq(RAW_CV_ID),
-                        eq(OWNER_USER_ID),
-                        errorCaptor.capture()
-                );
+        verify(
+                rawCvStatusRepository
+        ).markFailed(
+                eq(RAW_CV_ID),
+                eq(OWNER_USER_ID),
+                errorCaptor.capture()
+        );
 
-        assertThat(errorCaptor.getValue())
-                .hasSizeLessThanOrEqualTo(100)
+        assertThat(
+                errorCaptor.getValue()
+        )
+                .hasSizeLessThanOrEqualTo(
+                        100
+                )
                 .doesNotContain("\n")
                 .doesNotContain("\r");
     }
@@ -841,6 +1061,7 @@ class CvParsingServiceTest {
 
         CandidateProfile concurrentProfile =
                 currentProfile();
+
         concurrentProfile.setId(
                 "profile-concurrent"
         );
@@ -849,7 +1070,9 @@ class CvParsingServiceTest {
                 rawCvRepository.findById(
                         RAW_CV_ID
                 )
-        ).thenReturn(Optional.of(rawCv));
+        ).thenReturn(
+                Optional.of(rawCv)
+        );
 
         when(
                 candidateProfileRepository
@@ -858,7 +1081,9 @@ class CvParsingServiceTest {
                         )
         ).thenReturn(
                 Optional.empty(),
-                Optional.of(concurrentProfile)
+                Optional.of(
+                        concurrentProfile
+                )
         );
 
         when(
@@ -874,14 +1099,18 @@ class CvParsingServiceTest {
                 parserClient.parse(
                         any(CvParseRequest.class)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 responseValidator.validate(
                         any(CvParseRequest.class),
                         eq(parserResponse)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 profileMapper.toDocument(
@@ -890,7 +1119,9 @@ class CvParsingServiceTest {
                         isNull(),
                         eq(NOW)
                 )
-        ).thenReturn(mappedProfile);
+        ).thenReturn(
+                mappedProfile
+        );
 
         when(
                 candidateProfileRepository.save(
@@ -909,22 +1140,29 @@ class CvParsingServiceTest {
                 )
         ).thenReturn(true);
 
-        CandidateProfile result = service.parse(
-                RAW_CV_ID,
-                OWNER_USER_ID
-        );
-
-        assertThat(result)
-                .isSameAs(concurrentProfile);
-
-        verify(candidateProfileRepository)
-                .save(mappedProfile);
-
-        verify(rawCvStatusRepository)
-                .markParsed(
+        CandidateProfile result =
+                service.parse(
                         RAW_CV_ID,
                         OWNER_USER_ID
                 );
+
+        assertThat(result)
+                .isSameAs(
+                        concurrentProfile
+                );
+
+        verify(
+                candidateProfileRepository
+        ).save(
+                mappedProfile
+        );
+
+        verify(
+                rawCvStatusRepository
+        ).markParsed(
+                RAW_CV_ID,
+                OWNER_USER_ID
+        );
     }
 
     @Test
@@ -943,14 +1181,18 @@ class CvParsingServiceTest {
                 rawCvRepository.findById(
                         RAW_CV_ID
                 )
-        ).thenReturn(Optional.of(rawCv));
+        ).thenReturn(
+                Optional.of(rawCv)
+        );
 
         when(
                 candidateProfileRepository
                         .findByRawCvId(
                                 RAW_CV_ID
                         )
-        ).thenReturn(Optional.empty());
+        ).thenReturn(
+                Optional.empty()
+        );
 
         when(
                 rawCvStatusRepository
@@ -965,14 +1207,18 @@ class CvParsingServiceTest {
                 parserClient.parse(
                         any(CvParseRequest.class)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 responseValidator.validate(
                         any(CvParseRequest.class),
                         eq(parserResponse)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 profileMapper.toDocument(
@@ -981,7 +1227,9 @@ class CvParsingServiceTest {
                         isNull(),
                         eq(NOW)
                 )
-        ).thenReturn(mappedProfile);
+        ).thenReturn(
+                mappedProfile
+        );
 
         when(
                 candidateProfileRepository.save(
@@ -1015,14 +1263,17 @@ class CvParsingServiceTest {
                         String.class
                 );
 
-        verify(rawCvStatusRepository)
-                .markFailed(
-                        eq(RAW_CV_ID),
-                        eq(OWNER_USER_ID),
-                        errorCaptor.capture()
-                );
+        verify(
+                rawCvStatusRepository
+        ).markFailed(
+                eq(RAW_CV_ID),
+                eq(OWNER_USER_ID),
+                errorCaptor.capture()
+        );
 
-        assertThat(errorCaptor.getValue())
+        assertThat(
+                errorCaptor.getValue()
+        )
                 .isEqualTo(
                         "CANDIDATE_PROFILE_PERSISTENCE_FAILED"
                 )
@@ -1061,7 +1312,9 @@ class CvParsingServiceTest {
                         .findByRawCvId(
                                 RAW_CV_ID
                         )
-        ).thenReturn(Optional.empty());
+        ).thenReturn(
+                Optional.empty()
+        );
 
         when(
                 rawCvStatusRepository
@@ -1076,14 +1329,18 @@ class CvParsingServiceTest {
                 parserClient.parse(
                         any(CvParseRequest.class)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 responseValidator.validate(
                         any(CvParseRequest.class),
                         eq(parserResponse)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 profileMapper.toDocument(
@@ -1092,13 +1349,17 @@ class CvParsingServiceTest {
                         isNull(),
                         eq(NOW)
                 )
-        ).thenReturn(mappedProfile);
+        ).thenReturn(
+                mappedProfile
+        );
 
         when(
                 candidateProfileRepository.save(
                         mappedProfile
                 )
-        ).thenReturn(mappedProfile);
+        ).thenReturn(
+                mappedProfile
+        );
 
         when(
                 rawCvStatusRepository.markParsed(
@@ -1124,12 +1385,13 @@ class CvParsingServiceTest {
                 "RAW_CV_STATUS_UPDATE_FAILED"
         );
 
-        verify(rawCvStatusRepository)
-                .markFailed(
-                        RAW_CV_ID,
-                        OWNER_USER_ID,
-                        "RAW_CV_STATUS_UPDATE_FAILED"
-                );
+        verify(
+                rawCvStatusRepository
+        ).markFailed(
+                RAW_CV_ID,
+                OWNER_USER_ID,
+                "RAW_CV_STATUS_UPDATE_FAILED"
+        );
     }
 
     @Test
@@ -1150,6 +1412,7 @@ class CvParsingServiceTest {
 
         CandidateProfile concurrentProfile =
                 currentProfile();
+
         concurrentProfile.setId(
                 "profile-concurrent"
         );
@@ -1170,7 +1433,9 @@ class CvParsingServiceTest {
                         )
         ).thenReturn(
                 Optional.empty(),
-                Optional.of(concurrentProfile)
+                Optional.of(
+                        concurrentProfile
+                )
         );
 
         when(
@@ -1186,14 +1451,18 @@ class CvParsingServiceTest {
                 parserClient.parse(
                         any(CvParseRequest.class)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 responseValidator.validate(
                         any(CvParseRequest.class),
                         eq(parserResponse)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 profileMapper.toDocument(
@@ -1202,13 +1471,17 @@ class CvParsingServiceTest {
                         isNull(),
                         eq(NOW)
                 )
-        ).thenReturn(mappedProfile);
+        ).thenReturn(
+                mappedProfile
+        );
 
         when(
                 candidateProfileRepository.save(
                         mappedProfile
                 )
-        ).thenReturn(mappedProfile);
+        ).thenReturn(
+                mappedProfile
+        );
 
         when(
                 rawCvStatusRepository.markParsed(
@@ -1217,13 +1490,16 @@ class CvParsingServiceTest {
                 )
         ).thenReturn(false);
 
-        CandidateProfile result = service.parse(
-                RAW_CV_ID,
-                OWNER_USER_ID
-        );
+        CandidateProfile result =
+                service.parse(
+                        RAW_CV_ID,
+                        OWNER_USER_ID
+                );
 
         assertThat(result)
-                .isSameAs(concurrentProfile);
+                .isSameAs(
+                        concurrentProfile
+                );
 
         verify(
                 rawCvStatusRepository,
@@ -1248,14 +1524,18 @@ class CvParsingServiceTest {
                 rawCvRepository.findById(
                         RAW_CV_ID
                 )
-        ).thenReturn(Optional.of(rawCv));
+        ).thenReturn(
+                Optional.of(rawCv)
+        );
 
         when(
                 candidateProfileRepository
                         .findByRawCvId(
                                 RAW_CV_ID
                         )
-        ).thenReturn(Optional.of(profile));
+        ).thenReturn(
+                Optional.of(profile)
+        );
 
         CandidateProfile result =
                 service.getProfile(
@@ -1263,7 +1543,8 @@ class CvParsingServiceTest {
                         OWNER_USER_ID
                 );
 
-        assertThat(result).isSameAs(profile);
+        assertThat(result)
+                .isSameAs(profile);
     }
 
     @Test
@@ -1276,14 +1557,18 @@ class CvParsingServiceTest {
                 rawCvRepository.findById(
                         RAW_CV_ID
                 )
-        ).thenReturn(Optional.of(rawCv));
+        ).thenReturn(
+                Optional.of(rawCv)
+        );
 
         when(
                 candidateProfileRepository
                         .findByRawCvId(
                                 RAW_CV_ID
                         )
-        ).thenReturn(Optional.empty());
+        ).thenReturn(
+                Optional.empty()
+        );
 
         assertParsingException(
                 () -> service.getProfile(
@@ -1305,7 +1590,9 @@ class CvParsingServiceTest {
                 rawCvRepository.findById(
                         RAW_CV_ID
                 )
-        ).thenReturn(Optional.of(rawCv));
+        ).thenReturn(
+                Optional.of(rawCv)
+        );
 
         when(
                 candidateProfileRepository
@@ -1313,7 +1600,9 @@ class CvParsingServiceTest {
                                 RAW_CV_ID
                         )
         ).thenReturn(
-                Optional.ofNullable(existingProfile)
+                Optional.ofNullable(
+                        existingProfile
+                )
         );
 
         when(
@@ -1329,14 +1618,18 @@ class CvParsingServiceTest {
                 parserClient.parse(
                         any(CvParseRequest.class)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 responseValidator.validate(
                         any(CvParseRequest.class),
                         eq(parserResponse)
                 )
-        ).thenReturn(parserResponse);
+        ).thenReturn(
+                parserResponse
+        );
 
         when(
                 profileMapper.toDocument(
@@ -1347,13 +1640,17 @@ class CvParsingServiceTest {
                         ),
                         eq(NOW)
                 )
-        ).thenReturn(mappedProfile);
+        ).thenReturn(
+                mappedProfile
+        );
 
         when(
                 candidateProfileRepository.save(
                         mappedProfile
                 )
-        ).thenReturn(mappedProfile);
+        ).thenReturn(
+                mappedProfile
+        );
 
         when(
                 rawCvStatusRepository.markParsed(
@@ -1370,14 +1667,18 @@ class CvParsingServiceTest {
                 rawCvRepository.findById(
                         RAW_CV_ID
                 )
-        ).thenReturn(Optional.of(rawCv));
+        ).thenReturn(
+                Optional.of(rawCv)
+        );
 
         when(
                 candidateProfileRepository
                         .findByRawCvId(
                                 RAW_CV_ID
                         )
-        ).thenReturn(Optional.empty());
+        ).thenReturn(
+                Optional.empty()
+        );
 
         when(
                 rawCvStatusRepository
@@ -1394,18 +1695,30 @@ class CvParsingServiceTest {
     ) {
         return RawCv.builder()
                 .id(RAW_CV_ID)
-                .ownerUserId(OWNER_USER_ID)
-                .bucket("autojob-cvs")
+                .ownerUserId(
+                        OWNER_USER_ID
+                )
+                .bucket(
+                        "autojob-cvs"
+                )
                 .objectKey(
                         "raw/2026/08/04/raw-cv-001/candidate.pdf"
                 )
                 .originalFilename(
                         "candidate.pdf"
                 )
-                .extension("pdf")
-                .contentType("application/pdf")
-                .sizeBytes(125_000L)
-                .sha256("sha256-value")
+                .extension(
+                        "pdf"
+                )
+                .contentType(
+                        "application/pdf"
+                )
+                .sizeBytes(
+                        125_000L
+                )
+                .sha256(
+                        "sha256-value"
+                )
                 .status(status)
                 .uploadedAt(
                         Instant.parse(
@@ -1417,14 +1730,23 @@ class CvParsingServiceTest {
 
     private CandidateProfile currentProfile() {
         return CandidateProfile.builder()
-                .id("profile-001")
-                .rawCvId(RAW_CV_ID)
-                .ownerUserId(OWNER_USER_ID)
-                .fullName("Nguyễn Minh Anh")
-                .headline("Senior Accountant")
+                .id(
+                        "profile-001"
+                )
+                .rawCvId(
+                        RAW_CV_ID
+                )
+                .ownerUserId(
+                        OWNER_USER_ID
+                )
+                .fullName(
+                        "Nguyễn Minh Anh"
+                )
+                .headline(
+                        "Senior Accountant"
+                )
                 .contact(
-                        new CandidateProfile
-                                .ContactInformation(
+                        new CandidateProfile.ContactInformation(
                                 "minh.anh@example.com",
                                 "+84901234567",
                                 null,
@@ -1434,14 +1756,18 @@ class CvParsingServiceTest {
                                 null
                         )
                 )
-                .links(List.of())
+                .links(
+                        List.of()
+                )
                 .targetJobTitles(
                         List.of(
                                 "Chief Accountant"
                         )
                 )
                 .targetIndustries(
-                        List.of("Manufacturing")
+                        List.of(
+                                "Manufacturing"
+                        )
                 )
                 .preferredLocations(
                         List.of(
@@ -1450,47 +1776,76 @@ class CvParsingServiceTest {
                 )
                 .preferredWorkModes(
                         List.of(
-                                CandidateProfile
-                                        .WorkMode
-                                        .ONSITE
+                                CandidateProfile.WorkMode.ONSITE
                         )
                 )
                 .preferredEmploymentTypes(
                         List.of(
-                                CandidateProfile
-                                        .EmploymentType
-                                        .FULL_TIME
+                                CandidateProfile.EmploymentType.FULL_TIME
                         )
                 )
-                .skills(List.of())
-                .workExperiences(List.of())
-                .projects(List.of())
-                .educations(List.of())
-                .certifications(List.of())
-                .licenses(List.of())
-                .languages(List.of())
-                .awards(List.of())
-                .publications(List.of())
-                .volunteerExperiences(List.of())
-                .activities(List.of())
-                .trainingCourses(List.of())
-                .interests(List.of())
-                .recentJobTitles(List.of())
-                .recentCompanies(List.of())
+                .skills(
+                        List.of()
+                )
+                .workExperiences(
+                        List.of()
+                )
+                .projects(
+                        List.of()
+                )
+                .educations(
+                        List.of()
+                )
+                .certifications(
+                        List.of()
+                )
+                .licenses(
+                        List.of()
+                )
+                .languages(
+                        List.of()
+                )
+                .awards(
+                        List.of()
+                )
+                .publications(
+                        List.of()
+                )
+                .volunteerExperiences(
+                        List.of()
+                )
+                .activities(
+                        List.of()
+                )
+                .trainingCourses(
+                        List.of()
+                )
+                .interests(
+                        List.of()
+                )
+                .recentJobTitles(
+                        List.of()
+                )
+                .recentCompanies(
+                        List.of()
+                )
                 .detectedLanguage(
-                        CandidateProfile
-                                .DetectedLanguage
-                                .VI
+                        CandidateProfile.DetectedLanguage.VI
                 )
                 .rawText(
                         "Senior Accountant profile"
                 )
-                .sections(List.of())
-                .parserVersion("rule-v1")
-                .parserWarnings(List.of())
+                .sections(
+                        List.of()
+                )
+                .parserVersion(
+                        "rule-v1"
+                )
+                .parserWarnings(
+                        List.of()
+                )
                 .parseQuality(
-                        new CandidateProfile
-                                .ParseQuality(
+                        new CandidateProfile.ParseQuality(
                                 0.9,
                                 1.0,
                                 0.8,
@@ -1499,7 +1854,9 @@ class CvParsingServiceTest {
                                 List.of()
                         )
                 )
-                .sourceBucket("autojob-cvs")
+                .sourceBucket(
+                        "autojob-cvs"
+                )
                 .sourceObjectKey(
                         "raw/2026/08/04/raw-cv-001/candidate.pdf"
                 )
@@ -1509,10 +1866,18 @@ class CvParsingServiceTest {
                 .sourceContentType(
                         "application/pdf"
                 )
-                .sourceSizeBytes(125_000L)
-                .sourceSha256("sha256-value")
-                .createdAt(NOW)
-                .updatedAt(NOW)
+                .sourceSizeBytes(
+                        125_000L
+                )
+                .sourceSha256(
+                        "sha256-value"
+                )
+                .createdAt(
+                        NOW
+                )
+                .updatedAt(
+                        NOW
+                )
                 .build();
     }
 
@@ -1521,9 +1886,7 @@ class CvParsingServiceTest {
                 RAW_CV_ID,
                 "rule-v1",
                 1,
-                CvParseResponse
-                        .DetectedLanguage
-                        .VI,
+                CvParseResponse.DetectedLanguage.VI,
                 null,
                 List.of()
         );
@@ -1534,7 +1897,9 @@ class CvParsingServiceTest {
             HttpStatus expectedStatus,
             String expectedCode
     ) {
-        assertThatThrownBy(operation::run)
+        assertThatThrownBy(
+                operation::run
+        )
                 .isInstanceOf(
                         CvParsingException.class
                 )
@@ -1545,15 +1910,21 @@ class CvParsingServiceTest {
 
                     assertThat(
                             exception.getStatus()
-                    ).isEqualTo(expectedStatus);
+                    ).isEqualTo(
+                            expectedStatus
+                    );
 
                     assertThat(
                             exception.getCode()
-                    ).isEqualTo(expectedCode);
+                    ).isEqualTo(
+                            expectedCode
+                    );
 
                     assertThat(
                             exception.getRawCvId()
-                    ).isEqualTo(RAW_CV_ID);
+                    ).isEqualTo(
+                            RAW_CV_ID
+                    );
                 });
     }
 

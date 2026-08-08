@@ -147,7 +147,8 @@ services:
       CV_EXTRACTION_TIMEOUT_SECONDS: ${CV_EXTRACTION_TIMEOUT_SECONDS:-45}
       CV_MIN_TEXT_CHARACTERS: ${CV_MIN_TEXT_CHARACTERS:-40}
       CV_MAX_PDF_PAGES: ${CV_MAX_PDF_PAGES:-100}
-      CV_ALLOWED_OBJECT_PREFIXES: ${CV_ALLOWED_OBJECT_PREFIXES:-raw/,cvs/}
+      CV_ALLOWED_OBJECT_PREFIXES: '${CV_ALLOWED_OBJECT_PREFIXES:-["raw/","cvs/"]}'
+
     healthcheck:
       test:
         - CMD
@@ -168,6 +169,25 @@ services:
       retries: 10
       start_period: 20s
 
+  mock-job-site:
+    image: nginx:1.27-alpine
+    container_name: autojob-mock-job-site
+    restart: unless-stopped
+    ports:
+      - "${MOCK_JOB_SITE_PORT:-18080}:80"
+    volumes:
+      - ./mock-sites/mock-job-site:/usr/share/nginx/html:ro
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -qO-
+        - http://localhost/jobs.html
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   autojob-app:
     build:
       context: ./backend
@@ -175,19 +195,29 @@ services:
     image: autojob-app:local
     container_name: autojob-app
     restart: unless-stopped
+
     depends_on:
       mongo:
         condition: service_healthy
+
       minio-init:
         condition: service_completed_successfully
+
       cv-parser-service:
         condition: service_healthy
+
       embedding-service:
         condition: service_healthy
+
       qdrant:
         condition: service_started
+
+      mock-job-site:
+        condition: service_healthy
+
     ports:
       - "${AUTOJOB_APP_PORT:-8080}:8080"
+
     environment:
       SERVER_PORT: "8080"
 
@@ -215,11 +245,35 @@ services:
       EMBEDDING_SERVICE_BASE_URL: http://embedding-service:8002
       EMBEDDING_EXPECTED_DIMENSION: ${EMBEDDING_EXPECTED_DIMENSION:-384}
       EMBEDDING_EXPECTED_VERSION: "${EMBEDDING_EXPECTED_VERSION:-intfloat/multilingual-e5-small@c007d7ef6fd86656326059b28395a7a03a7c5846|prep-v1|l2}"
+      EMBEDDING_CONNECT_TIMEOUT: ${EMBEDDING_CONNECT_TIMEOUT:-3s}
+      EMBEDDING_RESPONSE_TIMEOUT: ${EMBEDDING_RESPONSE_TIMEOUT:-30s}
+      EMBEDDING_MAX_ERROR_LENGTH: ${EMBEDDING_MAX_ERROR_LENGTH:-1000}
+
+      CANDIDATE_EMBEDDING_TEXT_VERSION: ${CANDIDATE_EMBEDDING_TEXT_VERSION:-candidate-text-v1}
+      CANDIDATE_EMBEDDING_TEXT_MAX_CHARS: ${CANDIDATE_EMBEDDING_TEXT_MAX_CHARS:-2400}
+      CANDIDATE_EMBEDDING_SUMMARY_MAX_CHARS: ${CANDIDATE_EMBEDDING_SUMMARY_MAX_CHARS:-500}
+      CANDIDATE_EMBEDDING_WORK_MAX_ITEMS: ${CANDIDATE_EMBEDDING_WORK_MAX_ITEMS:-3}
+      CANDIDATE_EMBEDDING_WORK_ITEM_MAX_CHARS: ${CANDIDATE_EMBEDDING_WORK_ITEM_MAX_CHARS:-450}
+      CANDIDATE_EMBEDDING_PROJECT_MAX_ITEMS: ${CANDIDATE_EMBEDDING_PROJECT_MAX_ITEMS:-3}
+      CANDIDATE_EMBEDDING_PROJECT_ITEM_MAX_CHARS: ${CANDIDATE_EMBEDDING_PROJECT_ITEM_MAX_CHARS:-350}
+      CANDIDATE_EMBEDDING_CERTIFICATIONS_MAX_ITEMS: ${CANDIDATE_EMBEDDING_CERTIFICATIONS_MAX_ITEMS:-5}
 
       QDRANT_BASE_URL: http://qdrant:6333
       QDRANT_JOB_COLLECTION: ${QDRANT_JOB_COLLECTION:-job_vectors_v1}
       QDRANT_VECTOR_DIMENSION: ${QDRANT_VECTOR_DIMENSION:-384}
       QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
+
+      # Quan trọng:
+      # Container Java phải gọi mock-job-site bằng Docker service name,
+      # không dùng localhost:18080.
+      MOCK_CRAWLER_SOURCE_CODE: MOCK
+      MOCK_CRAWLER_BASE_URL: http://mock-job-site
+      MOCK_CRAWLER_LIST_URL: http://mock-job-site/jobs.html
+      MOCK_CRAWLER_REQUEST_DELAY_MS: ${MOCK_CRAWLER_REQUEST_DELAY_MS:-300}
+      MOCK_CRAWLER_STORE_RAW_HTML: ${MOCK_CRAWLER_STORE_RAW_HTML:-false}
+      MOCK_CRAWLER_STORE_RAW_TEXT: ${MOCK_CRAWLER_STORE_RAW_TEXT:-false}
+      MOCK_CRAWLER_RAW_TEXT_MAX_CHARS: ${MOCK_CRAWLER_RAW_TEXT_MAX_CHARS:-20000}
+      MOCK_CRAWLER_RAW_RETENTION_DAYS: ${MOCK_CRAWLER_RAW_RETENTION_DAYS:-30}
 
       AUTH_PUBLIC_API_MODE: ${AUTH_PUBLIC_API_MODE:-true}
       AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:-autojob-app}
@@ -230,6 +284,7 @@ services:
 
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_TRUST_FORWARDED_HEADERS: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:-false}
+
     healthcheck:
       test:
         - CMD
@@ -241,25 +296,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-
-  mock-job-site:
-    image: nginx:1.27-alpine
-    container_name: autojob-mock-job-site
-    restart: unless-stopped
-    ports:
-      - "${MOCK_JOB_SITE_PORT:-18080}:80"
-    volumes:
-      - ./mock-sites/mock-job-site:/usr/share/nginx/html:ro
-    healthcheck:
-      test:
-        - CMD
-        - wget
-        - -qO-
-        - http://localhost/jobs.html
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 5s
 
 volumes:
   mongo_data:

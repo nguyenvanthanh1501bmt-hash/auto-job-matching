@@ -1,4 +1,4 @@
-package com.autojob.modules.jobembedding.config;
+package com.autojob.common.embedding.config;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

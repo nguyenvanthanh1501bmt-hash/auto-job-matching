@@ -1,4 +1,4 @@
-package com.autojob.modules.jobembedding.client;
+package com.autojob.common.embedding.client;
 
 public class EmbeddingClientException extends RuntimeException {
 

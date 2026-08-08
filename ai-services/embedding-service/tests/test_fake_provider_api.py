@@ -100,12 +100,16 @@ def test_different_input_returns_different_vector(
 ) -> None:
     first_response = client.post(
         "/api/v1/embeddings",
-        json={"text": "query: Java Backend Engineer"},
+        json={
+            "text": "query: Java Backend Engineer"
+        },
     )
 
     second_response = client.post(
         "/api/v1/embeddings",
-        json={"text": "query: React Frontend Engineer"},
+        json={
+            "text": "query: React Frontend Engineer"
+        },
     )
 
     assert first_response.status_code == 200
@@ -120,7 +124,10 @@ def test_different_input_returns_different_vector(
 def test_text_hash_uses_exact_utf8_input(
         client: TestClient,
 ) -> None:
-    text = " query: Kỹ sư phần mềm\nSkills: Java, MongoDB "
+    text = (
+        " query: Kỹ sư phần mềm\n"
+        "Skills: Java, MongoDB "
+    )
 
     response = client.post(
         "/api/v1/embeddings",
@@ -128,9 +135,13 @@ def test_text_hash_uses_exact_utf8_input(
     )
 
     assert response.status_code == 200
-    assert response.json()["textHash"] == hashlib.sha256(
+
+    assert (
+            response.json()["textHash"]
+            == hashlib.sha256(
         text.encode("utf-8")
     ).hexdigest()
+    )
 
 
 def test_blank_text_is_rejected(
@@ -149,7 +160,9 @@ def test_vector_contains_only_finite_values(
 ) -> None:
     response = client.post(
         "/api/v1/embeddings",
-        json={"text": "query: Data Engineer"},
+        json={
+            "text": "query: Data Engineer"
+        },
     )
 
     assert response.status_code == 200
@@ -157,7 +170,10 @@ def test_vector_contains_only_finite_values(
     vector = response.json()["vector"]
 
     assert vector
-    assert all(math.isfinite(value) for value in vector)
+    assert all(
+        math.isfinite(value)
+        for value in vector
+    )
 
 
 def test_vector_is_l2_normalized(
@@ -165,14 +181,20 @@ def test_vector_is_l2_normalized(
 ) -> None:
     response = client.post(
         "/api/v1/embeddings",
-        json={"text": "query: DevOps Engineer"},
+        json={
+            "text": "query: DevOps Engineer"
+        },
     )
 
     assert response.status_code == 200
 
     vector = response.json()["vector"]
+
     norm = math.sqrt(
-        sum(value * value for value in vector)
+        sum(
+            value * value
+            for value in vector
+        )
     )
 
     assert math.isclose(
@@ -180,4 +202,37 @@ def test_vector_is_l2_normalized(
         1.0,
         rel_tol=1e-6,
         abs_tol=1e-6,
+    )
+
+
+def test_candidate_embedding_text_is_supported(
+        client: TestClient,
+) -> None:
+    text = (
+        "query: Target roles: "
+        "Senior Java Backend Engineer\n"
+        "Headline: Backend Developer\n"
+        "Skills: Java, Spring Boot, MongoDB, Docker\n"
+        "Seniority: Senior\n"
+        "Experience: 5 years"
+    )
+
+    response = client.post(
+        "/api/v1/embeddings",
+        json={"text": text},
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["dimension"] == 384
+    assert len(body["vector"]) == 384
+    assert body["normalized"] is True
+
+    assert (
+            body["textHash"]
+            == hashlib.sha256(
+        text.encode("utf-8")
+    ).hexdigest()
     )

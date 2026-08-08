@@ -1,9 +1,10 @@
 package com.autojob.modules.jobembedding.service;
 
-import com.autojob.modules.jobembedding.client.EmbeddingClient;
-import com.autojob.modules.jobembedding.client.EmbeddingClientException;
-import com.autojob.modules.jobembedding.client.dto.EmbeddingResponse;
-import com.autojob.modules.jobembedding.config.EmbeddingProperties;
+import com.autojob.common.embedding.client.EmbeddingClient;
+import com.autojob.common.embedding.client.EmbeddingClientException;
+import com.autojob.common.embedding.client.dto.EmbeddingResponse;
+import com.autojob.common.embedding.config.EmbeddingProperties;
+import com.autojob.common.embedding.service.EmbeddingTextHashCalculator;
 import com.autojob.modules.jobembedding.config.QdrantProperties;
 import com.autojob.modules.jobembedding.domain.JobEmbedding;
 import com.autojob.modules.jobembedding.domain.JobEmbeddingStatus;

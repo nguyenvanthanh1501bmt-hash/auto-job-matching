@@ -1,4 +1,4 @@
-package com.autojob.modules.jobembedding.service;
+package com.autojob.common.embedding.service;
 
 import org.springframework.stereotype.Component;
 

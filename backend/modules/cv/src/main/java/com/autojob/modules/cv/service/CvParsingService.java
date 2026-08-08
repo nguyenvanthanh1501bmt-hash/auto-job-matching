@@ -1,5 +1,6 @@
 package com.autojob.modules.cv.service;
 
+import com.autojob.common.events.CandidateProfileReadyEvent;
 import com.autojob.modules.cv.client.CvParserClient;
 import com.autojob.modules.cv.client.CvParserClientException;
 import com.autojob.modules.cv.client.CvParserResponseValidationException;
@@ -12,7 +13,9 @@ import com.autojob.modules.cv.domain.RawCv;
 import com.autojob.modules.cv.repository.CandidateProfileRepository;
 import com.autojob.modules.cv.repository.RawCvRepository;
 import com.autojob.modules.cv.repository.RawCvStatusRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class CvParsingService {
 
@@ -32,6 +36,7 @@ public class CvParsingService {
     private final CvParserResponseValidator responseValidator;
     private final CandidateProfileMapper profileMapper;
     private final CvParserProperties parserProperties;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Autowired
@@ -42,7 +47,8 @@ public class CvParsingService {
             CvParserClient parserClient,
             CvParserResponseValidator responseValidator,
             CandidateProfileMapper profileMapper,
-            CvParserProperties parserProperties
+            CvParserProperties parserProperties,
+            ApplicationEventPublisher eventPublisher
     ) {
         this(
                 rawCvRepository,
@@ -52,6 +58,7 @@ public class CvParsingService {
                 responseValidator,
                 profileMapper,
                 parserProperties,
+                eventPublisher,
                 Clock.systemUTC()
         );
     }
@@ -64,37 +71,50 @@ public class CvParsingService {
             CvParserResponseValidator responseValidator,
             CandidateProfileMapper profileMapper,
             CvParserProperties parserProperties,
+            ApplicationEventPublisher eventPublisher,
             Clock clock
     ) {
         this.rawCvRepository = Objects.requireNonNull(
                 rawCvRepository,
                 "rawCvRepository"
         );
+
         this.rawCvStatusRepository = Objects.requireNonNull(
                 rawCvStatusRepository,
                 "rawCvStatusRepository"
         );
+
         this.candidateProfileRepository =
                 Objects.requireNonNull(
                         candidateProfileRepository,
                         "candidateProfileRepository"
                 );
+
         this.parserClient = Objects.requireNonNull(
                 parserClient,
                 "parserClient"
         );
+
         this.responseValidator = Objects.requireNonNull(
                 responseValidator,
                 "responseValidator"
         );
+
         this.profileMapper = Objects.requireNonNull(
                 profileMapper,
                 "profileMapper"
         );
+
         this.parserProperties = Objects.requireNonNull(
                 parserProperties,
                 "parserProperties"
         );
+
+        this.eventPublisher = Objects.requireNonNull(
+                eventPublisher,
+                "eventPublisher"
+        );
+
         this.clock = Objects.requireNonNull(
                 clock,
                 "clock"
@@ -122,6 +142,11 @@ public class CvParsingService {
                 )
                         .orElse(null);
 
+        /*
+         * Profile hiện tại đã được parse bằng đúng parser version.
+         * Không bắt buộc publish CandidateProfileReadyEvent lại
+         * vì business data không thay đổi.
+         */
         if (hasExpectedParserVersion(existingProfile)) {
             return recoverCurrentProfile(
                     rawCv,
@@ -217,6 +242,10 @@ public class CvParsingService {
                             Instant.now(clock)
                     );
 
+            /*
+             * Candidate profile PHẢI tồn tại trong Mongo trước khi
+             * CandidateProfileReadyEvent được publish.
+             */
             CandidateProfile savedProfile =
                     saveProfileWithDuplicateRecovery(
                             mappedProfile,
@@ -224,11 +253,34 @@ public class CvParsingService {
                             ownerUserId
                     );
 
-            return completeParsedState(
-                    rawCvId,
-                    ownerUserId,
-                    savedProfile
+            /*
+             * raw_cvs PHẢI transition sang PARSED thành công trước
+             * khi candidate embedding được trigger.
+             */
+            CandidateProfile completedProfile =
+                    completeParsedState(
+                            rawCvId,
+                            ownerUserId,
+                            savedProfile
+                    );
+
+            /*
+             * Candidate embedding là downstream best-effort work.
+             *
+             * Nếu embedding-service đang down thì:
+             *
+             * - candidate_profiles vẫn tồn tại
+             * - raw_cvs.status vẫn PARSED
+             * - listener/service tự quản lý FAILED state
+             *
+             * publishCandidateProfileReady() tự catch RuntimeException
+             * để không rơi xuống catch(RuntimeException) của parse flow.
+             */
+            publishCandidateProfileReady(
+                    completedProfile
             );
+
+            return completedProfile;
         } catch (CvParserClientException exception) {
             CvParsingException mapped =
                     mapParserException(
@@ -290,6 +342,128 @@ public class CvParsingService {
 
             throw mapped;
         }
+    }
+
+    /**
+     * Publish downstream event only after:
+     *
+     * 1. candidate profile was persisted successfully
+     * 2. raw CV reached PARSED state successfully
+     *
+     * Spring application events are synchronous by default. Therefore
+     * listener failures must never propagate back into the successful
+     * CV parsing flow.
+     */
+    private void publishCandidateProfileReady(
+            CandidateProfile profile
+    ) {
+        if (profile == null) {
+            log.error(
+                    "Candidate profile is null; "
+                            + "CandidateProfileReadyEvent will not be published"
+            );
+            return;
+        }
+
+        String candidateProfileId =
+                profile.getId();
+
+        if (candidateProfileId == null
+                || candidateProfileId.isBlank()) {
+            log.error(
+                    "Candidate profile has no id; "
+                            + "CandidateProfileReadyEvent will not be published "
+                            + "rawCvId={}",
+                    profile.getRawCvId()
+            );
+            return;
+        }
+
+        try {
+            CandidateProfileReadyEvent event =
+                    new CandidateProfileReadyEvent(
+                            candidateProfileId,
+                            profile.getRawCvId(),
+                            profile.getParserVersion(),
+                            Instant.now(clock)
+                    );
+
+            eventPublisher.publishEvent(event);
+
+            log.info(
+                    "CandidateProfileReadyEvent published "
+                            + "candidateProfileId={} "
+                            + "rawCvId={} "
+                            + "parserVersion={}",
+                    candidateProfileId,
+                    profile.getRawCvId(),
+                    profile.getParserVersion()
+            );
+        } catch (RuntimeException exception) {
+            /*
+             * IMPORTANT:
+             *
+             * Do NOT propagate this exception.
+             *
+             * candidate profile + PARSED raw CV are already persisted.
+             * Candidate embedding is an independent downstream stage.
+             */
+            log.error(
+                    "CandidateProfileReadyEvent handling failed "
+                            + "candidateProfileId={} "
+                            + "rawCvId={} "
+                            + "errorType={} "
+                            + "message={}",
+                    candidateProfileId,
+                    profile.getRawCvId(),
+                    exception
+                            .getClass()
+                            .getSimpleName(),
+                    safeEventErrorMessage(exception)
+            );
+        }
+    }
+
+    private String safeEventErrorMessage(
+            RuntimeException exception
+    ) {
+        String message =
+                exception.getMessage();
+
+        if (message == null
+                || message.isBlank()) {
+            return exception
+                    .getClass()
+                    .getSimpleName();
+        }
+
+        String sanitized =
+                message
+                        .replaceAll(
+                                "(?i)bearer\\s+[^\\s,;]+",
+                                "Bearer [REDACTED]"
+                        )
+                        .replaceAll(
+                                "(?i)(token|password|secret)=([^\\s&]+)",
+                                "$1=[REDACTED]"
+                        )
+                        .replaceAll(
+                                "\\s+",
+                                " "
+                        )
+                        .trim();
+
+        int maxLength = Math.min(
+                parserProperties.getMaxErrorLength(),
+                500
+        );
+
+        return sanitized.length() <= maxLength
+                ? sanitized
+                : sanitized.substring(
+                0,
+                maxLength
+        );
     }
 
     private CandidateProfile saveProfileWithDuplicateRecovery(

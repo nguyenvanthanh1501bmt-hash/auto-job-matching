@@ -31,6 +31,16 @@ autojob:
     response-timeout: ${EMBEDDING_RESPONSE_TIMEOUT:30s}
     max-error-length: ${EMBEDDING_MAX_ERROR_LENGTH:1000}
 
+  candidate-embedding:
+    text-version: ${CANDIDATE_EMBEDDING_TEXT_VERSION:candidate-text-v1}
+    text-max-chars: ${CANDIDATE_EMBEDDING_TEXT_MAX_CHARS:2400}
+    summary-max-chars: ${CANDIDATE_EMBEDDING_SUMMARY_MAX_CHARS:500}
+    work-experience-max-items: ${CANDIDATE_EMBEDDING_WORK_MAX_ITEMS:3}
+    work-experience-item-max-chars: ${CANDIDATE_EMBEDDING_WORK_ITEM_MAX_CHARS:450}
+    project-max-items: ${CANDIDATE_EMBEDDING_PROJECT_MAX_ITEMS:3}
+    project-item-max-chars: ${CANDIDATE_EMBEDDING_PROJECT_ITEM_MAX_CHARS:350}
+    certifications-max-items: ${CANDIDATE_EMBEDDING_CERTIFICATIONS_MAX_ITEMS:5}
+
   qdrant:
     base-url: ${QDRANT_BASE_URL:http://localhost:6333}
     collection: ${QDRANT_JOB_COLLECTION:job_vectors_v1}
@@ -38,6 +48,17 @@ autojob:
     distance: ${QDRANT_DISTANCE:Cosine}
     connect-timeout: ${QDRANT_CONNECT_TIMEOUT:3s}
     response-timeout: ${QDRANT_RESPONSE_TIMEOUT:10s}
+
+  crawler:
+    mock:
+      source-code: ${MOCK_CRAWLER_SOURCE_CODE:MOCK}
+      base-url: ${MOCK_CRAWLER_BASE_URL:http://localhost:18080}
+      list-url: ${MOCK_CRAWLER_LIST_URL:http://localhost:18080/jobs.html}
+      request-delay-ms: ${MOCK_CRAWLER_REQUEST_DELAY_MS:300}
+      store-raw-html: ${MOCK_CRAWLER_STORE_RAW_HTML:false}
+      store-raw-text: ${MOCK_CRAWLER_STORE_RAW_TEXT:false}
+      raw-text-max-chars: ${MOCK_CRAWLER_RAW_TEXT_MAX_CHARS:20000}
+      raw-retention-days: ${MOCK_CRAWLER_RAW_RETENTION_DAYS:30}
 
   auth:
     # true:

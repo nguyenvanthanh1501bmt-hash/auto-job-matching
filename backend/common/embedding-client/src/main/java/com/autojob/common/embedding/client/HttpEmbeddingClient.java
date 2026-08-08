@@ -1,8 +1,8 @@
-package com.autojob.modules.jobembedding.client;
+package com.autojob.common.embedding.client;
 
-import com.autojob.modules.jobembedding.client.dto.EmbeddingRequest;
-import com.autojob.modules.jobembedding.client.dto.EmbeddingResponse;
-import com.autojob.modules.jobembedding.config.EmbeddingProperties;
+import com.autojob.common.embedding.client.dto.EmbeddingRequest;
+import com.autojob.common.embedding.client.dto.EmbeddingResponse;
+import com.autojob.common.embedding.config.EmbeddingProperties;
 import io.netty.channel.ChannelOption;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
