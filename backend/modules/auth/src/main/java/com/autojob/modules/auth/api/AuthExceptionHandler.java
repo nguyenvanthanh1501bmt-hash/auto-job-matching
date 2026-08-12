@@ -18,6 +18,7 @@ import java.util.List;
 )
 public class AuthExceptionHandler {
 
+    // Xử lý các exception nghiệp vụ riêng của module auth.
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthException(
             AuthException exception,
@@ -32,6 +33,7 @@ public class AuthExceptionHandler {
         );
     }
 
+    // Xử lý trường hợp đăng nhập sai email hoặc password.
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiErrorResponse> handleBadCredentials(
             BadCredentialsException exception,
@@ -46,6 +48,7 @@ public class AuthExceptionHandler {
         );
     }
 
+    // Xử lý các lỗi authentication khác không thuộc BadCredentialsException.
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiErrorResponse>
     handleAuthenticationFailure(
@@ -61,11 +64,13 @@ public class AuthExceptionHandler {
         );
     }
 
+    // Xử lý lỗi validation từ @Valid / @Validated trên request body.
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
             MethodArgumentNotValidException exception,
             HttpServletRequest request
     ) {
+        // Lấy danh sách lỗi theo từng field để trả về cho client.
         List<String> details = exception
                 .getBindingResult()
                 .getFieldErrors()
@@ -86,6 +91,7 @@ public class AuthExceptionHandler {
         );
     }
 
+    // Tạo response lỗi thống nhất cho toàn bộ exception handler.
     private ResponseEntity<ApiErrorResponse> build(
             HttpStatus status,
             String code,
@@ -105,6 +111,7 @@ public class AuthExceptionHandler {
                 ));
     }
 
+    // DTO dùng để chuẩn hóa format error response của module auth.
     public record ApiErrorResponse(
             Instant timestamp,
             int status,

@@ -13,7 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def create_embedding_router(
-    provider: EmbeddingProvider,
+        provider: EmbeddingProvider,
 ) -> APIRouter:
     router = APIRouter(tags=["embeddings"])
 
@@ -23,14 +23,16 @@ def create_embedding_router(
         status_code=status.HTTP_200_OK,
     )
     async def create_embedding(
-        request: EmbeddingRequest,
+            request: EmbeddingRequest,
     ) -> EmbeddingResponse:
+        # Provider chưa sẵn sàng thì không nhận request.
         if not provider.is_ready:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Embedding provider is not ready",
             )
 
+        # Tạo SHA-256 hash của text để định danh request trong log.
         text_bytes = request.text.encode("utf-8")
         text_hash = hashlib.sha256(text_bytes).hexdigest()
 
@@ -42,6 +44,8 @@ def create_embedding_router(
         )
 
         try:
+            # Chạy model trong threadpool vì embed() có thể là synchronous
+            # và tốn thời gian, tránh block event loop của FastAPI.
             vector = await run_in_threadpool(
                 provider.embed,
                 request.text,
@@ -49,6 +53,7 @@ def create_embedding_router(
 
             metadata = provider.metadata
 
+            # Kiểm tra vector trả về có đúng dimension và giá trị hợp lệ.
             validate_vector(
                 vector=vector,
                 expected_dimension=metadata.dimension,
@@ -75,6 +80,8 @@ def create_embedding_router(
             )
 
             return response
+
+        # Lỗi dữ liệu/input hoặc vector không hợp lệ.
         except ValueError as exception:
             LOGGER.warning(
                 "Embedding request rejected "
@@ -88,8 +95,12 @@ def create_embedding_router(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=safe_error_message(exception),
             ) from exception
+
+        # HTTPException đã có status code riêng nên giữ nguyên.
         except HTTPException:
             raise
+
+        # Các lỗi không xác định trong quá trình tạo embedding.
         except Exception as exception:
             LOGGER.error(
                 "Embedding request failed "
@@ -108,14 +119,16 @@ def create_embedding_router(
 
 
 def validate_vector(
-    vector: list[float],
-    expected_dimension: int,
+        vector: list[float],
+        expected_dimension: int,
 ) -> None:
+    # Không cho phép provider trả về vector rỗng.
     if not vector:
         raise RuntimeError(
             "Embedding provider returned an empty vector"
         )
 
+    # Dimension của vector phải đúng với dimension mà model công bố.
     if len(vector) != expected_dimension:
         raise RuntimeError(
             "Embedding vector length mismatch: "
@@ -123,25 +136,29 @@ def validate_vector(
             f"actual={len(vector)}"
         )
 
+    # Kiểm tra vector không chứa NaN hoặc Infinity.
     if not all(math.isfinite(value) for value in vector):
         raise RuntimeError(
             "Embedding vector contains non-finite values"
         )
 
+    # Tính L2 norm của vector.
     norm = math.sqrt(
         sum(value * value for value in vector)
     )
 
+    # Norm phải là số hữu hạn và lớn hơn 0.
     if not math.isfinite(norm) or norm <= 0.0:
         raise RuntimeError(
             "Embedding vector has an invalid L2 norm"
         )
 
+    # Kiểm tra vector đã được L2 normalize về độ dài gần bằng 1.
     if not math.isclose(
-        norm,
-        1.0,
-        rel_tol=1e-5,
-        abs_tol=1e-5,
+            norm,
+            1.0,
+            rel_tol=1e-5,
+            abs_tol=1e-5,
     ):
         raise RuntimeError(
             "Embedding vector is not L2 normalized"
@@ -149,11 +166,13 @@ def validate_vector(
 
 
 def safe_error_message(
-    exception: Exception,
+        exception: Exception,
 ) -> str:
+    # Lấy message lỗi và loại bỏ khoảng trắng thừa.
     message = str(exception).strip()
 
     if not message:
         return type(exception).__name__
 
+    # Giới hạn message tối đa 500 ký tự.
     return message[:500]

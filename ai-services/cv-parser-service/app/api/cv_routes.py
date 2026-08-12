@@ -38,6 +38,7 @@ async def parse_cv(
         payload: ParseCvRequest,
         request: Request,
 ) -> ParseCvResponse:
+    # Lấy các dependency đã được khởi tạo trong application lifespan.
     settings: Settings = request.app.state.settings
     storage: MinioStorage = request.app.state.storage
     extractor_factory: ExtractorFactory = (
@@ -50,6 +51,8 @@ async def parse_cv(
         request.app.state.profile_parser
     )
 
+    # Đọc file CV từ MinIO.
+    # Chạy synchronous I/O trong thread để không block event loop.
     stored_object = await asyncio.to_thread(
         storage.get_object,
         payload.bucket,
@@ -57,6 +60,7 @@ async def parse_cv(
         payload.raw_cv_id,
     )
 
+    # Chọn extractor phù hợp dựa trên filename, content type và dữ liệu file.
     extractor = extractor_factory.create(
         original_filename=payload.original_filename,
         content_type=payload.content_type,
@@ -65,6 +69,8 @@ async def parse_cv(
     )
 
     try:
+        # Extraction có thể tốn thời gian nên chạy trong threadpool
+        # và giới hạn thời gian xử lý bằng timeout.
         extraction_result = await asyncio.wait_for(
             asyncio.to_thread(
                 extractor.extract,
@@ -74,14 +80,18 @@ async def parse_cv(
             timeout=settings.extraction_timeout_seconds,
         )
     except TimeoutError as exception:
+        # Chuyển timeout thành lỗi nghiệp vụ của CV parser.
         raise CvExtractionTimeoutError(
             raw_cv_id=payload.raw_cv_id
         ) from exception
 
+    # Chuẩn hóa text sau khi đã extract từ file.
     normalized_text = text_normalizer.normalize(
         extraction_result.text
     )
 
+    # Gộp warning từ extraction và normalization,
+    # đồng thời loại bỏ warning bị trùng.
     warnings = tuple(
         dict.fromkeys(
             (
@@ -91,6 +101,7 @@ async def parse_cv(
         )
     )
 
+    # Đưa text đã chuẩn hóa vào ProfileParser để phân tích CV.
     return profile_parser.parse(
         raw_cv_id=payload.raw_cv_id,
         raw_text=normalized_text.text,

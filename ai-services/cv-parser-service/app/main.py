@@ -30,10 +30,11 @@ from app.taxonomy.taxonomy_loader import (
 
 LOGGER = logging.getLogger("autojob.cv_parser")
 
-
+#  Cấu hình log của service
 def configure_logging(
         level: str,
 ) -> None:
+    # Cấu hình log level và format cho CV parser service.
     logging.basicConfig(
         level=getattr(logging, level),
         format=(
@@ -48,9 +49,11 @@ def resolve_taxonomy_directory(
 ) -> Path:
     path = Path(configured_path)
 
+    # Nếu đã là absolute path thì sử dụng trực tiếp.
     if path.is_absolute():
         return path
 
+    # Với relative path, resolve từ thư mục gốc của project.
     project_root = Path(__file__).resolve().parent.parent
     return project_root / path
 
@@ -59,9 +62,11 @@ def resolve_taxonomy_directory(
 async def lifespan(
         app: FastAPI,
 ) -> AsyncIterator[None]:
+    # Load settings và cấu hình logging khi service khởi động.
     settings = get_settings()
     configure_logging(settings.log_level)
 
+    # Load taxonomy và kiểm tra đúng version mà parser yêu cầu.
     taxonomy_directory = resolve_taxonomy_directory(
         settings.taxonomy_directory
     )
@@ -70,12 +75,14 @@ async def lifespan(
         expected_version=settings.parser_version,
     ).load()
 
+    # Khởi tạo các dependency dùng chung và lưu vào app.state.
     app.state.settings = settings
     app.state.taxonomy = taxonomy
     app.state.storage = MinioStorage(settings)
     app.state.extractor_factory = ExtractorFactory(settings)
     app.state.text_normalizer = TextNormalizer(settings)
 
+    # Import tại đây để tránh circular import khi app khởi tạo.
     from app.parsing.profile_parser import ProfileParser
 
     app.state.profile_parser = ProfileParser(
@@ -89,11 +96,14 @@ async def lifespan(
         taxonomy.version,
     )
 
+    # Service bắt đầu nhận request sau khi toàn bộ dependency đã sẵn sàng.
     yield
 
     LOGGER.info("CV parser service stopped")
 
 
+# Khởi tạo FastAPI application.
+# Tắt Swagger/OpenAPI để service không expose các endpoint documentation.
 app = FastAPI(
     title="AutoJob CV Parser Service",
     version=__version__,
@@ -103,6 +113,7 @@ app = FastAPI(
     openapi_url=None,
 )
 
+# Đăng ký các API endpoint xử lý CV.
 app.include_router(cv_router)
 
 
@@ -111,6 +122,7 @@ async def handle_cv_parser_error(
         request: Request,
         exception: CvParserError,
 ) -> JSONResponse:
+    # Xử lý các lỗi nghiệp vụ đã được định nghĩa của CV parser.
     LOGGER.warning(
         "CV parser request failed code=%s rawCvId=%s path=%s",
         exception.code,
@@ -138,13 +150,17 @@ async def handle_request_validation_error(
         request: Request,
         exception: RequestValidationError,
 ) -> JSONResponse:
+    # Cố gắng lấy rawCvId từ request body để đưa vào log/error response.
     raw_cv_id = None
 
     try:
         body = await request.json()
         candidate = body.get("rawCvId")
+
         if isinstance(candidate, str):
+            # Giới hạn độ dài để tránh log dữ liệu quá lớn.
             raw_cv_id = candidate[:100]
+
     except Exception:
         raw_cv_id = None
 
@@ -174,6 +190,7 @@ async def handle_unexpected_error(
         request: Request,
         exception: Exception,
 ) -> JSONResponse:
+    # Catch-all cho các lỗi không được xử lý ở các handler phía trên.
     LOGGER.exception(
         "Unexpected CV parser error path=%s",
         request.url.path,
@@ -201,6 +218,7 @@ async def handle_unexpected_error(
     response_model=HealthResponse,
 )
 def health() -> HealthResponse:
+    # Health chỉ xác nhận service process đang hoạt động.
     return HealthResponse(status="UP")
 
 
@@ -212,12 +230,14 @@ def health() -> HealthResponse:
 def ready(
         request: Request,
 ) -> ReadyResponse:
+    # Lấy các dependency đã được khởi tạo trong lifespan.
     settings: Settings = request.app.state.settings
     taxonomy: TaxonomyBundle = request.app.state.taxonomy
     storage: MinioStorage = request.app.state.storage
 
     details: list[str] = []
 
+    # Kiểm tra các dependency quan trọng của CV parser.
     minio_ready = storage.check_readiness()
     doc_ready = DocExtractor.is_ready()
 
@@ -231,6 +251,7 @@ def ready(
             "antiword is unavailable"
         )
 
+    # Service chỉ READY khi cả MinIO và document extractor đều hoạt động.
     ready_status = (
         "UP"
         if minio_ready and doc_ready

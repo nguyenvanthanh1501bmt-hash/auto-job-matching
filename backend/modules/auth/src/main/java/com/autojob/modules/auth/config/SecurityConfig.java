@@ -51,9 +51,16 @@ import java.util.List;
 })
 public class SecurityConfig {
 
+    // Cấu hình auth được đọc từ application.yml/properties.
     private final AuthProperties authProperties;
+
+    // Service dùng để load thông tin user khi authentication.
     private final AuthUserDetailsService userDetailsService;
+
+    // Xử lý request chưa được authentication.
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
+
+    // Xử lý request đã đăng nhập nhưng không có quyền truy cập.
     private final RestAccessDeniedHandler accessDeniedHandler;
 
     @Bean
@@ -62,13 +69,20 @@ public class SecurityConfig {
             RateLimitFilter rateLimitFilter
     ) throws Exception {
         http
+                // API dùng JWT nên không cần CSRF protection của session.
                 .csrf(csrf -> csrf.disable())
+
+                // Bật CORS với cấu hình bên dưới.
                 .cors(Customizer.withDefaults())
+
+                // JWT authentication là stateless, server không lưu session.
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
+
+                // Cấu hình response khi authentication/authorization thất bại.
                 .exceptionHandling(exceptions ->
                         exceptions
                                 .authenticationEntryPoint(
@@ -78,6 +92,8 @@ public class SecurityConfig {
                                         accessDeniedHandler
                                 )
                 )
+
+                // Cấu hình Spring Security Resource Server để xác thực JWT.
                 .oauth2ResourceServer(resourceServer ->
                         resourceServer
                                 .jwt(jwt ->
@@ -91,9 +107,12 @@ public class SecurityConfig {
                 );
 
         /*
-         * Hiện tại true:
-         * - tất cả API đều public.
-         * - request có JWT hợp lệ vẫn tạo Authentication.
+         * publicApiMode = true:
+         * - Tất cả API đều được phép truy cập.
+         * - JWT hợp lệ vẫn được Spring Security parse và tạo Authentication.
+         *
+         * publicApiMode = false:
+         * - Áp dụng authorization rules bên dưới.
          */
         if (authProperties.isPublicApiMode()) {
             http.authorizeHttpRequests(authorize ->
@@ -123,6 +142,8 @@ public class SecurityConfig {
             );
         }
 
+        // Rate limit chạy sau BearerTokenAuthenticationFilter,
+        // nên request có JWT hợp lệ đã có Authentication trong SecurityContext.
         http.addFilterAfter(
                 rateLimitFilter,
                 BearerTokenAuthenticationFilter.class
@@ -133,6 +154,7 @@ public class SecurityConfig {
 
     @Bean
     PasswordEncoder passwordEncoder() {
+        // BCrypt dùng để hash và verify password.
         return new BCryptPasswordEncoder(12);
     }
 
@@ -140,6 +162,7 @@ public class SecurityConfig {
     DaoAuthenticationProvider daoAuthenticationProvider(
             PasswordEncoder passwordEncoder
     ) {
+        // Provider xác thực username/password thông qua UserDetailsService.
         DaoAuthenticationProvider provider =
                 new DaoAuthenticationProvider(
                         userDetailsService
@@ -154,6 +177,7 @@ public class SecurityConfig {
     AuthenticationManager authenticationManager(
             DaoAuthenticationProvider provider
     ) {
+        // AuthenticationManager ủy quyền authentication cho provider.
         return new ProviderManager(provider);
     }
 
@@ -162,6 +186,7 @@ public class SecurityConfig {
         byte[] secretBytes;
 
         try {
+            // JWT secret được lưu dưới dạng Base64 nên cần decode trước khi sử dụng.
             secretBytes = Base64
                     .getDecoder()
                     .decode(
@@ -175,6 +200,7 @@ public class SecurityConfig {
             );
         }
 
+        // Đảm bảo secret có ít nhất 256 bit (32 bytes) cho HS256.
         if (secretBytes.length < 32) {
             throw new IllegalStateException(
                     "JWT secret must contain at least 32 decoded bytes"
@@ -191,6 +217,7 @@ public class SecurityConfig {
     JwtEncoder jwtEncoder(
             SecretKey jwtSecretKey
     ) {
+        // Dùng secret key để ký JWT.
         JWKSource<SecurityContext> jwkSource =
                 new ImmutableSecret<>(jwtSecretKey);
 
@@ -201,12 +228,14 @@ public class SecurityConfig {
     JwtDecoder jwtDecoder(
             SecretKey jwtSecretKey
     ) {
+        // Decoder dùng cùng secret key để verify chữ ký JWT.
         NimbusJwtDecoder decoder =
                 NimbusJwtDecoder
                         .withSecretKey(jwtSecretKey)
                         .macAlgorithm(MacAlgorithm.HS256)
                         .build();
 
+        // Ngoài chữ ký, JWT phải có issuer hợp lệ.
         decoder.setJwtValidator(
                 JwtValidators.createDefaultWithIssuer(
                         authProperties.getIssuer()
@@ -222,10 +251,12 @@ public class SecurityConfig {
         JwtGrantedAuthoritiesConverter authoritiesConverter =
                 new JwtGrantedAuthoritiesConverter();
 
+        // Lấy role từ claim "roles" trong JWT.
         authoritiesConverter.setAuthoritiesClaimName(
                 "roles"
         );
 
+        // Thêm prefix ROLE_ để Spring Security nhận diện role.
         authoritiesConverter.setAuthorityPrefix(
                 "ROLE_"
         );
@@ -237,6 +268,7 @@ public class SecurityConfig {
                 authoritiesConverter
         );
 
+        // Dùng claim "sub" làm principal/username.
         converter.setPrincipalClaimName("sub");
 
         return converter;
@@ -247,6 +279,7 @@ public class SecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
+        // Chỉ cho phép các origin được cấu hình trong auth properties.
         configuration.setAllowedOrigins(
                 authProperties.getAllowedOrigins()
         );
@@ -267,6 +300,7 @@ public class SecurityConfig {
                 "X-Requested-With"
         ));
 
+        // Cho phép frontend đọc các header rate limit này.
         configuration.setExposedHeaders(List.of(
                 "X-RateLimit-Limit",
                 "X-RateLimit-Remaining",
@@ -274,6 +308,8 @@ public class SecurityConfig {
         ));
 
         configuration.setAllowCredentials(true);
+
+        // Browser có thể cache kết quả preflight trong 1 giờ.
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source =
