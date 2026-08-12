@@ -42,6 +42,18 @@ public class NormalizationTaxonomyProperties {
     @NotNull
     private JobType jobType = new JobType();
 
+    @Valid
+    @NotNull
+    private Salary salary = new Salary();
+
+    @Valid
+    @NotNull
+    private Experience experience = new Experience();
+
+    @Valid
+    @NotNull
+    private DateRules date = new DateRules();
+
     @Getter
     @Setter
     public static class Skill {
@@ -55,18 +67,6 @@ public class NormalizationTaxonomyProperties {
         private Set<String> safeShortProseAliases =
                 new LinkedHashSet<>();
 
-        /**
-         * Không dùng Map<canonical, aliases>.
-         *
-         * Spring ConfigurationProperties có thể sanitize Map key
-         * chứa space, Unicode hoặc ký tự đặc biệt.
-         *
-         * Ví dụ:
-         * "Spring Boot"   -> "SpringBoot"
-         * "Hồ Chí Minh"  -> "HChMinh"
-         *
-         * Canonical được lưu thành field value để giữ nguyên text.
-         */
         @Valid
         @NotEmpty
         private List<CanonicalAlias> aliases =
@@ -164,5 +164,176 @@ public class NormalizationTaxonomyProperties {
         @NotEmpty
         private List<@NotBlank String> patterns =
                 new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    public static class Salary {
+
+        @Valid
+        @NotEmpty
+        private List<SalaryMultiplierRule> multipliers =
+                new ArrayList<>();
+
+        @Valid
+        @NotEmpty
+        private List<SalaryCurrencyRule> currencies =
+                new ArrayList<>();
+
+        private Set<String> negotiablePhrases =
+                new LinkedHashSet<>();
+
+        private Set<String> rangeWords =
+                new LinkedHashSet<>();
+
+        private Set<String> upperBoundPhrases =
+                new LinkedHashSet<>();
+
+        private Set<String> lowerBoundPhrases =
+                new LinkedHashSet<>();
+
+        @Min(1)
+        private long sharedMultiplierMin =
+                1_000_000L;
+
+        @Min(1)
+        private long sharedMultiplierMaxUnscaledValue =
+                100_000L;
+    }
+
+    @Getter
+    @Setter
+    public static class SalaryMultiplierRule {
+
+        @Min(1)
+        private long multiplier;
+
+        @NotEmpty
+        private List<@NotBlank String> aliases =
+                new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    public static class SalaryCurrencyRule {
+
+        @NotBlank
+        private String code;
+
+        private List<@NotBlank String> originalMarkers =
+                new ArrayList<>();
+
+        private List<@NotBlank String> foldedPhrases =
+                new ArrayList<>();
+
+        private List<@NotBlank String> inferredUnitAliases =
+                new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    public static class Experience {
+
+        @Valid
+        @NotEmpty
+        private List<ExperienceUnitRule> units =
+                new ArrayList<>();
+
+        private Set<String> noExperiencePhrases =
+                new LinkedHashSet<>();
+
+        private Set<String> rangeWords =
+                new LinkedHashSet<>();
+
+        private Set<String> upperBoundPhrases =
+                new LinkedHashSet<>();
+
+        private Set<String> lowerBoundPhrases =
+                new LinkedHashSet<>();
+    }
+
+    @Getter
+    @Setter
+    public static class ExperienceUnitRule {
+
+        @NotNull
+        private ExperienceUnit unit;
+
+        @NotEmpty
+        private List<@NotBlank String> aliases =
+                new ArrayList<>();
+    }
+
+    public enum ExperienceUnit {
+        YEAR,
+        MONTH
+    }
+
+    /*
+     * ============================================================
+     * Date normalization
+     * ============================================================
+     */
+
+    @Getter
+    @Setter
+    public static class DateRules {
+
+        @NotEmpty
+        private Set<@NotBlank String> todayPhrases =
+                new LinkedHashSet<>();
+
+        @NotEmpty
+        private Set<@NotBlank String> yesterdayPhrases =
+                new LinkedHashSet<>();
+
+        @NotEmpty
+        private Set<@NotBlank String> tomorrowPhrases =
+                new LinkedHashSet<>();
+
+        @Valid
+        @NotEmpty
+        private List<DateUnitRule> units =
+                new ArrayList<>();
+
+        @NotEmpty
+        private Set<@NotBlank String> agoWords =
+                new LinkedHashSet<>();
+
+        @NotEmpty
+        private Set<@NotBlank String> deadlineInPrefixes =
+                new LinkedHashSet<>();
+
+        @NotEmpty
+        private Set<@NotBlank String> deadlineLeftSuffixes =
+                new LinkedHashSet<>();
+
+        @NotEmpty
+        private Set<@NotBlank String> deadlineFutureSuffixes =
+                new LinkedHashSet<>();
+
+        @NotEmpty
+        private Set<@NotBlank String> deadlineRemainingPrefixes =
+                new LinkedHashSet<>();
+    }
+
+    @Getter
+    @Setter
+    public static class DateUnitRule {
+
+        @NotNull
+        private DateUnit unit;
+
+        @NotEmpty
+        private List<@NotBlank String> aliases =
+                new ArrayList<>();
+    }
+
+    public enum DateUnit {
+        DAY,
+        WEEK,
+        MONTH,
+        HOUR,
+        MINUTE
     }
 }

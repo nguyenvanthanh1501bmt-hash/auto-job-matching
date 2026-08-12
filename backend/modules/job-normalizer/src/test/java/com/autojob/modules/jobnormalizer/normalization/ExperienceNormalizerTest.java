@@ -1,5 +1,7 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -11,9 +13,14 @@ class ExperienceNormalizerTest {
 
     @BeforeEach
     void setUp() {
-        experienceNormalizer = new ExperienceNormalizer(
-                new TextNormalizer()
-        );
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        experienceNormalizer =
+                new ExperienceNormalizer(
+                        new TextNormalizer(),
+                        taxonomy
+                );
     }
 
     @Test
@@ -23,89 +30,137 @@ class ExperienceNormalizerTest {
                         "Không yêu cầu kinh nghiệm"
                 );
 
-        assertThat(result.min()).isEqualTo(0.0);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(0.0);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
     void shouldNormalizeFresherAsZeroExperience() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("Fresher");
+                experienceNormalizer.normalize(
+                        "Fresher"
+                );
 
-        assertThat(result.min()).isEqualTo(0.0);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(0.0);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
     void shouldNormalizeUnderOneYear() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("Dưới 1 năm");
+                experienceNormalizer.normalize(
+                        "Dưới 1 năm"
+                );
 
-        assertThat(result.min()).isEqualTo(0.0);
-        assertThat(result.max()).isEqualTo(1.0);
+        assertThat(result.min())
+                .isEqualTo(0.0);
+
+        assertThat(result.max())
+                .isEqualTo(1.0);
     }
 
     @Test
     void shouldNormalizeExactYear() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("1 năm");
+                experienceNormalizer.normalize(
+                        "1 năm"
+                );
 
-        assertThat(result.min()).isEqualTo(1.0);
-        assertThat(result.max()).isEqualTo(1.0);
+        assertThat(result.min())
+                .isEqualTo(1.0);
+
+        assertThat(result.max())
+                .isEqualTo(1.0);
     }
 
     @Test
     void shouldNormalizeVietnameseLowerBound() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("Ít nhất 2 năm");
+                experienceNormalizer.normalize(
+                        "Ít nhất 2 năm"
+                );
 
-        assertThat(result.min()).isEqualTo(2.0);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(2.0);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
     void shouldNormalizeVietnameseFromKeyword() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("Từ 2 năm");
+                experienceNormalizer.normalize(
+                        "Từ 2 năm"
+                );
 
-        assertThat(result.min()).isEqualTo(2.0);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(2.0);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
     void shouldNormalizeVietnameseAboveKeyword() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("Trên 3 năm");
+                experienceNormalizer.normalize(
+                        "Trên 3 năm"
+                );
 
-        assertThat(result.min()).isEqualTo(3.0);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(3.0);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
     void shouldNormalizeVietnameseYearRange() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("2 - 4 năm");
+                experienceNormalizer.normalize(
+                        "2 - 4 năm"
+                );
 
-        assertThat(result.min()).isEqualTo(2.0);
-        assertThat(result.max()).isEqualTo(4.0);
+        assertThat(result.min())
+                .isEqualTo(2.0);
+
+        assertThat(result.max())
+                .isEqualTo(4.0);
     }
 
     @Test
     void shouldNormalizeVietnameseRangeUsingDenKeyword() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("2 đến 4 năm");
+                experienceNormalizer.normalize(
+                        "2 đến 4 năm"
+                );
 
-        assertThat(result.min()).isEqualTo(2.0);
-        assertThat(result.max()).isEqualTo(4.0);
+        assertThat(result.min())
+                .isEqualTo(2.0);
+
+        assertThat(result.max())
+                .isEqualTo(4.0);
     }
 
     @Test
     void shouldNormalizeEnglishPlusYears() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("3+ years");
+                experienceNormalizer.normalize(
+                        "3+ years"
+                );
 
-        assertThat(result.min()).isEqualTo(3.0);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(3.0);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
@@ -115,26 +170,39 @@ class ExperienceNormalizerTest {
                         "At least 3 years"
                 );
 
-        assertThat(result.min()).isEqualTo(3.0);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(3.0);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
     void shouldConvertMonthsToYears() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("24 months");
+                experienceNormalizer.normalize(
+                        "24 months"
+                );
 
-        assertThat(result.min()).isEqualTo(2.0);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(2.0);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
     void shouldRoundMonthsToTwoDecimalPlaces() {
         ExperienceNormalizationResult result =
-                experienceNormalizer.normalize("37 months");
+                experienceNormalizer.normalize(
+                        "37 months"
+                );
 
-        assertThat(result.min()).isEqualTo(3.08);
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isEqualTo(3.08);
+
+        assertThat(result.max())
+                .isNull();
     }
 
     @Test
@@ -144,23 +212,38 @@ class ExperienceNormalizerTest {
                         "Trao đổi khi phỏng vấn"
                 );
 
-        assertThat(result.min()).isNull();
-        assertThat(result.max()).isNull();
-        assertThat(result.known()).isFalse();
+        assertThat(result.min())
+                .isNull();
+
+        assertThat(result.max())
+                .isNull();
+
+        assertThat(result.known())
+                .isFalse();
     }
 
     @Test
     void shouldReturnUnknownForNullOrBlankInput() {
         ExperienceNormalizationResult nullResult =
-                experienceNormalizer.normalize(null);
+                experienceNormalizer.normalize(
+                        null
+                );
 
         ExperienceNormalizationResult blankResult =
-                experienceNormalizer.normalize("   ");
+                experienceNormalizer.normalize(
+                        "   "
+                );
 
-        assertThat(nullResult.min()).isNull();
-        assertThat(nullResult.max()).isNull();
+        assertThat(nullResult.min())
+                .isNull();
 
-        assertThat(blankResult.min()).isNull();
-        assertThat(blankResult.max()).isNull();
+        assertThat(nullResult.max())
+                .isNull();
+
+        assertThat(blankResult.min())
+                .isNull();
+
+        assertThat(blankResult.max())
+                .isNull();
     }
 }

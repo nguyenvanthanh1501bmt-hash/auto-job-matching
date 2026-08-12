@@ -856,7 +856,8 @@ class JobNormalizationServiceTest {
     ) {
         SalaryNormalizer salaryNormalizer =
                 new SalaryNormalizer(
-                        textNormalizer
+                        textNormalizer,
+                        normalizationTaxonomyProperties
                 );
 
         JobEmbeddingTextBuilder embeddingTextBuilder =
@@ -879,7 +880,8 @@ class JobNormalizationServiceTest {
                         normalizationTaxonomyProperties
                 ),
                 new ExperienceNormalizer(
-                        textNormalizer
+                        textNormalizer,
+                        normalizationTaxonomyProperties
                 ),
                 new SeniorityNormalizer(
                         normalizationTaxonomyProperties
@@ -889,6 +891,7 @@ class JobNormalizationServiceTest {
                 ),
                 new DateNormalizer(
                         textNormalizer,
+                        normalizationTaxonomyProperties,
                         FIXED_CLOCK
                 ),
                 new ApplyInformationNormalizer(

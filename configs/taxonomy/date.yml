@@ -1,0 +1,68 @@
+autojob:
+  normalization:
+    taxonomy:
+      date:
+
+        today-phrases:
+          - today
+          - hom nay
+
+        yesterday-phrases:
+          - yesterday
+          - hom qua
+
+        tomorrow-phrases:
+          - tomorrow
+          - ngay mai
+
+        units:
+
+          - unit: DAY
+            aliases:
+              - day
+              - days
+              - ngay
+
+          - unit: WEEK
+            aliases:
+              - week
+              - weeks
+              - tuan
+
+          - unit: MONTH
+            aliases:
+              - month
+              - months
+              - thang
+
+          - unit: HOUR
+            aliases:
+              - hour
+              - hours
+              - gio
+
+          - unit: MINUTE
+            aliases:
+              - minute
+              - minutes
+              - phut
+
+        ago-words:
+          - ago
+          - truoc
+
+        # "in 3 days"
+        deadline-in-prefixes:
+          - in
+
+        # "3 days left"
+        deadline-left-suffixes:
+          - left
+
+        # "3 ngày nữa"
+        deadline-future-suffixes:
+          - nua
+
+        # "còn 3 ngày"
+        deadline-remaining-prefixes:
+          - con

@@ -1,93 +1,161 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import lombok.RequiredArgsConstructor;
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-@RequiredArgsConstructor
 public class ExperienceNormalizer {
 
-    private static final Pattern NUMBER_PATTERN = Pattern.compile(
-            "(?<!\\d)(\\d+(?:[.,]\\d+)?)(?!\\d)"
-    );
+    private static final Pattern NUMBER =
+            Pattern.compile(
+                    "(?<!\\d)(\\d+(?:[.,]\\d+)?)(?!\\d)"
+            );
 
-    private static final Pattern DURATION_COMPONENT_PATTERN = Pattern.compile(
-            "(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*\\+?\\s*"
-                    + "(years?|yrs?|yr|nam|months?|mos?|mo|thang)\\b"
-    );
+    private static final Pattern DURATION =
+            Pattern.compile(
+                    "(?<!\\d)(\\d+(?:[.,]\\d+)?)"
+                            + "\\s*\\+?\\s*([a-z]+)(?![a-z])"
+            );
 
-    private static final Pattern RANGE_SEPARATOR_PATTERN = Pattern.compile(
-            "\\s*(?:[-–—]|\\bden\\b|\\bto\\b)\\s*"
-    );
-
-    private static final Pattern PLUS_SUFFIX_PATTERN = Pattern.compile(
-            "\\d(?:[\\d.,]*)\\s*\\+"
-    );
+    private static final Pattern PLUS =
+            Pattern.compile(
+                    "\\d(?:[\\d.,]*)\\s*\\+"
+            );
 
     private final TextNormalizer textNormalizer;
+
+    private final Map<
+            String,
+            NormalizationTaxonomyProperties.ExperienceUnit
+            > units;
+
+    private final Set<String> noExperience;
+    private final Set<String> rangeWords;
+    private final Set<String> upperBounds;
+    private final Set<String> lowerBounds;
+
+    public ExperienceNormalizer(
+            TextNormalizer textNormalizer,
+            NormalizationTaxonomyProperties taxonomy
+    ) {
+        this.textNormalizer =
+                textNormalizer;
+
+        var config =
+                taxonomy.getExperience();
+
+        this.units =
+                buildUnits(
+                        config.getUnits()
+                );
+
+        this.noExperience =
+                foldSet(
+                        config.getNoExperiencePhrases()
+                );
+
+        this.rangeWords =
+                foldSet(
+                        config.getRangeWords()
+                );
+
+        this.upperBounds =
+                foldSet(
+                        config.getUpperBoundPhrases()
+                );
+
+        this.lowerBounds =
+                foldSet(
+                        config.getLowerBoundPhrases()
+                );
+    }
 
     public ExperienceNormalizationResult normalize(
             String experienceText
     ) {
-        String cleaned = textNormalizer.normalizeInline(experienceText);
+        String cleaned =
+                textNormalizer.normalizeInline(
+                        experienceText
+                );
 
         if (cleaned == null) {
             return unknown();
         }
 
-        String folded = NormalizationTextSupport.fold(cleaned);
+        String folded =
+                NormalizationTextSupport.fold(
+                        cleaned
+                );
 
-        if (meansNoExperience(folded)) {
+        if (containsAny(
+                folded,
+                noExperience
+        )) {
             return new ExperienceNormalizationResult(
                     0.0,
                     null
             );
         }
 
-        ExperienceNormalizationResult rangeResult = parseRange(folded);
+        ExperienceNormalizationResult range =
+                parseRange(
+                        folded
+                );
 
-        if (rangeResult != null) {
-            return rangeResult;
+        if (range != null) {
+            return range;
         }
 
-        ParsedDuration duration = parseDuration(folded, null);
+        ParsedDuration duration =
+                parseDuration(
+                        folded,
+                        null
+                );
 
         if (duration == null) {
             return unknown();
         }
 
-        double value = duration.value();
+        double value =
+                duration.value();
 
-        if (isUpperBoundOnly(folded)) {
+        if (containsAny(
+                folded,
+                upperBounds
+        )) {
             return new ExperienceNormalizationResult(
                     0.0,
                     value
             );
         }
 
-        if (isLowerBoundOnly(folded)) {
+        if (containsAny(
+                folded,
+                lowerBounds
+        ) || PLUS.matcher(folded).find()) {
+
             return new ExperienceNormalizationResult(
                     value,
                     null
             );
         }
 
-        /*
-         * Giữ backward-compatible behavior cho một duration chỉ có tháng:
-         * "24 months" được hiểu là minimum 2 năm.
-         *
-         * Mixed units như "1 year 6 months" là một duration hoàn chỉnh,
-         * vì vậy được normalize thành exact 1.5 - 1.5 năm.
-         */
         if (duration.componentCount() == 1
-                && duration.singleUnit() == DurationUnit.MONTH) {
+                && duration.singleUnit()
+                == NormalizationTaxonomyProperties
+                .ExperienceUnit.MONTH) {
+
             return new ExperienceNormalizationResult(
                     value,
                     null
@@ -100,102 +168,214 @@ public class ExperienceNormalizer {
         );
     }
 
-    private ExperienceNormalizationResult parseRange(String folded) {
-        Matcher separatorMatcher = RANGE_SEPARATOR_PATTERN.matcher(folded);
+    private ExperienceNormalizationResult parseRange(
+            String value
+    ) {
+        for (RangeSeparator separator
+                : findRanges(value)) {
 
-        while (separatorMatcher.find()) {
-            String left = folded.substring(0, separatorMatcher.start());
-            String right = folded.substring(separatorMatcher.end());
+            String left =
+                    value.substring(
+                            0,
+                            separator.start()
+                    );
 
-            if (!containsNumber(left) || !containsNumber(right)) {
+            String right =
+                    value.substring(
+                            separator.end()
+                    );
+
+            if (!containsNumber(left)
+                    || !containsNumber(right)) {
                 continue;
             }
 
-            ParsedDuration leftExplicit = parseDuration(left, null);
-            ParsedDuration rightExplicit = parseDuration(right, null);
+            ParsedDuration leftExplicit =
+                    parseDuration(
+                            left,
+                            null
+                    );
 
-            DurationUnit leftDefault = null;
-            DurationUnit rightDefault = null;
+            ParsedDuration rightExplicit =
+                    parseDuration(
+                            right,
+                            null
+                    );
 
-            if (leftExplicit == null) {
-                leftDefault = singleExplicitUnit(right);
-            }
+            var leftDefault =
+                    leftExplicit == null
+                            ? singleUnit(right)
+                            : null;
 
-            if (rightExplicit == null) {
-                rightDefault = singleExplicitUnit(left);
-            }
+            var rightDefault =
+                    rightExplicit == null
+                            ? singleUnit(left)
+                            : null;
 
-            ParsedDuration leftDuration = leftExplicit != null
-                    ? leftExplicit
-                    : parseDuration(left, leftDefault);
+            ParsedDuration leftDuration =
+                    leftExplicit != null
+                            ? leftExplicit
+                            : parseDuration(
+                            left,
+                            leftDefault
+                    );
 
-            ParsedDuration rightDuration = rightExplicit != null
-                    ? rightExplicit
-                    : parseDuration(right, rightDefault);
+            ParsedDuration rightDuration =
+                    rightExplicit != null
+                            ? rightExplicit
+                            : parseDuration(
+                            right,
+                            rightDefault
+                    );
 
-            if (leftDuration == null || rightDuration == null) {
+            if (leftDuration == null
+                    || rightDuration == null) {
                 continue;
             }
-
-            double first = leftDuration.value();
-            double second = rightDuration.value();
 
             return new ExperienceNormalizationResult(
-                    round(Math.min(first, second)),
-                    round(Math.max(first, second))
+                    round(
+                            Math.min(
+                                    leftDuration.value(),
+                                    rightDuration.value()
+                            )
+                    ),
+                    round(
+                            Math.max(
+                                    leftDuration.value(),
+                                    rightDuration.value()
+                            )
+                    )
             );
         }
 
         return null;
     }
 
-    private ParsedDuration parseDuration(
-            String value,
-            DurationUnit defaultUnit
+    private List<RangeSeparator> findRanges(
+            String value
     ) {
-        Matcher componentMatcher = DURATION_COMPONENT_PATTERN.matcher(value);
-        List<DurationComponent> components = new ArrayList<>();
+        List<RangeSeparator> result =
+                new ArrayList<>();
 
-        while (componentMatcher.find()) {
-            Double numericValue = parseNumber(componentMatcher.group(1));
+        for (int index = 0;
+             index < value.length();
+             index++) {
 
-            if (numericValue == null) {
-                return null;
+            char character =
+                    value.charAt(index);
+
+            if (character == '-'
+                    || character == '–'
+                    || character == '—') {
+
+                result.add(
+                        new RangeSeparator(
+                                index,
+                                index + 1
+                        )
+                );
             }
-
-            DurationUnit unit = parseUnit(componentMatcher.group(2));
-
-            if (unit == null) {
-                return null;
-            }
-
-            components.add(new DurationComponent(
-                    numericValue,
-                    unit
-            ));
         }
 
-        int numberCount = countNumbers(value);
+        for (String word : rangeWords) {
+            int index =
+                    findPhrase(
+                            value,
+                            word
+                    );
 
-        if (!components.isEmpty()) {
-            /*
-             * Nếu còn numeric token không gắn unit thì input có thể chứa
-             * dữ liệu khác ngoài kinh nghiệm. Không đoán trong trường hợp đó.
-             */
-            if (numberCount != components.size()) {
+            if (index >= 0) {
+                result.add(
+                        new RangeSeparator(
+                                index,
+                                index + word.length()
+                        )
+                );
+            }
+        }
+
+        result.sort(
+                (left, right) ->
+                        Integer.compare(
+                                left.start(),
+                                right.start()
+                        )
+        );
+
+        return result;
+    }
+
+    private ParsedDuration parseDuration(
+            String value,
+            NormalizationTaxonomyProperties.ExperienceUnit
+                    defaultUnit
+    ) {
+        Matcher matcher =
+                DURATION.matcher(
+                        value
+                );
+
+        List<DurationComponent> components =
+                new ArrayList<>();
+
+        while (matcher.find()) {
+            Double number =
+                    parseNumber(
+                            matcher.group(1)
+                    );
+
+            var unit =
+                    units.get(
+                            fold(
+                                    matcher.group(2)
+                            )
+                    );
+
+            if (number == null
+                    || unit == null) {
                 return null;
             }
 
-            double years = components.stream()
-                    .mapToDouble(this::toYears)
-                    .sum();
+            components.add(
+                    new DurationComponent(
+                            number,
+                            unit
+                    )
+            );
+        }
 
-            DurationUnit singleUnit = components.stream()
-                    .map(DurationComponent::unit)
-                    .distinct()
-                    .count() == 1
-                    ? components.getFirst().unit()
-                    : null;
+        int numberCount =
+                countNumbers(
+                        value
+                );
+
+        if (!components.isEmpty()) {
+            if (numberCount
+                    != components.size()) {
+                return null;
+            }
+
+            double years =
+                    components
+                            .stream()
+                            .mapToDouble(
+                                    this::toYears
+                            )
+                            .sum();
+
+            var singleUnit =
+                    components
+                            .stream()
+                            .map(
+                                    DurationComponent::unit
+                            )
+                            .distinct()
+                            .count() == 1
+                            ? components
+                            .getFirst()
+                            .unit()
+                            : null;
 
             return new ParsedDuration(
                     round(years),
@@ -204,99 +384,117 @@ public class ExperienceNormalizer {
             );
         }
 
-        if (defaultUnit == null || numberCount != 1) {
+        if (defaultUnit == null
+                || numberCount != 1) {
             return null;
         }
 
-        Matcher numberMatcher = NUMBER_PATTERN.matcher(value);
+        Matcher numberMatcher =
+                NUMBER.matcher(
+                        value
+                );
 
         if (!numberMatcher.find()) {
             return null;
         }
 
-        Double numericValue = parseNumber(numberMatcher.group(1));
+        Double number =
+                parseNumber(
+                        numberMatcher.group(1)
+                );
 
-        if (numericValue == null) {
-            return null;
-        }
-
-        return new ParsedDuration(
-                round(toYears(new DurationComponent(
-                        numericValue,
-                        defaultUnit
-                ))),
+        return number == null
+                ? null
+                : new ParsedDuration(
+                round(
+                        toYears(
+                                new DurationComponent(
+                                        number,
+                                        defaultUnit
+                                )
+                        )
+                ),
                 1,
                 defaultUnit
         );
     }
 
-    private DurationUnit singleExplicitUnit(String value) {
-        Matcher matcher = DURATION_COMPONENT_PATTERN.matcher(value);
-        DurationUnit unit = null;
-        int matchedComponents = 0;
+    private NormalizationTaxonomyProperties.ExperienceUnit
+    singleUnit(
+            String value
+    ) {
+        Matcher matcher =
+                DURATION.matcher(
+                        value
+                );
+
+        NormalizationTaxonomyProperties.ExperienceUnit
+                unit = null;
+
+        int count = 0;
 
         while (matcher.find()) {
-            DurationUnit currentUnit = parseUnit(matcher.group(2));
+            var current =
+                    units.get(
+                            fold(
+                                    matcher.group(2)
+                            )
+                    );
 
-            if (currentUnit == null) {
+            if (current == null
+                    || (
+                    unit != null
+                            && unit != current
+            )) {
                 return null;
             }
 
-            if (unit != null && unit != currentUnit) {
-                return null;
-            }
+            unit =
+                    current;
 
-            unit = currentUnit;
-            matchedComponents++;
+            count++;
         }
 
-        if (matchedComponents == 0
-                || countNumbers(value) != matchedComponents) {
-            return null;
-        }
-
-        return unit;
+        return count > 0
+                && countNumbers(value) == count
+                ? unit
+                : null;
     }
 
-    private DurationUnit parseUnit(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        if (value.startsWith("year")
-                || value.startsWith("yr")
-                || value.equals("nam")) {
-            return DurationUnit.YEAR;
-        }
-
-        if (value.startsWith("month")
-                || value.startsWith("mo")
-                || value.equals("thang")) {
-            return DurationUnit.MONTH;
-        }
-
-        return null;
+    private double toYears(
+            DurationComponent component
+    ) {
+        return component.unit()
+                == NormalizationTaxonomyProperties
+                .ExperienceUnit.MONTH
+                ? component.value() / 12.0
+                : component.value();
     }
 
-    private double toYears(DurationComponent component) {
-        if (component.unit() == DurationUnit.MONTH) {
-            return component.value() / 12.0;
-        }
-
-        return component.value();
-    }
-
-    private Double parseNumber(String value) {
+    private Double parseNumber(
+            String value
+    ) {
         try {
-            return Double.parseDouble(value.replace(',', '.'));
+            return Double.parseDouble(
+                    value.replace(
+                            ',',
+                            '.'
+                    )
+            );
         } catch (NumberFormatException exception) {
             return null;
         }
     }
 
-    private int countNumbers(String value) {
+    private int countNumbers(
+            String value
+    ) {
         int count = 0;
-        Matcher matcher = NUMBER_PATTERN.matcher(value);
+
+        Matcher matcher =
+                NUMBER.matcher(
+                        value
+                );
 
         while (matcher.find()) {
             count++;
@@ -305,66 +503,144 @@ public class ExperienceNormalizer {
         return count;
     }
 
-    private boolean containsNumber(String value) {
-        return NUMBER_PATTERN.matcher(value).find();
+    private boolean containsNumber(
+            String value
+    ) {
+        return NUMBER
+                .matcher(value)
+                .find();
     }
 
-    private boolean meansNoExperience(String folded) {
-        return containsAny(
-                folded,
-                "khong yeu cau kinh nghiem",
-                "khong can kinh nghiem",
-                "chua co kinh nghiem",
-                "no experience required",
-                "no experience",
-                "fresher",
-                "fresh graduate"
+    private Map<
+            String,
+            NormalizationTaxonomyProperties.ExperienceUnit
+            > buildUnits(
+            List<NormalizationTaxonomyProperties.ExperienceUnitRule>
+                    rules
+    ) {
+        Map<
+                String,
+                NormalizationTaxonomyProperties.ExperienceUnit
+                > result =
+                new LinkedHashMap<>();
+
+        for (var rule : rules) {
+            for (String alias
+                    : rule.getAliases()) {
+
+                result.put(
+                        fold(alias),
+                        rule.getUnit()
+                );
+            }
+        }
+
+        return Map.copyOf(result);
+    }
+
+    private Set<String> foldSet(
+            Iterable<String> values
+    ) {
+        Set<String> result =
+                new LinkedHashSet<>();
+
+        if (values != null) {
+            for (String value : values) {
+                String folded =
+                        fold(value);
+
+                if (!folded.isBlank()) {
+                    result.add(folded);
+                }
+            }
+        }
+
+        return Set.copyOf(result);
+    }
+
+    private String fold(
+            String value
+    ) {
+        return value == null
+                ? ""
+                : NormalizationTextSupport.fold(
+                value
         );
-    }
-
-    private boolean isUpperBoundOnly(String folded) {
-        return containsAny(
-                folded,
-                "duoi ",
-                "under ",
-                "less than",
-                "up to",
-                "khong qua",
-                "toi da"
-        );
-    }
-
-    private boolean isLowerBoundOnly(String folded) {
-        return containsAny(
-                folded,
-                "it nhat",
-                "at least",
-                "tu ",
-                "from ",
-                "tren ",
-                "over ",
-                "more than",
-                "minimum",
-                "toi thieu"
-        ) || PLUS_SUFFIX_PATTERN.matcher(folded).find();
     }
 
     private boolean containsAny(
             String value,
-            String... candidates
+            Set<String> phrases
     ) {
-        for (String candidate : candidates) {
-            if (value.contains(candidate)) {
-                return true;
-            }
-        }
-
-        return false;
+        return phrases
+                .stream()
+                .anyMatch(
+                        phrase ->
+                                findPhrase(
+                                        value,
+                                        phrase
+                                ) >= 0
+                );
     }
 
-    private double round(double value) {
-        return BigDecimal.valueOf(value)
-                .setScale(2, RoundingMode.HALF_UP)
+    private int findPhrase(
+            String value,
+            String phrase
+    ) {
+        int from = 0;
+
+        while (from
+                <= value.length()
+                - phrase.length()) {
+
+            int index =
+                    value.indexOf(
+                            phrase,
+                            from
+                    );
+
+            if (index < 0) {
+                return -1;
+            }
+
+            int end =
+                    index
+                            + phrase.length();
+
+            boolean left =
+                    index == 0
+                            || !Character.isLetterOrDigit(
+                            value.charAt(
+                                    index - 1
+                            )
+                    );
+
+            boolean right =
+                    end == value.length()
+                            || !Character.isLetterOrDigit(
+                            value.charAt(end)
+                    );
+
+            if (left && right) {
+                return index;
+            }
+
+            from =
+                    index + 1;
+        }
+
+        return -1;
+    }
+
+    private double round(
+            double value
+    ) {
+        return BigDecimal
+                .valueOf(value)
+                .setScale(
+                        2,
+                        RoundingMode.HALF_UP
+                )
                 .doubleValue();
     }
 
@@ -375,21 +651,22 @@ public class ExperienceNormalizer {
         );
     }
 
-    private enum DurationUnit {
-        YEAR,
-        MONTH
+    private record RangeSeparator(
+            int start,
+            int end
+    ) {
     }
 
     private record DurationComponent(
             double value,
-            DurationUnit unit
+            NormalizationTaxonomyProperties.ExperienceUnit unit
     ) {
     }
 
     private record ParsedDuration(
             double value,
             int componentCount,
-            DurationUnit singleUnit
+            NormalizationTaxonomyProperties.ExperienceUnit singleUnit
     ) {
     }
 }

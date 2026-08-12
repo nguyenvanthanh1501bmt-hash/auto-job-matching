@@ -21,22 +21,15 @@ public final class TaxonomyTestLoader {
                     "skills.yml",
                     "locations.yml",
                     "seniority.yml",
-                    "job-types.yml"
+                    "job-types.yml",
+                    "salary.yml",
+                    "experience.yml",
+                    "date.yml"
             );
 
     private TaxonomyTestLoader() {
     }
 
-    /**
-     * Test sẽ đọc chính taxonomy thật ở:
-     *
-     * configs/taxonomy/
-     *
-     * Nhờ vậy:
-     * - production dùng YAML nào thì test dùng YAML đó;
-     * - không cần hardcode một taxonomy thứ hai trong test;
-     * - sửa alias/rule YAML thì test chạy trên config mới ngay.
-     */
     public static NormalizationTaxonomyProperties load() {
         Path taxonomyDirectory =
                 findTaxonomyDirectory();
@@ -66,8 +59,7 @@ public final class TaxonomyTestLoader {
             try {
                 List<PropertySource<?>> loaded =
                         loader.load(
-                                "test-taxonomy-"
-                                        + fileName,
+                                "test-taxonomy-" + fileName,
                                 resource
                         );
 
@@ -98,28 +90,13 @@ public final class TaxonomyTestLoader {
                         NormalizationTaxonomyProperties.class
                 )
                 .orElseThrow(
-                        () ->
-                                new IllegalStateException(
-                                        "Cannot bind taxonomy configuration from: "
-                                                + taxonomyDirectory
-                                                .toAbsolutePath()
-                                )
+                        () -> new IllegalStateException(
+                                "Cannot bind taxonomy configuration from: "
+                                        + taxonomyDirectory.toAbsolutePath()
+                        )
                 );
     }
 
-    /**
-     * Maven có thể được chạy từ:
-     *
-     * repo-root/
-     * backend/
-     * backend/modules/job-normalizer/
-     *
-     * nên không hardcode ../ hoặc ../../..
-     *
-     * Ta đi ngược lên tree cho đến khi tìm được:
-     *
-     * configs/taxonomy
-     */
     private static Path findTaxonomyDirectory() {
         Path current =
                 Path.of(

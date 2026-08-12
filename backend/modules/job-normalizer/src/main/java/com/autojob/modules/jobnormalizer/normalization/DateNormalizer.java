@@ -1,6 +1,6 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import lombok.RequiredArgsConstructor;
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -13,404 +13,741 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.Set;
 
 @Component
-@RequiredArgsConstructor
 public class DateNormalizer {
 
-    private static final Pattern DAYS_AGO_PATTERN = Pattern.compile(
-            "^(\\d+)\\s+(?:ngay|day|days)\\s+(?:truoc|ago)$"
-    );
-
-    private static final Pattern WEEKS_AGO_PATTERN = Pattern.compile(
-            "^(\\d+)\\s+(?:tuan|week|weeks)\\s+(?:truoc|ago)$"
-    );
-
-    private static final Pattern MONTHS_AGO_PATTERN = Pattern.compile(
-            "^(\\d+)\\s+(?:thang|month|months)\\s+(?:truoc|ago)$"
-    );
-
-    private static final Pattern HOURS_AGO_PATTERN = Pattern.compile(
-            "^(\\d+)\\s+(?:gio|hour|hours)\\s+(?:truoc|ago)$"
-    );
-
-    private static final Pattern MINUTES_AGO_PATTERN = Pattern.compile(
-            "^(\\d+)\\s+(?:phut|minute|minutes)\\s+(?:truoc|ago)$"
-    );
-
-    private static final Pattern DEADLINE_IN_DAYS_PATTERN = Pattern.compile(
-            "^in\\s+(\\d+)\\s+(?:day|days)$"
-    );
-
-    private static final Pattern DEADLINE_DAYS_LEFT_PATTERN = Pattern.compile(
-            "^(\\d+)\\s+(?:day|days)\\s+left$"
-    );
-
-    private static final Pattern DEADLINE_VIETNAMESE_DAYS_PATTERN = Pattern.compile(
-            "^(\\d+)\\s+ngay\\s+nua$"
-    );
-
-    private static final Pattern DEADLINE_VIETNAMESE_REMAINING_PATTERN = Pattern.compile(
-            "^con\\s+(\\d+)\\s+ngay(?:\\s+nua)?$"
-    );
-
-    private static final List<DateTimeFormatter> LOCAL_DATE_FORMATTERS =
+    private static final List<DateTimeFormatter> DATE_FORMATS =
             List.of(
                     DateTimeFormatter.ISO_LOCAL_DATE,
-                    DateTimeFormatter.ofPattern("dd/MM/yyyy"),
-                    DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                    DateTimeFormatter.ofPattern(
+                            "dd/MM/yyyy"
+                    ),
+                    DateTimeFormatter.ofPattern(
+                            "dd-MM-yyyy"
+                    )
             );
 
-    private static final List<DateTimeFormatter> LOCAL_DATE_TIME_FORMATTERS =
+    private static final List<DateTimeFormatter>
+            DATE_TIME_FORMATS =
             List.of(
                     DateTimeFormatter.ISO_LOCAL_DATE_TIME,
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
-                    DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"),
-                    DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                    DateTimeFormatter.ofPattern(
+                            "yyyy-MM-dd HH:mm:ss"
+                    ),
+                    DateTimeFormatter.ofPattern(
+                            "yyyy-MM-dd HH:mm"
+                    ),
+                    DateTimeFormatter.ofPattern(
+                            "dd/MM/yyyy HH:mm:ss"
+                    ),
+                    DateTimeFormatter.ofPattern(
+                            "dd/MM/yyyy HH:mm"
+                    )
             );
 
     private final TextNormalizer textNormalizer;
-    private final Clock normalizationClock;
+    private final Clock clock;
 
-    /**
-     * Posted date chỉ có ngày được normalize về đầu ngày theo timezone của
-     * injected Clock. Relative hour/minute giữ timestamp tương đối chính xác.
-     */
-    public Instant normalizePostedAt(String postedText) {
-        String cleaned = textNormalizer.normalizeInline(postedText);
+    private final Set<String> today;
+    private final Set<String> yesterday;
+    private final Set<String> tomorrow;
 
-        if (cleaned == null) {
-            return null;
-        }
+    private final Map<
+            String,
+            NormalizationTaxonomyProperties.DateUnit
+            > units;
 
-        Instant common = parseCommonExactDateTime(cleaned);
+    private final Set<String> ago;
+    private final Set<String> inPrefixes;
+    private final Set<String> leftSuffixes;
+    private final Set<String> futureSuffixes;
+    private final Set<String> remainingPrefixes;
 
-        if (common != null) {
-            return common;
-        }
-
-        Instant recentRelativeInstant = parseRecentPostedInstant(cleaned);
-
-        if (recentRelativeInstant != null) {
-            return recentRelativeInstant;
-        }
-
-        LocalDate relativeDate = parseRelativeDate(cleaned, false);
-
-        if (relativeDate != null) {
-            return toInstant(
-                    relativeDate,
-                    DateBoundary.START_OF_DAY
-            );
-        }
-
-        LocalDate localDate = parseLocalDate(cleaned);
-
-        if (localDate != null) {
-            return toInstant(
-                    localDate,
-                    DateBoundary.START_OF_DAY
-            );
-        }
-
-        return null;
-    }
-
-    /**
-     * Deadline chỉ có ngày được normalize về cuối ngày theo timezone của
-     * injected Clock.
-     */
-    public Instant normalizeDeadlineAt(String deadlineText) {
-        String cleaned = textNormalizer.normalizeInline(deadlineText);
-
-        if (cleaned == null) {
-            return null;
-        }
-
-        Instant common = parseCommonExactDateTime(cleaned);
-
-        if (common != null) {
-            return common;
-        }
-
-        LocalDate relativeDate = parseRelativeDate(cleaned, true);
-
-        if (relativeDate != null) {
-            return toInstant(
-                    relativeDate,
-                    DateBoundary.END_OF_DAY
-            );
-        }
-
-        LocalDate localDate = parseLocalDate(cleaned);
-
-        if (localDate != null) {
-            return toInstant(
-                    localDate,
-                    DateBoundary.END_OF_DAY
-            );
-        }
-
-        return null;
-    }
-
-    private Instant parseCommonExactDateTime(String value) {
-        Instant exactInstant = parseExactInstant(value);
-
-        if (exactInstant != null) {
-            return exactInstant;
-        }
-
-        LocalDateTime localDateTime = parseLocalDateTime(value);
-
-        if (localDateTime == null) {
-            return null;
-        }
-
-        return localDateTime
-                .atZone(normalizationClock.getZone())
-                .toInstant();
-    }
-
-    private Instant parseRecentPostedInstant(String value) {
-        String folded = NormalizationTextSupport.fold(value);
-
-        Matcher hoursMatcher = HOURS_AGO_PATTERN.matcher(folded);
-
-        if (hoursMatcher.matches()) {
-            return subtractSeconds(
-                    hoursMatcher.group(1),
-                    3_600L
-            );
-        }
-
-        Matcher minutesMatcher = MINUTES_AGO_PATTERN.matcher(folded);
-
-        if (minutesMatcher.matches()) {
-            return subtractSeconds(
-                    minutesMatcher.group(1),
-                    60L
-            );
-        }
-
-        return null;
-    }
-
-    private Instant subtractSeconds(
-            String amountText,
-            long secondsPerUnit
+    public DateNormalizer(
+            TextNormalizer textNormalizer,
+            NormalizationTaxonomyProperties taxonomy,
+            Clock normalizationClock
     ) {
-        try {
-            long amount = Long.parseLong(amountText);
-            long seconds = Math.multiplyExact(
-                    amount,
-                    secondsPerUnit
+        this.textNormalizer =
+                textNormalizer;
+
+        this.clock =
+                normalizationClock;
+
+        var config =
+                taxonomy.getDate();
+
+        this.today =
+                foldSet(
+                        config.getTodayPhrases()
+                );
+
+        this.yesterday =
+                foldSet(
+                        config.getYesterdayPhrases()
+                );
+
+        this.tomorrow =
+                foldSet(
+                        config.getTomorrowPhrases()
+                );
+
+        this.units =
+                buildUnits(
+                        config.getUnits()
+                );
+
+        this.ago =
+                foldSet(
+                        config.getAgoWords()
+                );
+
+        this.inPrefixes =
+                foldSet(
+                        config.getDeadlineInPrefixes()
+                );
+
+        this.leftSuffixes =
+                foldSet(
+                        config.getDeadlineLeftSuffixes()
+                );
+
+        this.futureSuffixes =
+                foldSet(
+                        config.getDeadlineFutureSuffixes()
+                );
+
+        this.remainingPrefixes =
+                foldSet(
+                        config.getDeadlineRemainingPrefixes()
+                );
+    }
+
+    public Instant normalizePostedAt(
+            String postedText
+    ) {
+        String cleaned =
+                textNormalizer.normalizeInline(
+                        postedText
+                );
+
+        if (cleaned == null) {
+            return null;
+        }
+
+        Instant exact =
+                parseExactDateTime(
+                        cleaned
+                );
+
+        if (exact != null) {
+            return exact;
+        }
+
+        String folded =
+                NormalizationTextSupport.fold(
+                        cleaned
+                );
+
+        Relative relative =
+                parseAgo(
+                        folded
+                );
+
+        if (relative != null
+                && isRecent(
+                relative.unit()
+        )) {
+            return subtractRecent(
+                    relative
             );
+        }
 
-            return normalizationClock.instant().minusSeconds(seconds);
-        } catch (ArithmeticException
-                 | DateTimeException
-                 | NumberFormatException exception) {
+        LocalDate date =
+                resolveRelativeDate(
+                        folded,
+                        false
+                );
+
+        if (date == null) {
+            date =
+                    parseDate(
+                            cleaned
+                    );
+        }
+
+        return date == null
+                ? null
+                : atBoundary(
+                date,
+                false
+        );
+    }
+
+    public Instant normalizeDeadlineAt(
+            String deadlineText
+    ) {
+        String cleaned =
+                textNormalizer.normalizeInline(
+                        deadlineText
+                );
+
+        if (cleaned == null) {
             return null;
         }
+
+        Instant exact =
+                parseExactDateTime(
+                        cleaned
+                );
+
+        if (exact != null) {
+            return exact;
+        }
+
+        String folded =
+                NormalizationTextSupport.fold(
+                        cleaned
+                );
+
+        LocalDate date =
+                resolveRelativeDate(
+                        folded,
+                        true
+                );
+
+        if (date == null) {
+            date =
+                    parseDate(
+                            cleaned
+                    );
+        }
+
+        return date == null
+                ? null
+                : atBoundary(
+                date,
+                true
+        );
     }
 
-    private Instant parseExactInstant(String value) {
-        try {
-            return Instant.parse(value);
-        } catch (DateTimeParseException ignored) {
-            // Try the next exact date-time format.
-        }
-
-        try {
-            return OffsetDateTime
-                    .parse(
-                            value,
-                            DateTimeFormatter.ISO_OFFSET_DATE_TIME
-                    )
-                    .toInstant();
-        } catch (DateTimeParseException ignored) {
-            // Try zoned date-time.
-        }
-
-        try {
-            return ZonedDateTime
-                    .parse(
-                            value,
-                            DateTimeFormatter.ISO_ZONED_DATE_TIME
-                    )
-                    .toInstant();
-        } catch (DateTimeParseException ignored) {
-            return null;
-        }
-    }
-
-    private LocalDateTime parseLocalDateTime(String value) {
-        for (DateTimeFormatter formatter : LOCAL_DATE_TIME_FORMATTERS) {
-            try {
-                return LocalDateTime.parse(value, formatter);
-            } catch (DateTimeParseException ignored) {
-                // Try next formatter.
-            }
-        }
-
-        return null;
-    }
-
-    private LocalDate parseLocalDate(String value) {
-        for (DateTimeFormatter formatter : LOCAL_DATE_FORMATTERS) {
-            try {
-                return LocalDate.parse(value, formatter);
-            } catch (DateTimeParseException ignored) {
-                // Try next formatter.
-            }
-        }
-
-        return null;
-    }
-
-    private LocalDate parseRelativeDate(
+    private LocalDate resolveRelativeDate(
             String value,
             boolean deadline
     ) {
-        String folded = NormalizationTextSupport.fold(value);
-        LocalDate today = LocalDate.now(normalizationClock);
+        LocalDate current =
+                LocalDate.now(
+                        clock
+                );
 
-        if (folded.equals("hom nay") || folded.equals("today")) {
-            return today;
+        if (today.contains(value)) {
+            return current;
         }
 
-        if (folded.equals("hom qua") || folded.equals("yesterday")) {
-            return today.minusDays(1);
+        if (yesterday.contains(value)) {
+            return current.minusDays(1);
         }
 
-        Matcher daysAgoMatcher = DAYS_AGO_PATTERN.matcher(folded);
+        Relative relative =
+                parseAgo(
+                        value
+                );
 
-        if (daysAgoMatcher.matches()) {
-            return subtractDateUnits(
-                    today,
-                    daysAgoMatcher.group(1),
-                    RelativeDateUnit.DAY
-            );
-        }
+        LocalDate past =
+                relative == null
+                        ? null
+                        : subtractDate(
+                        current,
+                        relative
+                );
 
-        Matcher weeksAgoMatcher = WEEKS_AGO_PATTERN.matcher(folded);
-
-        if (weeksAgoMatcher.matches()) {
-            return subtractDateUnits(
-                    today,
-                    weeksAgoMatcher.group(1),
-                    RelativeDateUnit.WEEK
-            );
-        }
-
-        Matcher monthsAgoMatcher = MONTHS_AGO_PATTERN.matcher(folded);
-
-        if (monthsAgoMatcher.matches()) {
-            return subtractDateUnits(
-                    today,
-                    monthsAgoMatcher.group(1),
-                    RelativeDateUnit.MONTH
-            );
+        if (past != null) {
+            return past;
         }
 
         if (!deadline) {
             return null;
         }
 
-        if (folded.equals("tomorrow")
-                || folded.equals("ngay mai")) {
-            return today.plusDays(1);
+        if (tomorrow.contains(value)) {
+            return current.plusDays(1);
         }
 
-        Long futureDays = parseFutureDeadlineDays(folded);
+        Long futureDays =
+                parseFutureDays(
+                        value
+                );
 
         if (futureDays == null) {
             return null;
         }
 
         try {
-            return today.plusDays(futureDays);
+            return current.plusDays(
+                    futureDays
+            );
         } catch (DateTimeException exception) {
             return null;
         }
     }
 
-    private LocalDate subtractDateUnits(
-            LocalDate today,
-            String amountText,
-            RelativeDateUnit unit
+    private Relative parseAgo(
+            String value
     ) {
-        try {
-            long amount = Long.parseLong(amountText);
+        for (String suffix : ago) {
+            String body =
+                    stripSuffix(
+                            value,
+                            suffix
+                    );
 
-            return switch (unit) {
-                case DAY -> today.minusDays(amount);
-                case WEEK -> today.minusWeeks(amount);
-                case MONTH -> today.minusMonths(amount);
-            };
-        } catch (NumberFormatException
-                 | DateTimeException exception) {
-            return null;
-        }
-    }
+            AmountUnit parsed =
+                    body == null
+                            ? null
+                            : parseAmountUnit(
+                            body
+                    );
 
-    private Long parseFutureDeadlineDays(String folded) {
-        List<Pattern> patterns = List.of(
-                DEADLINE_IN_DAYS_PATTERN,
-                DEADLINE_DAYS_LEFT_PATTERN,
-                DEADLINE_VIETNAMESE_DAYS_PATTERN,
-                DEADLINE_VIETNAMESE_REMAINING_PATTERN
-        );
-
-        for (Pattern pattern : patterns) {
-            Matcher matcher = pattern.matcher(folded);
-
-            if (!matcher.matches()) {
-                continue;
-            }
-
-            try {
-                return Long.parseLong(matcher.group(1));
-            } catch (NumberFormatException exception) {
-                return null;
+            if (parsed != null) {
+                return new Relative(
+                        parsed.amount(),
+                        parsed.unit()
+                );
             }
         }
 
         return null;
     }
 
-    private Instant toInstant(
-            LocalDate date,
-            DateBoundary dateBoundary
+    private Long parseFutureDays(
+            String value
     ) {
-        ZoneId zoneId = normalizationClock.getZone();
+        Long amount =
+                parsePrefixedDay(
+                        value,
+                        inPrefixes
+                );
 
-        if (dateBoundary == DateBoundary.END_OF_DAY) {
-            return date
-                    .plusDays(1)
-                    .atStartOfDay(zoneId)
-                    .minusNanos(1)
-                    .toInstant();
+        if (amount != null) {
+            return amount;
         }
 
-        return date
-                .atStartOfDay(zoneId)
+        amount =
+                parseSuffixedDay(
+                        value,
+                        leftSuffixes
+                );
+
+        if (amount != null) {
+            return amount;
+        }
+
+        amount =
+                parseSuffixedDay(
+                        value,
+                        futureSuffixes
+                );
+
+        if (amount != null) {
+            return amount;
+        }
+
+        for (String prefix
+                : remainingPrefixes) {
+
+            String body =
+                    stripPrefix(
+                            value,
+                            prefix
+                    );
+
+            if (body == null) {
+                continue;
+            }
+
+            AmountUnit parsed =
+                    parseAmountUnit(
+                            body
+                    );
+
+            if (isDay(parsed)) {
+                return parsed.amount();
+            }
+
+            for (String suffix
+                    : futureSuffixes) {
+
+                String withoutSuffix =
+                        stripSuffix(
+                                body,
+                                suffix
+                        );
+
+                parsed =
+                        withoutSuffix == null
+                                ? null
+                                : parseAmountUnit(
+                                withoutSuffix
+                        );
+
+                if (isDay(parsed)) {
+                    return parsed.amount();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private Long parsePrefixedDay(
+            String value,
+            Set<String> prefixes
+    ) {
+        for (String prefix : prefixes) {
+            String body =
+                    stripPrefix(
+                            value,
+                            prefix
+                    );
+
+            AmountUnit parsed =
+                    body == null
+                            ? null
+                            : parseAmountUnit(
+                            body
+                    );
+
+            if (isDay(parsed)) {
+                return parsed.amount();
+            }
+        }
+
+        return null;
+    }
+
+    private Long parseSuffixedDay(
+            String value,
+            Set<String> suffixes
+    ) {
+        for (String suffix : suffixes) {
+            String body =
+                    stripSuffix(
+                            value,
+                            suffix
+                    );
+
+            AmountUnit parsed =
+                    body == null
+                            ? null
+                            : parseAmountUnit(
+                            body
+                    );
+
+            if (isDay(parsed)) {
+                return parsed.amount();
+            }
+        }
+
+        return null;
+    }
+
+    private AmountUnit parseAmountUnit(
+            String value
+    ) {
+        String[] parts =
+                value
+                        .trim()
+                        .split("\\s+");
+
+        if (parts.length != 2) {
+            return null;
+        }
+
+        try {
+            var unit =
+                    units.get(
+                            parts[1]
+                    );
+
+            return unit == null
+                    ? null
+                    : new AmountUnit(
+                    Long.parseLong(
+                            parts[0]
+                    ),
+                    unit
+            );
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private boolean isDay(
+            AmountUnit value
+    ) {
+        return value != null
+                && value.unit()
+                == NormalizationTaxonomyProperties
+                .DateUnit.DAY;
+    }
+
+    private boolean isRecent(
+            NormalizationTaxonomyProperties.DateUnit
+                    unit
+    ) {
+        return unit
+                == NormalizationTaxonomyProperties
+                .DateUnit.HOUR
+                || unit
+                == NormalizationTaxonomyProperties
+                .DateUnit.MINUTE;
+    }
+
+    private LocalDate subtractDate(
+            LocalDate date,
+            Relative relative
+    ) {
+        try {
+            return switch (relative.unit()) {
+                case DAY ->
+                        date.minusDays(
+                                relative.amount()
+                        );
+
+                case WEEK ->
+                        date.minusWeeks(
+                                relative.amount()
+                        );
+
+                case MONTH ->
+                        date.minusMonths(
+                                relative.amount()
+                        );
+
+                case HOUR, MINUTE ->
+                        null;
+            };
+        } catch (DateTimeException exception) {
+            return null;
+        }
+    }
+
+    private Instant subtractRecent(
+            Relative relative
+    ) {
+        long secondsPerUnit =
+                relative.unit()
+                        == NormalizationTaxonomyProperties
+                        .DateUnit.HOUR
+                        ? 3_600L
+                        : 60L;
+
+        try {
+            return clock
+                    .instant()
+                    .minusSeconds(
+                            Math.multiplyExact(
+                                    relative.amount(),
+                                    secondsPerUnit
+                            )
+                    );
+        } catch (ArithmeticException
+                 | DateTimeException exception) {
+            return null;
+        }
+    }
+
+    private Instant parseExactDateTime(
+            String value
+    ) {
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException ignored) {
+            // Try next format.
+        }
+
+        try {
+            return OffsetDateTime
+                    .parse(
+                            value,
+                            DateTimeFormatter
+                                    .ISO_OFFSET_DATE_TIME
+                    )
+                    .toInstant();
+        } catch (DateTimeParseException ignored) {
+            // Try next format.
+        }
+
+        try {
+            return ZonedDateTime
+                    .parse(
+                            value,
+                            DateTimeFormatter
+                                    .ISO_ZONED_DATE_TIME
+                    )
+                    .toInstant();
+        } catch (DateTimeParseException ignored) {
+            // Try local date-time.
+        }
+
+        for (DateTimeFormatter formatter
+                : DATE_TIME_FORMATS) {
+
+            try {
+                return LocalDateTime
+                        .parse(
+                                value,
+                                formatter
+                        )
+                        .atZone(
+                                clock.getZone()
+                        )
+                        .toInstant();
+            } catch (DateTimeParseException ignored) {
+                // Try next format.
+            }
+        }
+
+        return null;
+    }
+
+    private LocalDate parseDate(
+            String value
+    ) {
+        for (DateTimeFormatter formatter
+                : DATE_FORMATS) {
+
+            try {
+                return LocalDate.parse(
+                        value,
+                        formatter
+                );
+            } catch (DateTimeParseException ignored) {
+                // Try next format.
+            }
+        }
+
+        return null;
+    }
+
+    private Map<
+            String,
+            NormalizationTaxonomyProperties.DateUnit
+            > buildUnits(
+            List<NormalizationTaxonomyProperties.DateUnitRule>
+                    rules
+    ) {
+        Map<
+                String,
+                NormalizationTaxonomyProperties.DateUnit
+                > result =
+                new LinkedHashMap<>();
+
+        for (var rule : rules) {
+            for (String alias
+                    : rule.getAliases()) {
+
+                result.put(
+                        NormalizationTextSupport.fold(
+                                alias
+                        ),
+                        rule.getUnit()
+                );
+            }
+        }
+
+        return Map.copyOf(result);
+    }
+
+    private Set<String> foldSet(
+            Iterable<String> values
+    ) {
+        Set<String> result =
+                new LinkedHashSet<>();
+
+        if (values != null) {
+            for (String value : values) {
+                String folded =
+                        NormalizationTextSupport.fold(
+                                value
+                        );
+
+                if (!folded.isBlank()) {
+                    result.add(folded);
+                }
+            }
+        }
+
+        return Set.copyOf(result);
+    }
+
+    private String stripPrefix(
+            String value,
+            String prefix
+    ) {
+        String marker =
+                prefix + " ";
+
+        return value.startsWith(marker)
+                ? value
+                .substring(
+                        marker.length()
+                )
+                .trim()
+                : null;
+    }
+
+    private String stripSuffix(
+            String value,
+            String suffix
+    ) {
+        String marker =
+                " " + suffix;
+
+        return value.endsWith(marker)
+                ? value
+                .substring(
+                        0,
+                        value.length()
+                                - marker.length()
+                )
+                .trim()
+                : null;
+    }
+
+    private Instant atBoundary(
+            LocalDate date,
+            boolean endOfDay
+    ) {
+        ZoneId zone =
+                clock.getZone();
+
+        return endOfDay
+                ? date
+                .plusDays(1)
+                .atStartOfDay(zone)
+                .minusNanos(1)
+                .toInstant()
+                : date
+                .atStartOfDay(zone)
                 .toInstant();
     }
 
-    private enum DateBoundary {
-        START_OF_DAY,
-        END_OF_DAY
+    private record AmountUnit(
+            long amount,
+            NormalizationTaxonomyProperties.DateUnit unit
+    ) {
     }
 
-    private enum RelativeDateUnit {
-        DAY,
-        WEEK,
-        MONTH
+    private record Relative(
+            long amount,
+            NormalizationTaxonomyProperties.DateUnit unit
+    ) {
     }
 }

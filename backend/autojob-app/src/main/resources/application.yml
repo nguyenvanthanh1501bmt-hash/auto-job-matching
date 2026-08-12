@@ -8,6 +8,9 @@ spring:
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/locations.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/seniority.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/job-types.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/salary.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/experience.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/date.yml"
 
   data:
     mongodb:
@@ -68,20 +71,10 @@ autojob:
       raw-retention-days: ${MOCK_CRAWLER_RAW_RETENTION_DAYS:30}
 
   auth:
-    # true:
-    # - tất cả API public;
-    # - CV upload/parse/profile dùng public owner cố định;
-    # - không có data isolation giữa các client.
-    #
-    # false:
-    # - /api/cvs/** yêu cầu authentication;
-    # - Authentication.getName() được dùng làm ownerUserId.
     public-api-mode: ${AUTH_PUBLIC_API_MODE:true}
 
     issuer: ${AUTH_JWT_ISSUER:autojob-app}
 
-    # Secret mặc định chỉ dùng local.
-    # Production phải truyền JWT_SECRET_BASE64 bằng environment variable.
     jwt-secret-base64: ${JWT_SECRET_BASE64:YXV0b2pvYi1sb2NhbC1kZXYtc2VjcmV0LWNoYW5nZS1tZS0zMmJ5dGVzLXBsdXMhIQ==}
 
     access-token-ttl: ${AUTH_ACCESS_TOKEN_TTL:15m}
@@ -93,8 +86,6 @@ autojob:
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
 
-    # Local chạy trực tiếp thì để false.
-    # Deploy sau reverse proxy mới chuyển true.
     trust-forwarded-headers: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:false}
 
     general:
@@ -118,7 +109,6 @@ autojob:
       refill-period: ${RATE_LIMIT_CV_UPLOAD_PERIOD:1h}
 
   cv:
-    # Chỉ dùng khi auth public-api-mode=true.
     public-owner-user-id: ${CV_PUBLIC_OWNER_USER_ID:public-local-user}
 
     storage:

@@ -1,5 +1,7 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -11,9 +13,14 @@ class ExperienceNormalizerV2Test {
 
     @BeforeEach
     void setUp() {
-        normalizer = new ExperienceNormalizer(
-                new TextNormalizer()
-        );
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        normalizer =
+                new ExperienceNormalizer(
+                        new TextNormalizer(),
+                        taxonomy
+                );
     }
 
     @Test
@@ -23,8 +30,11 @@ class ExperienceNormalizerV2Test {
                         "1 year 6 months"
                 );
 
-        assertThat(result.min()).isEqualTo(1.5);
-        assertThat(result.max()).isEqualTo(1.5);
+        assertThat(result.min())
+                .isEqualTo(1.5);
+
+        assertThat(result.max())
+                .isEqualTo(1.5);
     }
 
     @Test
@@ -34,8 +44,11 @@ class ExperienceNormalizerV2Test {
                         "1 năm 6 tháng"
                 );
 
-        assertThat(result.min()).isEqualTo(1.5);
-        assertThat(result.max()).isEqualTo(1.5);
+        assertThat(result.min())
+                .isEqualTo(1.5);
+
+        assertThat(result.max())
+                .isEqualTo(1.5);
     }
 
     @Test
@@ -50,11 +63,17 @@ class ExperienceNormalizerV2Test {
                         "18 tháng"
                 );
 
-        assertThat(english.min()).isEqualTo(1.5);
-        assertThat(english.max()).isNull();
+        assertThat(english.min())
+                .isEqualTo(1.5);
 
-        assertThat(vietnamese.min()).isEqualTo(1.5);
-        assertThat(vietnamese.max()).isNull();
+        assertThat(english.max())
+                .isNull();
+
+        assertThat(vietnamese.min())
+                .isEqualTo(1.5);
+
+        assertThat(vietnamese.max())
+                .isNull();
     }
 
     @Test
@@ -74,14 +93,23 @@ class ExperienceNormalizerV2Test {
                         "tối thiểu 18 tháng"
                 );
 
-        assertThat(plus.min()).isEqualTo(1.5);
-        assertThat(plus.max()).isNull();
+        assertThat(plus.min())
+                .isEqualTo(1.5);
 
-        assertThat(english.min()).isEqualTo(1.5);
-        assertThat(english.max()).isNull();
+        assertThat(plus.max())
+                .isNull();
 
-        assertThat(vietnamese.min()).isEqualTo(1.5);
-        assertThat(vietnamese.max()).isNull();
+        assertThat(english.min())
+                .isEqualTo(1.5);
+
+        assertThat(english.max())
+                .isNull();
+
+        assertThat(vietnamese.min())
+                .isEqualTo(1.5);
+
+        assertThat(vietnamese.max())
+                .isNull();
     }
 
     @Test
@@ -96,11 +124,17 @@ class ExperienceNormalizerV2Test {
                         "6 tháng - 1 năm"
                 );
 
-        assertThat(english.min()).isEqualTo(0.5);
-        assertThat(english.max()).isEqualTo(1.0);
+        assertThat(english.min())
+                .isEqualTo(0.5);
 
-        assertThat(vietnamese.min()).isEqualTo(0.5);
-        assertThat(vietnamese.max()).isEqualTo(1.0);
+        assertThat(english.max())
+                .isEqualTo(1.0);
+
+        assertThat(vietnamese.min())
+                .isEqualTo(0.5);
+
+        assertThat(vietnamese.max())
+                .isEqualTo(1.0);
     }
 
     @Test
@@ -115,11 +149,17 @@ class ExperienceNormalizerV2Test {
                         "2 đến 4 năm"
                 );
 
-        assertThat(english.min()).isEqualTo(2.0);
-        assertThat(english.max()).isEqualTo(4.0);
+        assertThat(english.min())
+                .isEqualTo(2.0);
 
-        assertThat(vietnamese.min()).isEqualTo(2.0);
-        assertThat(vietnamese.max()).isEqualTo(4.0);
+        assertThat(english.max())
+                .isEqualTo(4.0);
+
+        assertThat(vietnamese.min())
+                .isEqualTo(2.0);
+
+        assertThat(vietnamese.max())
+                .isEqualTo(4.0);
     }
 
     @Test
@@ -144,14 +184,23 @@ class ExperienceNormalizerV2Test {
                         "up to 2 years"
                 );
 
-        assertThat(plus.min()).isEqualTo(3.0);
-        assertThat(plus.max()).isNull();
+        assertThat(plus.min())
+                .isEqualTo(3.0);
 
-        assertThat(above.min()).isEqualTo(3.0);
-        assertThat(above.max()).isNull();
+        assertThat(plus.max())
+                .isNull();
 
-        assertThat(under.max()).isEqualTo(1.0);
-        assertThat(upTo.max()).isEqualTo(2.0);
+        assertThat(above.min())
+                .isEqualTo(3.0);
+
+        assertThat(above.max())
+                .isNull();
+
+        assertThat(under.max())
+                .isEqualTo(1.0);
+
+        assertThat(upTo.max())
+                .isEqualTo(2.0);
     }
 
     @Test
@@ -194,6 +243,7 @@ class ExperienceNormalizerV2Test {
                         "Có thể trao đổi sau 2 vòng phỏng vấn"
                 );
 
-        assertThat(result.known()).isFalse();
+        assertThat(result.known())
+                .isFalse();
     }
 }

@@ -1,434 +1,610 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import lombok.RequiredArgsConstructor;
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-@RequiredArgsConstructor
 public class SalaryNormalizer {
 
-    private static final BigDecimal ONE_THOUSAND =
-            BigDecimal.valueOf(1_000L);
-
-    private static final BigDecimal ONE_MILLION =
-            BigDecimal.valueOf(1_000_000L);
-
-    private static final Pattern AMOUNT_PATTERN = Pattern.compile(
-            "(\\$\\s*)?(?<!\\d)(\\d+(?:[.,]\\d+)*)(?!\\d)"
-                    + "(?:\\s*(k|thousand|trieu|tr|million)(?![a-z]))?"
+    private static final Pattern AMOUNT = Pattern.compile(
+            "(?<!\\d)(\\d+(?:[.,]\\d+)*)(?!\\d)(?:\\s*([a-z]+))?"
     );
-
-    private static final Pattern GROUPED_THOUSANDS_PATTERN =
+    private static final Pattern GROUPED =
             Pattern.compile("\\d{1,3}(?:[.,]\\d{3})+");
 
-    private static final Pattern PLUS_SUFFIX_PATTERN = Pattern.compile(
-            "\\d(?:[\\d.,]*)\\s*"
-                    + "(?:k|thousand|trieu|tr|million)?\\s*\\+"
+    private static final Pattern DASH_RANGE = Pattern.compile(
+            "\\d(?:[\\d.,]*)\\s*[a-z]*\\s*[-–—]\\s*\\$?\\s*\\d"
     );
 
-    private static final Pattern VND_CODE_PATTERN = Pattern.compile(
-            "(?<![a-z0-9])vnd(?![a-z0-9])"
-    );
-
-    private static final Pattern USD_CODE_PATTERN = Pattern.compile(
-            "(?<![a-z0-9])usd(?![a-z0-9])"
-    );
-
-    private static final Pattern VIETNAMESE_MILLION_PATTERN = Pattern.compile(
-            "(?<![a-z])(?:tr|trieu)\\b"
-    );
+    private static final Pattern PLUS =
+            Pattern.compile("\\d(?:[\\d.,]*)\\s*[a-z]*\\s*\\+");
 
     private final TextNormalizer textNormalizer;
 
-    public SalaryNormalizationResult normalize(String salaryText) {
-        String cleaned = textNormalizer.normalizeInline(salaryText);
+    private final Map<String, Long> multipliers;
+    private final List<CurrencyRule> currencies;
+
+    private final Set<String> negotiable;
+    private final Set<String> rangeWords;
+    private final Set<String> upperBounds;
+    private final Set<String> lowerBounds;
+
+    private final long sharedMultiplierMin;
+    private final long sharedMultiplierMaxUnscaledValue;
+
+    public SalaryNormalizer(
+            TextNormalizer textNormalizer,
+            NormalizationTaxonomyProperties taxonomy
+    ) {
+        this.textNormalizer = textNormalizer;
+
+        var config = taxonomy.getSalary();
+
+        this.multipliers =
+                buildMultipliers(config.getMultipliers());
+
+        this.currencies =
+                buildCurrencies(config.getCurrencies());
+
+        this.negotiable =
+                foldSet(config.getNegotiablePhrases());
+
+        this.rangeWords =
+                foldSet(config.getRangeWords());
+
+        this.upperBounds =
+                foldSet(config.getUpperBoundPhrases());
+
+        this.lowerBounds =
+                foldSet(config.getLowerBoundPhrases());
+
+        this.sharedMultiplierMin =
+                config.getSharedMultiplierMin();
+
+        this.sharedMultiplierMaxUnscaledValue =
+                config.getSharedMultiplierMaxUnscaledValue();
+    }
+
+    public SalaryNormalizationResult normalize(
+            String salaryText
+    ) {
+        String cleaned =
+                textNormalizer.normalizeInline(salaryText);
 
         if (cleaned == null) {
-            return emptyResult();
+            return empty();
         }
 
-        String folded = NormalizationTextSupport.fold(cleaned);
-        CurrencyDetection currencyDetection = detectCurrency(
-                cleaned,
-                folded
-        );
+        String folded =
+                NormalizationTextSupport.fold(cleaned);
 
-        if (currencyDetection.conflicting()) {
-            return emptyResult();
+        CurrencyDetection currency =
+                detectCurrency(cleaned, folded);
+
+        if (currency.conflicting()) {
+            return empty();
         }
 
-        String currency = currencyDetection.currency();
-
-        if (isNegotiable(folded)) {
+        if (containsAny(folded, negotiable)) {
             return new SalaryNormalizationResult(
                     null,
                     null,
-                    currency
+                    currency.code()
             );
         }
 
-        List<AmountToken> amountTokens = extractAmountTokens(folded);
+        List<AmountToken> amounts =
+                extractAmounts(folded);
 
-        if (amountTokens.isEmpty()) {
+        if (amounts.isEmpty()) {
             return new SalaryNormalizationResult(
                     null,
                     null,
-                    currency
+                    currency.code()
             );
         }
 
-        boolean range = hasRangeMarker(folded);
+        if (hasRange(folded)
+                && amounts.size() >= 2) {
 
-        if (range && amountTokens.size() >= 2) {
-            AmountToken first = amountTokens.get(0);
-            AmountToken second = amountTokens.get(1);
+            AmountToken first =
+                    amounts.get(0);
 
-            SharedMultipliers sharedMultipliers = resolveSharedMultipliers(
-                    first,
-                    second
-            );
+            AmountToken second =
+                    amounts.get(1);
 
-            Long firstAmount = toLongAmount(
-                    first.numericValue(),
-                    sharedMultipliers.firstMultiplier()
-            );
+            long firstMultiplier =
+                    first.multiplier();
 
-            Long secondAmount = toLongAmount(
-                    second.numericValue(),
-                    sharedMultipliers.secondMultiplier()
-            );
+            long secondMultiplier =
+                    second.multiplier();
 
-            if (firstAmount == null || secondAmount == null) {
+            if (!first.explicitMultiplier()
+                    && second.explicitMultiplier()
+                    && shouldPropagate(
+                    secondMultiplier,
+                    first.value()
+            )) {
+                firstMultiplier =
+                        secondMultiplier;
+            }
+
+            if (!second.explicitMultiplier()
+                    && first.explicitMultiplier()
+                    && shouldPropagate(
+                    firstMultiplier,
+                    second.value()
+            )) {
+                secondMultiplier =
+                        firstMultiplier;
+            }
+
+            Long min =
+                    toLong(
+                            first.value(),
+                            firstMultiplier
+                    );
+
+            Long max =
+                    toLong(
+                            second.value(),
+                            secondMultiplier
+                    );
+
+            if (min == null || max == null) {
                 return new SalaryNormalizationResult(
                         null,
                         null,
-                        currency
+                        currency.code()
                 );
             }
 
             return new SalaryNormalizationResult(
-                    Math.min(firstAmount, secondAmount),
-                    Math.max(firstAmount, secondAmount),
-                    currency
+                    Math.min(min, max),
+                    Math.max(min, max),
+                    currency.code()
             );
         }
 
-        Long amount = toLongAmount(
-                amountTokens.getFirst().numericValue(),
-                amountTokens.getFirst().multiplier()
-        );
+        AmountToken first =
+                amounts.getFirst();
+
+        Long amount =
+                toLong(
+                        first.value(),
+                        first.multiplier()
+                );
 
         if (amount == null) {
             return new SalaryNormalizationResult(
                     null,
                     null,
-                    currency
+                    currency.code()
             );
         }
 
-        if (isUpperBoundOnly(folded)) {
+        if (containsAny(
+                folded,
+                upperBounds
+        )) {
             return new SalaryNormalizationResult(
                     null,
                     amount,
-                    currency
+                    currency.code()
             );
         }
 
-        if (isLowerBoundOnly(folded)) {
+        if (containsAny(
+                folded,
+                lowerBounds
+        ) || PLUS.matcher(folded).find()) {
+
             return new SalaryNormalizationResult(
                     amount,
                     null,
-                    currency
+                    currency.code()
             );
         }
 
-        /*
-         * Có nhiều số nhưng không có range/lower/upper marker rõ ràng có thể
-         * là salary + bonus/allowance. Không đoán min/max trong trường hợp đó.
-         */
-        if (amountTokens.size() > 1) {
+        if (amounts.size() > 1) {
             return new SalaryNormalizationResult(
                     null,
                     null,
-                    currency
+                    currency.code()
             );
         }
 
         return new SalaryNormalizationResult(
                 amount,
                 amount,
-                currency
+                currency.code()
         );
     }
 
-    private List<AmountToken> extractAmountTokens(String folded) {
-        List<AmountToken> tokens = new ArrayList<>();
-        Matcher matcher = AMOUNT_PATTERN.matcher(folded);
+    private List<AmountToken> extractAmounts(
+            String folded
+    ) {
+        List<AmountToken> result =
+                new ArrayList<>();
+
+        Matcher matcher =
+                AMOUNT.matcher(folded);
 
         while (matcher.find()) {
             try {
-                BigDecimal numericValue = parseNumericToken(
-                        matcher.group(2)
+                BigDecimal value =
+                        parseNumber(
+                                matcher.group(1)
+                        );
+
+                Long multiplier =
+                        multipliers.get(
+                                fold(
+                                        matcher.group(2)
+                                )
+                        );
+
+                result.add(
+                        new AmountToken(
+                                value,
+                                multiplier == null
+                                        ? 1L
+                                        : multiplier,
+                                multiplier != null
+                        )
                 );
-
-                BigDecimal multiplier = multiplierFor(matcher.group(3));
-
-                tokens.add(new AmountToken(
-                        numericValue,
-                        multiplier,
-                        matcher.group(3) != null
-                ));
-            } catch (NumberFormatException exception) {
-                // Skip malformed numeric token.
+            } catch (NumberFormatException ignored) {
+                // Ignore malformed number.
             }
         }
 
-        return tokens;
+        return result;
     }
 
-    private SharedMultipliers resolveSharedMultipliers(
-            AmountToken first,
-            AmountToken second
+    private boolean shouldPropagate(
+            long multiplier,
+            BigDecimal value
     ) {
-        BigDecimal firstMultiplier = first.multiplier();
-        BigDecimal secondMultiplier = second.multiplier();
-
-        if (!first.explicitMultiplier()
-                && second.explicitMultiplier()
-                && shouldPropagateMillionMultiplier(
-                secondMultiplier,
-                first.numericValue()
-        )) {
-            firstMultiplier = secondMultiplier;
-        }
-
-        if (!second.explicitMultiplier()
-                && first.explicitMultiplier()
-                && shouldPropagateMillionMultiplier(
-                firstMultiplier,
-                second.numericValue()
-        )) {
-            secondMultiplier = firstMultiplier;
-        }
-
-        return new SharedMultipliers(
-                firstMultiplier,
-                secondMultiplier
-        );
-    }
-
-    private boolean shouldPropagateMillionMultiplier(
-            BigDecimal multiplier,
-            BigDecimal unscaledNumericValue
-    ) {
-        if (multiplier.compareTo(ONE_MILLION) < 0) {
-            return false;
-        }
-
-        /*
-         * "15 - 25 triệu" và "15.5 - 20.5 million" dùng unit chung ở
-         * cuối range. Nhưng không được biến "15,000,000 - 20 triệu" thành
-         * 15,000,000,000,000.
-         */
-        return unscaledNumericValue.compareTo(
-                BigDecimal.valueOf(100_000L)
+        return multiplier >= sharedMultiplierMin
+                && value.compareTo(
+                BigDecimal.valueOf(
+                        sharedMultiplierMaxUnscaledValue
+                )
         ) < 0;
     }
 
-    private Long toLongAmount(
-            BigDecimal numericValue,
-            BigDecimal multiplier
+    private Long toLong(
+            BigDecimal value,
+            long multiplier
     ) {
         try {
-            return numericValue
-                    .multiply(multiplier)
-                    .setScale(0, RoundingMode.HALF_UP)
+            return value
+                    .multiply(
+                            BigDecimal.valueOf(multiplier)
+                    )
+                    .setScale(
+                            0,
+                            RoundingMode.HALF_UP
+                    )
                     .longValueExact();
         } catch (ArithmeticException exception) {
             return null;
         }
     }
 
-    private BigDecimal multiplierFor(String unit) {
-        if (unit == null) {
-            return BigDecimal.ONE;
+    private BigDecimal parseNumber(
+            String token
+    ) {
+        String value =
+                token.replace(" ", "");
+
+        if (GROUPED.matcher(value).matches()) {
+            return new BigDecimal(
+                    value
+                            .replace(".", "")
+                            .replace(",", "")
+            );
         }
 
-        return switch (unit) {
-            case "k", "thousand" -> ONE_THOUSAND;
-            case "tr", "trieu", "million" -> ONE_MILLION;
-            default -> BigDecimal.ONE;
-        };
+        boolean comma =
+                value.contains(",");
+
+        boolean dot =
+                value.contains(".");
+
+        if (comma && dot) {
+            value =
+                    value.lastIndexOf(',')
+                            > value.lastIndexOf('.')
+                            ? value
+                            .replace(".", "")
+                            .replace(',', '.')
+                            : value.replace(",", "");
+        } else if (comma) {
+            value =
+                    normalizeSeparator(
+                            value,
+                            ','
+                    );
+        } else if (dot) {
+            value =
+                    normalizeSeparator(
+                            value,
+                            '.'
+                    );
+        }
+
+        return new BigDecimal(value);
     }
 
-    private BigDecimal parseNumericToken(String token) {
-        String normalized = token.replace(" ", "");
-
-        if (GROUPED_THOUSANDS_PATTERN.matcher(normalized).matches()) {
-            normalized = normalized.replace(".", "")
-                    .replace(",", "");
-
-            return new BigDecimal(normalized);
-        }
-
-        boolean hasComma = normalized.contains(",");
-        boolean hasDot = normalized.contains(".");
-
-        if (hasComma && hasDot) {
-            int lastComma = normalized.lastIndexOf(',');
-            int lastDot = normalized.lastIndexOf('.');
-
-            if (lastComma > lastDot) {
-                normalized = normalized
-                        .replace(".", "")
-                        .replace(',', '.');
-            } else {
-                normalized = normalized.replace(",", "");
-            }
-
-            return new BigDecimal(normalized);
-        }
-
-        if (hasComma) {
-            normalized = normalizeSingleSeparator(normalized, ',');
-        } else if (hasDot) {
-            normalized = normalizeSingleSeparator(normalized, '.');
-        }
-
-        return new BigDecimal(normalized);
-    }
-
-    private String normalizeSingleSeparator(
+    private String normalizeSeparator(
             String value,
             char separator
     ) {
-        int separatorCount = countCharacter(value, separator);
-        int lastSeparator = value.lastIndexOf(separator);
-        int trailingDigits = value.length() - lastSeparator - 1;
+        long count =
+                value
+                        .chars()
+                        .filter(ch ->
+                                ch == separator
+                        )
+                        .count();
 
-        if (separatorCount > 1 || trailingDigits == 3) {
-            return value.replace(String.valueOf(separator), "");
+        int trailing =
+                value.length()
+                        - value.lastIndexOf(separator)
+                        - 1;
+
+        if (count > 1
+                || trailing == 3) {
+
+            return value.replace(
+                    String.valueOf(separator),
+                    ""
+            );
         }
 
-        if (separator == ',') {
-            return value.replace(',', '.');
-        }
-
-        return value;
-    }
-
-    private int countCharacter(String value, char character) {
-        int count = 0;
-
-        for (int index = 0; index < value.length(); index++) {
-            if (value.charAt(index) == character) {
-                count++;
-            }
-        }
-
-        return count;
+        return separator == ','
+                ? value.replace(',', '.')
+                : value;
     }
 
     private CurrencyDetection detectCurrency(
             String original,
             String folded
     ) {
-        boolean usd = original.contains("$")
-                || USD_CODE_PATTERN.matcher(folded).find()
-                || folded.contains("us dollar");
+        Set<String> matched =
+                new LinkedHashSet<>();
 
-        boolean vnd = original.contains("₫")
-                || VND_CODE_PATTERN.matcher(folded).find()
-                || VIETNAMESE_MILLION_PATTERN.matcher(folded).find();
+        for (CurrencyRule rule : currencies) {
+            boolean found =
+                    rule.markers()
+                            .stream()
+                            .filter(marker ->
+                                    marker != null
+                                            && !marker.isBlank()
+                            )
+                            .anyMatch(
+                                    original::contains
+                            )
+                            || rule.phrases()
+                            .stream()
+                            .anyMatch(
+                                    phrase ->
+                                            contains(
+                                                    folded,
+                                                    phrase,
+                                                    true
+                                            )
+                            )
+                            || rule.unitAliases()
+                            .stream()
+                            .anyMatch(
+                                    alias ->
+                                            contains(
+                                                    folded,
+                                                    alias,
+                                                    false
+                                            )
+                            );
 
-        if (usd && vnd) {
-            return new CurrencyDetection(null, true);
+            if (found) {
+                matched.add(
+                        rule.code()
+                );
+            }
         }
 
-        if (usd) {
-            return new CurrencyDetection("USD", false);
+        if (matched.size() > 1) {
+            return new CurrencyDetection(
+                    null,
+                    true
+            );
         }
 
-        if (vnd) {
-            return new CurrencyDetection("VND", false);
-        }
-
-        return new CurrencyDetection(null, false);
-    }
-
-    private boolean isNegotiable(String folded) {
-        return containsAny(
-                folded,
-                "thoa thuan",
-                "canh tranh",
-                "negotiable",
-                "competitive salary",
-                "competitive",
-                "luong thuong luong"
+        return new CurrencyDetection(
+                matched
+                        .stream()
+                        .findFirst()
+                        .orElse(null),
+                false
         );
     }
 
-    private boolean hasRangeMarker(String folded) {
-        if (folded.contains(" den ") || folded.contains(" to ")) {
-            return true;
+    private boolean hasRange(
+            String folded
+    ) {
+        return containsAny(
+                folded,
+                rangeWords
+        )
+                || DASH_RANGE
+                .matcher(folded)
+                .find();
+    }
+
+    private Map<String, Long> buildMultipliers(
+            List<NormalizationTaxonomyProperties.SalaryMultiplierRule>
+                    rules
+    ) {
+        Map<String, Long> result =
+                new LinkedHashMap<>();
+
+        for (var rule : rules) {
+            for (String alias
+                    : rule.getAliases()) {
+
+                result.put(
+                        fold(alias),
+                        rule.getMultiplier()
+                );
+            }
         }
 
-        Matcher matcher = Pattern.compile(
-                "\\d(?:[\\d.,]*)\\s*"
-                        + "(?:k|thousand|trieu|tr|million)?\\s*"
-                        + "[-–—]\\s*\\$?\\s*\\d"
-        ).matcher(folded);
-
-        return matcher.find();
+        return Map.copyOf(result);
     }
 
-    private boolean isUpperBoundOnly(String folded) {
-        return containsAny(
-                folded,
-                "len den",
-                "up to",
-                "toi da",
-                "duoi ",
-                "under ",
-                "less than",
-                "khong qua"
+    private List<CurrencyRule> buildCurrencies(
+            List<NormalizationTaxonomyProperties.SalaryCurrencyRule>
+                    rules
+    ) {
+        return rules
+                .stream()
+                .map(rule ->
+                        new CurrencyRule(
+                                rule.getCode(),
+                                List.copyOf(
+                                        rule.getOriginalMarkers()
+                                ),
+                                foldSet(
+                                        rule.getFoldedPhrases()
+                                ),
+                                foldSet(
+                                        rule.getInferredUnitAliases()
+                                )
+                        )
+                )
+                .toList();
+    }
+
+    private Set<String> foldSet(
+            Iterable<String> values
+    ) {
+        Set<String> result =
+                new LinkedHashSet<>();
+
+        if (values != null) {
+            for (String value : values) {
+                String folded =
+                        fold(value);
+
+                if (!folded.isBlank()) {
+                    result.add(folded);
+                }
+            }
+        }
+
+        return Set.copyOf(result);
+    }
+
+    private String fold(
+            String value
+    ) {
+        return value == null
+                ? ""
+                : NormalizationTextSupport.fold(
+                value
         );
-    }
-
-    private boolean isLowerBoundOnly(String folded) {
-        return containsAny(
-                folded,
-                "tu ",
-                "from ",
-                "tren ",
-                "at least",
-                "minimum",
-                "toi thieu",
-                "more than"
-        ) || PLUS_SUFFIX_PATTERN.matcher(folded).find();
     }
 
     private boolean containsAny(
             String value,
-            String... candidates
+            Set<String> phrases
     ) {
-        for (String candidate : candidates) {
-            if (value.contains(candidate)) {
+        return phrases
+                .stream()
+                .anyMatch(
+                        phrase ->
+                                contains(
+                                        value,
+                                        phrase,
+                                        true
+                                )
+                );
+    }
+
+    private boolean contains(
+            String value,
+            String candidate,
+            boolean digitBlocksLeft
+    ) {
+        int from = 0;
+
+        while (from
+                <= value.length()
+                - candidate.length()) {
+
+            int index =
+                    value.indexOf(
+                            candidate,
+                            from
+                    );
+
+            if (index < 0) {
+                return false;
+            }
+
+            int end =
+                    index
+                            + candidate.length();
+
+            char left =
+                    index == 0
+                            ? '\0'
+                            : value.charAt(
+                            index - 1
+                    );
+
+            boolean leftOk =
+                    index == 0
+                            || (
+                            !Character.isLetter(left)
+                                    && (
+                                    !digitBlocksLeft
+                                            || !Character.isDigit(
+                                            left
+                                    )
+                            )
+                    );
+
+            boolean rightOk =
+                    end == value.length()
+                            || !Character.isLetterOrDigit(
+                            value.charAt(end)
+                    );
+
+            if (leftOk && rightOk) {
                 return true;
             }
+
+            from =
+                    index + 1;
         }
 
         return false;
     }
 
-    private SalaryNormalizationResult emptyResult() {
+    private SalaryNormalizationResult empty() {
         return new SalaryNormalizationResult(
                 null,
                 null,
@@ -437,21 +613,23 @@ public class SalaryNormalizer {
     }
 
     private record AmountToken(
-            BigDecimal numericValue,
-            BigDecimal multiplier,
+            BigDecimal value,
+            long multiplier,
             boolean explicitMultiplier
     ) {
     }
 
-    private record SharedMultipliers(
-            BigDecimal firstMultiplier,
-            BigDecimal secondMultiplier
+    private record CurrencyDetection(
+            String code,
+            boolean conflicting
     ) {
     }
 
-    private record CurrencyDetection(
-            String currency,
-            boolean conflicting
+    private record CurrencyRule(
+            String code,
+            List<String> markers,
+            Set<String> phrases,
+            Set<String> unitAliases
     ) {
     }
 }

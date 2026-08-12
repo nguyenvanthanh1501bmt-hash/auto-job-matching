@@ -1,5 +1,7 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -11,9 +13,14 @@ class SalaryNormalizerV2Test {
 
     @BeforeEach
     void setUp() {
-        normalizer = new SalaryNormalizer(
-                new TextNormalizer()
-        );
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        normalizer =
+                new SalaryNormalizer(
+                        new TextNormalizer(),
+                        taxonomy
+                );
     }
 
     @Test
@@ -121,65 +128,151 @@ class SalaryNormalizerV2Test {
 
     @Test
     void shouldParseUsdFormatsAndKMultiplier() {
-        assertSalary("1000 USD", 1_000L, 1_000L, "USD");
-        assertSalary("1,000 USD", 1_000L, 1_000L, "USD");
-        assertSalary("$1000", 1_000L, 1_000L, "USD");
-        assertSalary("$1,500", 1_500L, 1_500L, "USD");
-        assertSalary("$1k", 1_000L, 1_000L, "USD");
-        assertSalary("1k USD", 1_000L, 1_000L, "USD");
-        assertSalary("$1.5k", 1_500L, 1_500L, "USD");
+        assertSalary(
+                "1000 USD",
+                1_000L,
+                1_000L,
+                "USD"
+        );
+
+        assertSalary(
+                "1,000 USD",
+                1_000L,
+                1_000L,
+                "USD"
+        );
+
+        assertSalary(
+                "$1000",
+                1_000L,
+                1_000L,
+                "USD"
+        );
+
+        assertSalary(
+                "$1,500",
+                1_500L,
+                1_500L,
+                "USD"
+        );
+
+        assertSalary(
+                "$1k",
+                1_000L,
+                1_000L,
+                "USD"
+        );
+
+        assertSalary(
+                "1k USD",
+                1_000L,
+                1_000L,
+                "USD"
+        );
+
+        assertSalary(
+                "$1.5k",
+                1_500L,
+                1_500L,
+                "USD"
+        );
     }
 
     @Test
     void shouldParseLowerAndUpperBounds() {
         SalaryNormalizationResult plus =
-                normalizer.normalize("$1500+");
+                normalizer.normalize(
+                        "$1500+"
+                );
 
         SalaryNormalizationResult from =
-                normalizer.normalize("from $1000");
+                normalizer.normalize(
+                        "from $1000"
+                );
 
         SalaryNormalizationResult upTo =
-                normalizer.normalize("up to $2000");
+                normalizer.normalize(
+                        "up to $2000"
+                );
 
         SalaryNormalizationResult vietnameseFrom =
-                normalizer.normalize("Từ 20 triệu");
+                normalizer.normalize(
+                        "Từ 20 triệu"
+                );
 
         SalaryNormalizationResult vietnameseUpTo =
-                normalizer.normalize("Lên đến 30 triệu");
+                normalizer.normalize(
+                        "Lên đến 30 triệu"
+                );
 
-        assertThat(plus.min()).isEqualTo(1_500L);
-        assertThat(plus.max()).isNull();
-        assertThat(plus.currency()).isEqualTo("USD");
+        assertThat(plus.min())
+                .isEqualTo(1_500L);
 
-        assertThat(from.min()).isEqualTo(1_000L);
-        assertThat(from.max()).isNull();
+        assertThat(plus.max())
+                .isNull();
 
-        assertThat(upTo.min()).isNull();
-        assertThat(upTo.max()).isEqualTo(2_000L);
+        assertThat(plus.currency())
+                .isEqualTo("USD");
 
-        assertThat(vietnameseFrom.min()).isEqualTo(20_000_000L);
-        assertThat(vietnameseFrom.max()).isNull();
+        assertThat(from.min())
+                .isEqualTo(1_000L);
 
-        assertThat(vietnameseUpTo.min()).isNull();
-        assertThat(vietnameseUpTo.max()).isEqualTo(30_000_000L);
+        assertThat(from.max())
+                .isNull();
+
+        assertThat(upTo.min())
+                .isNull();
+
+        assertThat(upTo.max())
+                .isEqualTo(2_000L);
+
+        assertThat(vietnameseFrom.min())
+                .isEqualTo(20_000_000L);
+
+        assertThat(vietnameseFrom.max())
+                .isNull();
+
+        assertThat(vietnameseUpTo.min())
+                .isNull();
+
+        assertThat(vietnameseUpTo.max())
+                .isEqualTo(30_000_000L);
     }
 
     @Test
     void shouldKeepNegotiableAmountsEmpty() {
-        assertNegotiable("Negotiable");
-        assertNegotiable("Thỏa thuận");
-        assertNegotiable("Cạnh tranh");
-        assertNegotiable("Competitive");
+        assertNegotiable(
+                "Negotiable"
+        );
+
+        assertNegotiable(
+                "Thỏa thuận"
+        );
+
+        assertNegotiable(
+                "Cạnh tranh"
+        );
+
+        assertNegotiable(
+                "Competitive"
+        );
     }
 
     @Test
     void shouldNotConvertHourlyAmountToMonthlySalary() {
         SalaryNormalizationResult result =
-                normalizer.normalize("$20/hour");
+                normalizer.normalize(
+                        "$20/hour"
+                );
 
-        assertThat(result.min()).isEqualTo(20L);
-        assertThat(result.max()).isEqualTo(20L);
-        assertThat(result.currency()).isEqualTo("USD");
+        assertThat(result.min())
+                .isEqualTo(20L);
+
+        assertThat(result.max())
+                .isEqualTo(20L);
+
+        assertThat(result.currency())
+                .isEqualTo("USD");
     }
 
     @Test
@@ -189,9 +282,14 @@ class SalaryNormalizerV2Test {
                         "20 triệu, thưởng 5 triệu"
                 );
 
-        assertThat(result.min()).isNull();
-        assertThat(result.max()).isNull();
-        assertThat(result.currency()).isEqualTo("VND");
+        assertThat(result.min())
+                .isNull();
+
+        assertThat(result.max())
+                .isNull();
+
+        assertThat(result.currency())
+                .isEqualTo("VND");
     }
 
     private void assertSalary(
@@ -201,18 +299,32 @@ class SalaryNormalizerV2Test {
             String expectedCurrency
     ) {
         SalaryNormalizationResult result =
-                normalizer.normalize(input);
+                normalizer.normalize(
+                        input
+                );
 
-        assertThat(result.min()).isEqualTo(expectedMin);
-        assertThat(result.max()).isEqualTo(expectedMax);
-        assertThat(result.currency()).isEqualTo(expectedCurrency);
+        assertThat(result.min())
+                .isEqualTo(expectedMin);
+
+        assertThat(result.max())
+                .isEqualTo(expectedMax);
+
+        assertThat(result.currency())
+                .isEqualTo(expectedCurrency);
     }
 
-    private void assertNegotiable(String input) {
+    private void assertNegotiable(
+            String input
+    ) {
         SalaryNormalizationResult result =
-                normalizer.normalize(input);
+                normalizer.normalize(
+                        input
+                );
 
-        assertThat(result.min()).isNull();
-        assertThat(result.max()).isNull();
+        assertThat(result.min())
+                .isNull();
+
+        assertThat(result.max())
+                .isNull();
     }
 }

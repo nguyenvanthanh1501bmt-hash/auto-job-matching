@@ -1,5 +1,7 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,13 +23,18 @@ class DateNormalizerV2Test {
 
     @BeforeEach
     void setUp() {
-        normalizer = new DateNormalizer(
-                new TextNormalizer(),
-                Clock.fixed(
-                        FIXED_NOW,
-                        ZONE
-                )
-        );
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        normalizer =
+                new DateNormalizer(
+                        new TextNormalizer(),
+                        taxonomy,
+                        Clock.fixed(
+                                FIXED_NOW,
+                                ZONE
+                        )
+                );
     }
 
     @Test
@@ -37,7 +44,9 @@ class DateNormalizerV2Test {
                         "2 hours ago"
                 )
         ).isEqualTo(
-                Instant.parse("2026-07-12T01:00:00Z")
+                Instant.parse(
+                        "2026-07-12T01:00:00Z"
+                )
         );
 
         assertThat(
@@ -45,7 +54,9 @@ class DateNormalizerV2Test {
                         "2 giờ trước"
                 )
         ).isEqualTo(
-                Instant.parse("2026-07-12T01:00:00Z")
+                Instant.parse(
+                        "2026-07-12T01:00:00Z"
+                )
         );
     }
 
@@ -56,7 +67,9 @@ class DateNormalizerV2Test {
                         "30 minutes ago"
                 )
         ).isEqualTo(
-                Instant.parse("2026-07-12T02:30:00Z")
+                Instant.parse(
+                        "2026-07-12T02:30:00Z"
+                )
         );
 
         assertThat(
@@ -64,94 +77,130 @@ class DateNormalizerV2Test {
                         "30 phút trước"
                 )
         ).isEqualTo(
-                Instant.parse("2026-07-12T02:30:00Z")
+                Instant.parse(
+                        "2026-07-12T02:30:00Z"
+                )
         );
     }
 
     @Test
     void shouldNormalizeWeeksAgoAtStartOfResolvedDate() {
         Instant expected =
-                Instant.parse("2026-06-27T17:00:00Z");
+                Instant.parse(
+                        "2026-06-27T17:00:00Z"
+                );
 
         assertThat(
                 normalizer.normalizePostedAt(
                         "2 weeks ago"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
 
         assertThat(
                 normalizer.normalizePostedAt(
                         "2 tuần trước"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
     }
 
     @Test
     void shouldNormalizeMonthsAgoAtStartOfResolvedDate() {
         Instant expected =
-                Instant.parse("2026-06-11T17:00:00Z");
+                Instant.parse(
+                        "2026-06-11T17:00:00Z"
+                );
 
         assertThat(
                 normalizer.normalizePostedAt(
                         "1 month ago"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
 
         assertThat(
                 normalizer.normalizePostedAt(
                         "1 tháng trước"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
     }
 
     @Test
     void shouldNormalizeTomorrowDeadlineAtEndOfDay() {
-        Instant expected = Instant.parse(
-                "2026-07-13T16:59:59.999999999Z"
-        );
+        Instant expected =
+                Instant.parse(
+                        "2026-07-13T16:59:59.999999999Z"
+                );
 
         assertThat(
                 normalizer.normalizeDeadlineAt(
                         "tomorrow"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
 
         assertThat(
                 normalizer.normalizeDeadlineAt(
                         "ngày mai"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
     }
 
     @Test
     void shouldNormalizeClearFutureDayDeadlinePhrases() {
-        Instant expected = Instant.parse(
-                "2026-07-15T16:59:59.999999999Z"
-        );
+        Instant expected =
+                Instant.parse(
+                        "2026-07-15T16:59:59.999999999Z"
+                );
 
         assertThat(
                 normalizer.normalizeDeadlineAt(
                         "in 3 days"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
 
         assertThat(
                 normalizer.normalizeDeadlineAt(
                         "3 days left"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
 
         assertThat(
                 normalizer.normalizeDeadlineAt(
                         "3 ngày nữa"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
 
         assertThat(
                 normalizer.normalizeDeadlineAt(
                         "còn 3 ngày"
                 )
-        ).isEqualTo(expected);
+        ).isEqualTo(
+                expected
+        );
+
+        assertThat(
+                normalizer.normalizeDeadlineAt(
+                        "còn 3 ngày nữa"
+                )
+        ).isEqualTo(
+                expected
+        );
     }
 
     @Test

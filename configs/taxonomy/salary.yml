@@ -1,0 +1,82 @@
+autojob:
+  normalization:
+    taxonomy:
+      salary:
+
+        multipliers:
+
+          - multiplier: 1000
+            aliases:
+              - k
+              - thousand
+
+          - multiplier: 1000000
+            aliases:
+              - tr
+              - trieu
+              - million
+
+        currencies:
+
+          - code: USD
+            original-markers:
+              - "$"
+
+            folded-phrases:
+              - usd
+              - us dollar
+
+          - code: VND
+            original-markers:
+              - "₫"
+
+            folded-phrases:
+              - vnd
+
+            # "20tr", "20 triệu" tự hàm ý VND.
+            inferred-unit-aliases:
+              - tr
+              - trieu
+
+        negotiable-phrases:
+          - thoa thuan
+          - canh tranh
+          - negotiable
+          - competitive salary
+          - competitive
+          - luong thuong luong
+
+        # Word separator cho range.
+        # Dấu -, –, — vẫn là parser syntax trong Java.
+        range-words:
+          - den
+          - to
+
+        upper-bound-phrases:
+          - len den
+          - up to
+          - toi da
+          - "duoi "
+          - "under "
+          - less than
+          - khong qua
+
+        lower-bound-phrases:
+          - "tu "
+          - "from "
+          - "tren "
+          - at least
+          - minimum
+          - toi thieu
+          - more than
+
+        # Giữ nguyên heuristic cũ:
+        #
+        # "15 - 25 triệu"
+        # => propagate x1,000,000 cho 15.
+        #
+        # Nhưng:
+        # "15,000,000 - 20 triệu"
+        # => không propagate multiplier cho 15,000,000.
+        shared-multiplier-min: 1000000
+        shared-multiplier-max-unscaled-value: 100000

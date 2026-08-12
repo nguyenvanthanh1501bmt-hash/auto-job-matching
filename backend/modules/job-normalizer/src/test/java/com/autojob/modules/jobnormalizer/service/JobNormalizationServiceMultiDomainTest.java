@@ -84,7 +84,10 @@ class JobNormalizationServiceMultiDomainTest {
                 rawJobRepository,
                 normalizedJobRepository,
                 textNormalizer,
-                new SalaryNormalizer(textNormalizer),
+                new SalaryNormalizer(
+                        textNormalizer,
+                        taxonomy
+                ),
                 new SkillNormalizer(
                         textNormalizer,
                         taxonomy
@@ -93,11 +96,15 @@ class JobNormalizationServiceMultiDomainTest {
                         textNormalizer,
                         taxonomy
                 ),
-                new ExperienceNormalizer(textNormalizer),
+                new ExperienceNormalizer(
+                        textNormalizer,
+                        taxonomy
+                ),
                 new SeniorityNormalizer(taxonomy),
                 new JobTypeNormalizer(taxonomy),
                 new DateNormalizer(
                         textNormalizer,
+                        taxonomy,
                         FIXED_CLOCK
                 ),
                 new ApplyInformationNormalizer(textNormalizer),

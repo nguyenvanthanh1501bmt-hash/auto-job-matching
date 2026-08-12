@@ -1,0 +1,55 @@
+autojob:
+  normalization:
+    taxonomy:
+      experience:
+
+        units:
+
+          - unit: YEAR
+            aliases:
+              - year
+              - years
+              - yr
+              - yrs
+              - nam
+
+          - unit: MONTH
+            aliases:
+              - month
+              - months
+              - mo
+              - mos
+              - thang
+
+        no-experience-phrases:
+          - khong yeu cau kinh nghiem
+          - khong can kinh nghiem
+          - chua co kinh nghiem
+          - no experience required
+          - no experience
+          - fresher
+          - fresh graduate
+
+        # Dấu -, –, — vẫn giữ trong parser Java.
+        range-words:
+          - den
+          - to
+
+        upper-bound-phrases:
+          - "duoi "
+          - "under "
+          - less than
+          - up to
+          - khong qua
+          - toi da
+
+        lower-bound-phrases:
+          - it nhat
+          - at least
+          - "tu "
+          - "from "
+          - "tren "
+          - "over "
+          - more than
+          - minimum
+          - toi thieu
