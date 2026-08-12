@@ -233,7 +233,10 @@ public class JobNormalizationService {
         );
 
         List<String> skills = skillNormalizer.normalize(
-                rawJob.getSkills()
+                rawJob.getSkills(),
+                title,
+                rawJob.getRequirementsText(),
+                rawJob.getDescriptionText()
         );
 
         ExperienceNormalizationResult experience =
@@ -373,7 +376,11 @@ public class JobNormalizationService {
                     )
                     .orElseThrow(() -> exception);
 
-            return resolveExisting(existing, candidate, force);
+            return resolveExisting(
+                    existing,
+                    candidate,
+                    force
+            );
         }
     }
 
@@ -394,7 +401,10 @@ public class JobNormalizationService {
             );
         }
 
-        NormalizedJob updated = updateAndSave(existing, candidate);
+        NormalizedJob updated = updateAndSave(
+                existing,
+                candidate
+        );
 
         return new NormalizationExecution(
                 updated,

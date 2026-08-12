@@ -13,6 +13,9 @@ public class TextNormalizer {
     private static final Pattern ZERO_WIDTH_CHARACTERS =
             Pattern.compile("[\\u200B-\\u200D\\u2060\\uFEFF]");
 
+    private static final Pattern CONTROL_CHARACTERS =
+            Pattern.compile("[\\p{Cc}&&[^\\n\\t]]+");
+
     private static final Pattern INLINE_WHITESPACE =
             Pattern.compile("[\\s\\p{Z}]+");
 
@@ -23,7 +26,7 @@ public class TextNormalizer {
             Pattern.compile("\\n{3,}");
 
     /**
-     * Dùng cho title, company, salaryText, locationText...
+     * Dùng cho title, company, salaryText, locationText và các field inline tương tự.
      *
      * Tất cả whitespace được collapse thành một dấu cách.
      */
@@ -76,12 +79,20 @@ public class TextNormalizer {
                 Normalizer.Form.NFC
         );
 
-        normalized = ZERO_WIDTH_CHARACTERS.matcher(normalized)
-                .replaceAll("");
-
         normalized = normalized
                 .replace("\r\n", "\n")
                 .replace('\r', '\n');
+
+        normalized = ZERO_WIDTH_CHARACTERS.matcher(normalized)
+                .replaceAll("");
+
+        /*
+         * Các control character không có ý nghĩa hiển thị được đổi thành
+         * khoảng trắng thay vì xóa thẳng để tránh vô tình nối hai từ.
+         * Newline và tab được giữ để hai public method xử lý theo ngữ cảnh.
+         */
+        normalized = CONTROL_CHARACTERS.matcher(normalized)
+                .replaceAll(" ");
 
         return normalized.isBlank() ? null : normalized;
     }

@@ -1,18 +1,24 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
 import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.regex.Pattern;
 
 @Component
-@RequiredArgsConstructor
 public class SeniorityNormalizer {
 
     private static final Pattern DIRECTOR_PATTERN = Pattern.compile(
-            "\\b(director|chief|ceo|cto|cfo|coo)\\b"
+            "\\bdirector\\b"
                     + "|\\bhead of\\b"
+                    + "|\\bceo\\b"
+                    + "|\\bcto\\b"
+                    + "|\\bcfo\\b"
+                    + "|\\bcoo\\b"
+                    + "|\\bchief executive officer\\b"
+                    + "|\\bchief technology officer\\b"
+                    + "|\\bchief financial officer\\b"
+                    + "|\\bchief operating officer\\b"
                     + "|\\bgiam doc\\b"
                     + "|\\bpho giam doc\\b"
                     + "|\\btruong khoi\\b"
@@ -24,16 +30,24 @@ public class SeniorityNormalizer {
                     + "|\\bquan ly\\b"
                     + "|\\btruong phong\\b"
                     + "|\\btruong bo phan\\b"
+                    + "|\\bke toan truong\\b"
+                    + "|\\bchief accountant\\b"
     );
 
     private static final Pattern LEAD_PATTERN = Pattern.compile(
             "\\bteam lead\\b"
                     + "|\\btech lead\\b"
-                    + "|\\blead developer\\b"
-                    + "|\\blead engineer\\b"
+                    + "|\\btechnical lead\\b"
+                    + "|\\bproject lead\\b"
+                    + "|\\bsales lead\\b"
+                    + "|\\bmarketing lead\\b"
+                    + "|\\boperations lead\\b"
+                    + "|\\brecruitment lead\\b"
                     + "|\\bleader\\b"
                     + "|\\btruong nhom\\b"
                     + "|\\bto truong\\b"
+                    + "|^lead\\b"
+                    + "|\\blead$"
     );
 
     private static final Pattern SENIOR_PATTERN = Pattern.compile(
@@ -45,26 +59,13 @@ public class SeniorityNormalizer {
 
     private static final Pattern MID_PATTERN = Pattern.compile(
             "\\bmiddle\\b"
-                    + "|\\bmid level\\b"
-                    + "|\\bmid-level\\b"
+                    + "|\\bmid[- ]?level\\b"
                     + "|\\bintermediate\\b"
     );
 
     private static final Pattern JUNIOR_PATTERN = Pattern.compile(
             "\\bjunior\\b"
                     + "|\\bjr\\.?\\b"
-                    + "|\\bentry level\\b"
-                    + "|\\bentry-level\\b"
-                    + "|\\bnhan vien moi\\b"
-    );
-
-    private static final Pattern FRESHER_PATTERN = Pattern.compile(
-            "\\bfresher\\b"
-                    + "|\\bfresh graduate\\b"
-                    + "|\\bnew graduate\\b"
-                    + "|\\bgraduate trainee\\b"
-                    + "|\\bmoi tot nghiep\\b"
-                    + "|\\bchua co kinh nghiem\\b"
     );
 
     private static final Pattern INTERN_PATTERN = Pattern.compile(
@@ -73,6 +74,19 @@ public class SeniorityNormalizer {
                     + "|\\btrainee\\b"
                     + "|\\bthuc tap\\b"
                     + "|\\bthuc tap sinh\\b"
+    );
+
+    private static final Pattern FRESHER_PATTERN = Pattern.compile(
+            "\\bfresher\\b"
+                    + "|\\bfresh graduate\\b"
+                    + "|\\bnew graduate\\b"
+                    + "|\\bgraduate trainee\\b"
+                    + "|\\bgraduate\\b"
+                    + "|\\bentry[- ]?level\\b"
+                    + "|\\bmoi tot nghiep\\b"
+                    + "|\\bkhong yeu cau kinh nghiem\\b"
+                    + "|\\bkhong can kinh nghiem\\b"
+                    + "|\\bchua co kinh nghiem\\b"
     );
 
     /**
@@ -88,8 +102,9 @@ public class SeniorityNormalizer {
             String title,
             ExperienceNormalizationResult experience
     ) {
-        SeniorityLevel fromSeniorityText =
-                detectExplicitLevel(seniorityText);
+        SeniorityLevel fromSeniorityText = detectExplicitLevel(
+                seniorityText
+        );
 
         if (fromSeniorityText != SeniorityLevel.UNKNOWN) {
             return fromSeniorityText;
@@ -112,10 +127,8 @@ public class SeniorityNormalizer {
         }
 
         /*
-         * Kiểm tra từ level cao xuống thấp.
-         *
-         * Ví dụ "Senior Engineering Manager" phải ra MANAGER,
-         * không dừng ở SENIOR.
+         * Kiểm tra level quản lý trước senior/lead để title như
+         * "Senior Sales Manager" vẫn ra MANAGER.
          */
         if (DIRECTOR_PATTERN.matcher(folded).find()) {
             return SeniorityLevel.DIRECTOR;
@@ -125,7 +138,8 @@ public class SeniorityNormalizer {
             return SeniorityLevel.MANAGER;
         }
 
-        if (LEAD_PATTERN.matcher(folded).find()) {
+        if (LEAD_PATTERN.matcher(folded).find()
+                && !isLeadGenerationRole(folded)) {
             return SeniorityLevel.LEAD;
         }
 
@@ -141,15 +155,21 @@ public class SeniorityNormalizer {
             return SeniorityLevel.JUNIOR;
         }
 
-        if (FRESHER_PATTERN.matcher(folded).find()) {
-            return SeniorityLevel.FRESHER;
-        }
-
         if (INTERN_PATTERN.matcher(folded).find()) {
             return SeniorityLevel.INTERN;
         }
 
+        if (FRESHER_PATTERN.matcher(folded).find()) {
+            return SeniorityLevel.FRESHER;
+        }
+
         return SeniorityLevel.UNKNOWN;
+    }
+
+    private boolean isLeadGenerationRole(String folded) {
+        return folded.startsWith("lead generation")
+                && !folded.contains("team lead")
+                && !folded.contains("leader");
     }
 
     private SeniorityLevel inferFromExperience(
@@ -162,24 +182,21 @@ public class SeniorityNormalizer {
         Double min = experience.min();
         Double max = experience.max();
 
-        /*
-         * Không yêu cầu kinh nghiệm hoặc dưới một năm.
-         */
-        if (min != null && min == 0.0) {
-            if (max == null || max <= 1.0) {
-                return SeniorityLevel.FRESHER;
-            }
+        if (min != null && min < 0) {
+            min = null;
         }
 
-        double effectiveYears;
+        if (max != null && max < 0) {
+            max = null;
+        }
 
-        if (min != null) {
-            effectiveYears = min;
-        } else if (max != null) {
-            effectiveYears = max;
-        } else {
+        if (min == null && max == null) {
             return SeniorityLevel.UNKNOWN;
         }
+
+        double effectiveYears = min != null
+                ? min
+                : max;
 
         if (effectiveYears < 1.0) {
             return SeniorityLevel.FRESHER;
@@ -193,6 +210,9 @@ public class SeniorityNormalizer {
             return SeniorityLevel.MID;
         }
 
+        /*
+         * Experience fallback tuyệt đối không suy ra LEAD/MANAGER/DIRECTOR.
+         */
         return SeniorityLevel.SENIOR;
     }
 }

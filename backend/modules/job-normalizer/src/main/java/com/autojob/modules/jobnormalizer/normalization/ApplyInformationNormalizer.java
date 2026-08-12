@@ -5,11 +5,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
-import java.util.Locale;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
 public class ApplyInformationNormalizer {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+    );
 
     private final TextNormalizer textNormalizer;
 
@@ -18,32 +22,27 @@ public class ApplyInformationNormalizer {
             ApplyType rawApplyType,
             String rawDetailUrl
     ) {
-        String applyUrl =
-                textNormalizer.normalizeInline(rawApplyUrl);
+        String applyUrl = textNormalizer.normalizeInline(rawApplyUrl);
+        String detailUrl = textNormalizer.normalizeInline(rawDetailUrl);
 
-        String detailUrl =
-                textNormalizer.normalizeInline(rawDetailUrl);
+        String safeDetailUrl = safeHttpUrl(detailUrl);
 
-        if (applyUrl == null && detailUrl == null) {
-            return new ApplyInformationResult(
-                    null,
-                    ApplyType.UNKNOWN
-            );
+        if (applyUrl == null) {
+            return fallbackToDetailPage(safeDetailUrl);
         }
 
-        /*
-         * Không có apply URL riêng thì dùng detail page.
-         */
-        if (applyUrl == null) {
-            return new ApplyInformationResult(
-                    detailUrl,
-                    ApplyType.DETAIL_PAGE
-            );
+        String safeApplyUrl = safeApplyTarget(
+                applyUrl,
+                safeDetailUrl
+        );
+
+        if (safeApplyUrl == null) {
+            return fallbackToDetailPage(safeDetailUrl);
         }
 
         ApplyType inferredType = inferType(
-                applyUrl,
-                detailUrl
+                safeApplyUrl,
+                safeDetailUrl
         );
 
         ApplyType normalizedType = resolveType(
@@ -52,8 +51,24 @@ public class ApplyInformationNormalizer {
         );
 
         return new ApplyInformationResult(
-                applyUrl,
+                safeApplyUrl,
                 normalizedType
+        );
+    }
+
+    private ApplyInformationResult fallbackToDetailPage(
+            String safeDetailUrl
+    ) {
+        if (safeDetailUrl == null) {
+            return new ApplyInformationResult(
+                    null,
+                    ApplyType.UNKNOWN
+            );
+        }
+
+        return new ApplyInformationResult(
+                safeDetailUrl,
+                ApplyType.DETAIL_PAGE
         );
     }
 
@@ -75,15 +90,12 @@ public class ApplyInformationNormalizer {
 
         /*
          * Parser có thể mặc định mọi apply URL là DETAIL_PAGE.
-         *
-         * Nếu URL apply nằm ở domain khác detail URL,
-         * normalizer sửa lại thành EXTERNAL_COMPANY_SITE.
+         * Nếu URL apply nằm ở origin khác detail URL, sửa type chứ không sửa
+         * URL người dùng sẽ mở.
          */
         if ((rawApplyType == ApplyType.DETAIL_PAGE
-                || rawApplyType
-                == ApplyType.DETAIL_PAGE_APPLY_BUTTON)
-                && inferredType
-                == ApplyType.EXTERNAL_COMPANY_SITE) {
+                || rawApplyType == ApplyType.DETAIL_PAGE_APPLY_BUTTON)
+                && inferredType == ApplyType.EXTERNAL_COMPANY_SITE) {
             return ApplyType.EXTERNAL_COMPANY_SITE;
         }
 
@@ -94,8 +106,7 @@ public class ApplyInformationNormalizer {
             String applyUrl,
             String detailUrl
     ) {
-        if (applyUrl.toLowerCase(Locale.ROOT)
-                .startsWith("mailto:")) {
+        if (isMailto(applyUrl)) {
             return ApplyType.EMAIL;
         }
 
@@ -104,22 +115,13 @@ public class ApplyInformationNormalizer {
         }
 
         URI detailUri = parseUri(detailUrl);
-
-        if (detailUri == null) {
-            return applyUrl.equals(detailUrl)
-                    ? ApplyType.DETAIL_PAGE
-                    : ApplyType.UNKNOWN;
-        }
-
         URI applyUri = parseAndResolve(
                 applyUrl,
                 detailUri
         );
 
-        if (applyUri == null) {
-            return applyUrl.equals(detailUrl)
-                    ? ApplyType.DETAIL_PAGE
-                    : ApplyType.UNKNOWN;
+        if (detailUri == null || applyUri == null) {
+            return ApplyType.UNKNOWN;
         }
 
         if (sameNormalizedUri(applyUri, detailUri)) {
@@ -133,10 +135,97 @@ public class ApplyInformationNormalizer {
         return ApplyType.EXTERNAL_COMPANY_SITE;
     }
 
+    private String safeApplyTarget(
+            String value,
+            String safeDetailUrl
+    ) {
+        URI parsed = parseUri(value);
+
+        if (parsed == null) {
+            return null;
+        }
+
+        if (parsed.isAbsolute()) {
+            if (isMailto(parsed)) {
+                return validMailto(parsed) ? value : null;
+            }
+
+            return isSafeHttpUri(parsed) ? value : null;
+        }
+
+        if (safeDetailUrl == null) {
+            return null;
+        }
+
+        URI detailUri = parseUri(safeDetailUrl);
+        URI resolved = parseAndResolve(
+                value,
+                detailUri
+        );
+
+        return isSafeHttpUri(resolved) ? value : null;
+    }
+
+    private String safeHttpUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        URI uri = parseUri(value);
+
+        return isSafeHttpUri(uri) ? value : null;
+    }
+
+    private boolean isSafeHttpUri(URI uri) {
+        if (uri == null || !uri.isAbsolute()) {
+            return false;
+        }
+
+        String scheme = uri.getScheme();
+
+        if (!"http".equalsIgnoreCase(scheme)
+                && !"https".equalsIgnoreCase(scheme)) {
+            return false;
+        }
+
+        return uri.getHost() != null
+                && !uri.getHost().isBlank();
+    }
+
+    private boolean isMailto(String value) {
+        URI uri = parseUri(value);
+        return isMailto(uri);
+    }
+
+    private boolean isMailto(URI uri) {
+        return uri != null
+                && "mailto".equalsIgnoreCase(uri.getScheme());
+    }
+
+    private boolean validMailto(URI uri) {
+        String address = uri.getSchemeSpecificPart();
+
+        if (address == null) {
+            return false;
+        }
+
+        int queryIndex = address.indexOf('?');
+
+        if (queryIndex >= 0) {
+            address = address.substring(0, queryIndex);
+        }
+
+        return EMAIL_PATTERN.matcher(address).matches();
+    }
+
     private URI parseAndResolve(
             String value,
             URI baseUri
     ) {
+        if (baseUri == null) {
+            return null;
+        }
+
         URI parsed = parseUri(value);
 
         if (parsed == null) {
@@ -151,6 +240,10 @@ public class ApplyInformationNormalizer {
     }
 
     private URI parseUri(String value) {
+        if (value == null) {
+            return null;
+        }
+
         try {
             return URI.create(value).normalize();
         } catch (IllegalArgumentException exception) {
@@ -177,8 +270,7 @@ public class ApplyInformationNormalizer {
                 first.getHost(),
                 second.getHost()
         )
-                && effectivePort(first)
-                == effectivePort(second);
+                && effectivePort(first) == effectivePort(second);
     }
 
     private boolean equalsIgnoreCase(

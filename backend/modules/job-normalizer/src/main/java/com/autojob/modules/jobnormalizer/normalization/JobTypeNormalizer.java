@@ -17,8 +17,7 @@ public class JobTypeNormalizer {
     );
 
     private static final Pattern PART_TIME_PATTERN = Pattern.compile(
-            "\\bpart time\\b"
-                    + "|\\bpart-time\\b"
+            "\\bpart[- ]?time\\b"
                     + "|\\bban thoi gian\\b"
     );
 
@@ -39,15 +38,15 @@ public class JobTypeNormalizer {
     private static final Pattern CONTRACT_PATTERN = Pattern.compile(
             "\\bcontract\\b"
                     + "|\\bcontractor\\b"
-                    + "|\\bfixed term\\b"
-                    + "|\\bfixed-term\\b"
+                    + "|\\bfixed[- ]?term\\b"
                     + "|\\bhop dong\\b"
     );
 
     private static final Pattern FULL_TIME_PATTERN = Pattern.compile(
-            "\\bfull time\\b"
-                    + "|\\bfull-time\\b"
+            "\\bfull[- ]?time\\b"
                     + "|\\btoan thoi gian\\b"
+                    + "|\\bnhan vien chinh thuc\\b"
+                    + "|\\bchinh thuc\\b"
                     + "|\\bpermanent\\b"
     );
 
@@ -59,8 +58,7 @@ public class JobTypeNormalizer {
             String jobTypeText,
             String title
     ) {
-        NormalizedJobType fromJobTypeText =
-                detect(jobTypeText);
+        NormalizedJobType fromJobTypeText = detect(jobTypeText);
 
         if (fromJobTypeText != NormalizedJobType.UNKNOWN) {
             return fromJobTypeText;
@@ -77,16 +75,7 @@ public class JobTypeNormalizer {
         }
 
         /*
-         * Dữ liệu Schema.org trong repo hiện có dạng:
-         *
-         * FULL_TIME
-         * PART_TIME
-         * CONTRACTOR
-         * TEMPORARY
-         * INTERN
-         * OTHER
-         *
-         * fold() giữ underscore nên đổi chúng thành khoảng trắng.
+         * Schema.org/crawler có thể dùng các giá trị như FULL_TIME, PART_TIME, CONTRACTOR.
          */
         folded = folded
                 .replace('_', ' ')
@@ -117,9 +106,6 @@ public class JobTypeNormalizer {
             return NormalizedJobType.FULL_TIME;
         }
 
-        /*
-         * OTHER không đủ thông tin để suy luận.
-         */
         return NormalizedJobType.UNKNOWN;
     }
 }

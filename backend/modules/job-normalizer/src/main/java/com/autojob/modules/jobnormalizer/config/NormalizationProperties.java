@@ -22,7 +22,7 @@ public class NormalizationProperties {
      * rawJobId + normalizationVersion
      */
     @NotBlank
-    private String version = "rule-v1";
+    private String version = "rule-v2";
 
     /**
      * Timezone dùng khi parse các ngày tương đối như:

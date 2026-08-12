@@ -14,11 +14,22 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class ExperienceNormalizer {
 
-    private static final Pattern NUMBER_PATTERN =
-            Pattern.compile("(?<!\\d)(\\d+(?:[.,]\\d+)?)(?!\\d)");
+    private static final Pattern NUMBER_PATTERN = Pattern.compile(
+            "(?<!\\d)(\\d+(?:[.,]\\d+)?)(?!\\d)"
+    );
 
-    private static final Pattern PLUS_SUFFIX_PATTERN =
-            Pattern.compile("\\d(?:[\\d.,]*)\\s*\\+");
+    private static final Pattern DURATION_COMPONENT_PATTERN = Pattern.compile(
+            "(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*\\+?\\s*"
+                    + "(years?|yrs?|yr|nam|months?|mos?|mo|thang)\\b"
+    );
+
+    private static final Pattern RANGE_SEPARATOR_PATTERN = Pattern.compile(
+            "\\s*(?:[-–—]|\\bden\\b|\\bto\\b)\\s*"
+    );
+
+    private static final Pattern PLUS_SUFFIX_PATTERN = Pattern.compile(
+            "\\d(?:[\\d.,]*)\\s*\\+"
+    );
 
     private final TextNormalizer textNormalizer;
 
@@ -40,30 +51,19 @@ public class ExperienceNormalizer {
             );
         }
 
-        boolean monthUnit = containsAny(
-                folded,
-                "month",
-                "months",
-                "thang"
-        );
+        ExperienceNormalizationResult rangeResult = parseRange(folded);
 
-        List<Double> values = extractValues(cleaned, monthUnit);
+        if (rangeResult != null) {
+            return rangeResult;
+        }
 
-        if (values.isEmpty()) {
+        ParsedDuration duration = parseDuration(folded, null);
+
+        if (duration == null) {
             return unknown();
         }
 
-        if (values.size() >= 2 && hasRangeMarker(cleaned, folded)) {
-            double first = values.get(0);
-            double second = values.get(1);
-
-            return new ExperienceNormalizationResult(
-                    Math.min(first, second),
-                    Math.max(first, second)
-            );
-        }
-
-        double value = values.get(0);
+        double value = duration.value();
 
         if (isUpperBoundOnly(folded)) {
             return new ExperienceNormalizationResult(
@@ -72,8 +72,7 @@ public class ExperienceNormalizer {
             );
         }
 
-        if (monthUnit
-                || isLowerBoundOnly(cleaned, folded)) {
+        if (isLowerBoundOnly(folded)) {
             return new ExperienceNormalizationResult(
                     value,
                     null
@@ -81,40 +80,233 @@ public class ExperienceNormalizer {
         }
 
         /*
-         * "1 năm" không có từ khóa giới hạn:
-         * xem như khoảng chính xác 1-1.
+         * Giữ backward-compatible behavior cho một duration chỉ có tháng:
+         * "24 months" được hiểu là minimum 2 năm.
+         *
+         * Mixed units như "1 year 6 months" là một duration hoàn chỉnh,
+         * vì vậy được normalize thành exact 1.5 - 1.5 năm.
          */
+        if (duration.componentCount() == 1
+                && duration.singleUnit() == DurationUnit.MONTH) {
+            return new ExperienceNormalizationResult(
+                    value,
+                    null
+            );
+        }
+
         return new ExperienceNormalizationResult(
                 value,
                 value
         );
     }
 
-    private List<Double> extractValues(
+    private ExperienceNormalizationResult parseRange(String folded) {
+        Matcher separatorMatcher = RANGE_SEPARATOR_PATTERN.matcher(folded);
+
+        while (separatorMatcher.find()) {
+            String left = folded.substring(0, separatorMatcher.start());
+            String right = folded.substring(separatorMatcher.end());
+
+            if (!containsNumber(left) || !containsNumber(right)) {
+                continue;
+            }
+
+            ParsedDuration leftExplicit = parseDuration(left, null);
+            ParsedDuration rightExplicit = parseDuration(right, null);
+
+            DurationUnit leftDefault = null;
+            DurationUnit rightDefault = null;
+
+            if (leftExplicit == null) {
+                leftDefault = singleExplicitUnit(right);
+            }
+
+            if (rightExplicit == null) {
+                rightDefault = singleExplicitUnit(left);
+            }
+
+            ParsedDuration leftDuration = leftExplicit != null
+                    ? leftExplicit
+                    : parseDuration(left, leftDefault);
+
+            ParsedDuration rightDuration = rightExplicit != null
+                    ? rightExplicit
+                    : parseDuration(right, rightDefault);
+
+            if (leftDuration == null || rightDuration == null) {
+                continue;
+            }
+
+            double first = leftDuration.value();
+            double second = rightDuration.value();
+
+            return new ExperienceNormalizationResult(
+                    round(Math.min(first, second)),
+                    round(Math.max(first, second))
+            );
+        }
+
+        return null;
+    }
+
+    private ParsedDuration parseDuration(
             String value,
-            boolean monthUnit
+            DurationUnit defaultUnit
     ) {
-        List<Double> result = new ArrayList<>();
+        Matcher componentMatcher = DURATION_COMPONENT_PATTERN.matcher(value);
+        List<DurationComponent> components = new ArrayList<>();
+
+        while (componentMatcher.find()) {
+            Double numericValue = parseNumber(componentMatcher.group(1));
+
+            if (numericValue == null) {
+                return null;
+            }
+
+            DurationUnit unit = parseUnit(componentMatcher.group(2));
+
+            if (unit == null) {
+                return null;
+            }
+
+            components.add(new DurationComponent(
+                    numericValue,
+                    unit
+            ));
+        }
+
+        int numberCount = countNumbers(value);
+
+        if (!components.isEmpty()) {
+            /*
+             * Nếu còn numeric token không gắn unit thì input có thể chứa
+             * dữ liệu khác ngoài kinh nghiệm. Không đoán trong trường hợp đó.
+             */
+            if (numberCount != components.size()) {
+                return null;
+            }
+
+            double years = components.stream()
+                    .mapToDouble(this::toYears)
+                    .sum();
+
+            DurationUnit singleUnit = components.stream()
+                    .map(DurationComponent::unit)
+                    .distinct()
+                    .count() == 1
+                    ? components.getFirst().unit()
+                    : null;
+
+            return new ParsedDuration(
+                    round(years),
+                    components.size(),
+                    singleUnit
+            );
+        }
+
+        if (defaultUnit == null || numberCount != 1) {
+            return null;
+        }
+
+        Matcher numberMatcher = NUMBER_PATTERN.matcher(value);
+
+        if (!numberMatcher.find()) {
+            return null;
+        }
+
+        Double numericValue = parseNumber(numberMatcher.group(1));
+
+        if (numericValue == null) {
+            return null;
+        }
+
+        return new ParsedDuration(
+                round(toYears(new DurationComponent(
+                        numericValue,
+                        defaultUnit
+                ))),
+                1,
+                defaultUnit
+        );
+    }
+
+    private DurationUnit singleExplicitUnit(String value) {
+        Matcher matcher = DURATION_COMPONENT_PATTERN.matcher(value);
+        DurationUnit unit = null;
+        int matchedComponents = 0;
+
+        while (matcher.find()) {
+            DurationUnit currentUnit = parseUnit(matcher.group(2));
+
+            if (currentUnit == null) {
+                return null;
+            }
+
+            if (unit != null && unit != currentUnit) {
+                return null;
+            }
+
+            unit = currentUnit;
+            matchedComponents++;
+        }
+
+        if (matchedComponents == 0
+                || countNumbers(value) != matchedComponents) {
+            return null;
+        }
+
+        return unit;
+    }
+
+    private DurationUnit parseUnit(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value.startsWith("year")
+                || value.startsWith("yr")
+                || value.equals("nam")) {
+            return DurationUnit.YEAR;
+        }
+
+        if (value.startsWith("month")
+                || value.startsWith("mo")
+                || value.equals("thang")) {
+            return DurationUnit.MONTH;
+        }
+
+        return null;
+    }
+
+    private double toYears(DurationComponent component) {
+        if (component.unit() == DurationUnit.MONTH) {
+            return component.value() / 12.0;
+        }
+
+        return component.value();
+    }
+
+    private Double parseNumber(String value) {
+        try {
+            return Double.parseDouble(value.replace(',', '.'));
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private int countNumbers(String value) {
+        int count = 0;
         Matcher matcher = NUMBER_PATTERN.matcher(value);
 
         while (matcher.find()) {
-            String numericToken = matcher.group(1)
-                    .replace(',', '.');
-
-            try {
-                double parsedValue = Double.parseDouble(numericToken);
-
-                if (monthUnit) {
-                    parsedValue = parsedValue / 12.0;
-                }
-
-                result.add(round(parsedValue));
-            } catch (NumberFormatException ignored) {
-                // Unknown numeric token is skipped.
-            }
+            count++;
         }
 
-        return result;
+        return count;
+    }
+
+    private boolean containsNumber(String value) {
+        return NUMBER_PATTERN.matcher(value).find();
     }
 
     private boolean meansNoExperience(String folded) {
@@ -130,15 +322,6 @@ public class ExperienceNormalizer {
         );
     }
 
-    private boolean hasRangeMarker(
-            String original,
-            String folded
-    ) {
-        return original.matches(".*\\d\\s*[-–—]\\s*\\d.*")
-                || folded.contains(" den ")
-                || folded.contains(" to ");
-    }
-
     private boolean isUpperBoundOnly(String folded) {
         return containsAny(
                 folded,
@@ -151,21 +334,19 @@ public class ExperienceNormalizer {
         );
     }
 
-    private boolean isLowerBoundOnly(
-            String original,
-            String folded
-    ) {
+    private boolean isLowerBoundOnly(String folded) {
         return containsAny(
                 folded,
                 "it nhat",
                 "at least",
                 "tu ",
+                "from ",
                 "tren ",
                 "over ",
                 "more than",
                 "minimum",
                 "toi thieu"
-        ) || PLUS_SUFFIX_PATTERN.matcher(original).find();
+        ) || PLUS_SUFFIX_PATTERN.matcher(folded).find();
     }
 
     private boolean containsAny(
@@ -192,5 +373,23 @@ public class ExperienceNormalizer {
                 null,
                 null
         );
+    }
+
+    private enum DurationUnit {
+        YEAR,
+        MONTH
+    }
+
+    private record DurationComponent(
+            double value,
+            DurationUnit unit
+    ) {
+    }
+
+    private record ParsedDuration(
+            double value,
+            int componentCount,
+            DurationUnit singleUnit
+    ) {
     }
 }

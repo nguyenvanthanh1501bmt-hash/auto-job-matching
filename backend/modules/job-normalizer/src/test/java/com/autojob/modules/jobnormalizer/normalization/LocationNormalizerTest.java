@@ -21,40 +21,43 @@ class LocationNormalizerTest {
     @Test
     void shouldNormalizeHoChiMinhAliases() {
         assertThat(locationNormalizer.normalize("TP.HCM"))
-                .containsExactly("Ho Chi Minh");
+                .containsExactly("Hồ Chí Minh");
 
         assertThat(locationNormalizer.normalize("HCM"))
-                .containsExactly("Ho Chi Minh");
+                .containsExactly("Hồ Chí Minh");
+
+        assertThat(locationNormalizer.normalize("HCMC"))
+                .containsExactly("Hồ Chí Minh");
 
         assertThat(locationNormalizer.normalize("Hồ Chí Minh"))
-                .containsExactly("Ho Chi Minh");
+                .containsExactly("Hồ Chí Minh");
 
         assertThat(locationNormalizer.normalize("Ho Chi Minh City"))
-                .containsExactly("Ho Chi Minh");
+                .containsExactly("Hồ Chí Minh");
     }
 
     @Test
     void shouldNormalizeHaNoiAliases() {
         assertThat(locationNormalizer.normalize("Hà Nội"))
-                .containsExactly("Ha Noi");
+                .containsExactly("Hà Nội");
 
         assertThat(locationNormalizer.normalize("HN"))
-                .containsExactly("Ha Noi");
+                .containsExactly("Hà Nội");
 
         assertThat(locationNormalizer.normalize("Hanoi"))
-                .containsExactly("Ha Noi");
+                .containsExactly("Hà Nội");
     }
 
     @Test
     void shouldNormalizeDaNangAliases() {
         assertThat(locationNormalizer.normalize("Đà Nẵng"))
-                .containsExactly("Da Nang");
+                .containsExactly("Đà Nẵng");
 
         assertThat(locationNormalizer.normalize("Da Nang"))
-                .containsExactly("Da Nang");
+                .containsExactly("Đà Nẵng");
 
         assertThat(locationNormalizer.normalize("Danang"))
-                .containsExactly("Da Nang");
+                .containsExactly("Đà Nẵng");
     }
 
     @Test
@@ -78,7 +81,7 @@ class LocationNormalizerTest {
                 locationNormalizer.normalize("TP.HCM / Remote");
 
         assertThat(result).containsExactly(
-                "Ho Chi Minh",
+                "Hồ Chí Minh",
                 "Remote"
         );
     }
@@ -91,9 +94,9 @@ class LocationNormalizerTest {
                 );
 
         assertThat(result).containsExactly(
-                "Ha Noi",
-                "Ho Chi Minh",
-                "Da Nang"
+                "Hà Nội",
+                "Hồ Chí Minh",
+                "Đà Nẵng"
         );
     }
 
@@ -105,8 +108,8 @@ class LocationNormalizerTest {
                 );
 
         assertThat(result).containsExactly(
-                "Ho Chi Minh",
-                "Ha Noi",
+                "Hồ Chí Minh",
+                "Hà Nội",
                 "Remote"
         );
     }
@@ -119,7 +122,7 @@ class LocationNormalizerTest {
                 );
 
         assertThat(result).containsExactly(
-                "Ho Chi Minh",
+                "Hồ Chí Minh",
                 "Remote"
         );
     }
@@ -138,14 +141,69 @@ class LocationNormalizerTest {
     }
 
     @Test
-    void shouldIgnoreDetailedDistrictOrStreetSegments() {
+    void shouldKeepBaRiaVungTauAsSingleLocation() {
+        assertThat(
+                locationNormalizer.normalize(
+                        "Bà Rịa - Vũng Tàu"
+                )
+        ).containsExactly(
+                "Bà Rịa - Vũng Tàu"
+        );
+    }
+
+    @Test
+    void shouldKeepRemoteVietnamAsSingleUnknownDisplayLocation() {
+        assertThat(
+                locationNormalizer.normalize(
+                        "Remote - Vietnam"
+                )
+        ).containsExactly(
+                "Remote - Vietnam"
+        );
+    }
+
+    @Test
+    void shouldCanonicalizeAdditionalVietnamLocations() {
+        assertThat(
+                locationNormalizer.normalize(
+                        "Binh Duong, Bac Ninh, Hai Phong, "
+                                + "Quang Ninh, Dong Nai, Can Tho"
+                )
+        ).containsExactly(
+                "Bình Dương",
+                "Bắc Ninh",
+                "Hải Phòng",
+                "Quảng Ninh",
+                "Đồng Nai",
+                "Cần Thơ"
+        );
+    }
+
+    @Test
+    void shouldDeduplicateAliasesIgnoringCaseAndDiacritics() {
+        List<String> result =
+                locationNormalizer.normalize(
+                        "ha noi, HÀ NỘI, Hanoi, "
+                                + "Binh Duong, BÌNH DƯƠNG"
+                );
+
+        assertThat(result).containsExactly(
+                "Hà Nội",
+                "Bình Dương"
+        );
+    }
+
+    @Test
+    void shouldKeepUnknownDetailedLocationSegments() {
         List<String> result =
                 locationNormalizer.normalize(
                         "TP.HCM, Quận 1, Đường Nguyễn Huệ"
                 );
 
         assertThat(result).containsExactly(
-                "Ho Chi Minh"
+                "Hồ Chí Minh",
+                "Quận 1",
+                "Đường Nguyễn Huệ"
         );
     }
 
@@ -157,7 +215,7 @@ class LocationNormalizerTest {
                 );
 
         assertThat(result).containsExactly(
-                "Ho Chi Minh",
+                "Hồ Chí Minh",
                 "Remote"
         );
     }

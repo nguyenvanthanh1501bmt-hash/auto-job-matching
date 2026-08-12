@@ -51,6 +51,14 @@ public class JobEmbeddingTextBuilder {
         sectionCount = appendSection(
                 result,
                 sectionCount,
+                "Company",
+                normalizeInline(normalizedJob.getCompanyName()),
+                maxChars
+        );
+
+        sectionCount = appendSection(
+                result,
+                sectionCount,
                 "Skills",
                 joinStable(normalizedJob.getSkills()),
                 maxChars

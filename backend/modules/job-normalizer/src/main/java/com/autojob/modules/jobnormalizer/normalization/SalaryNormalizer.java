@@ -14,17 +14,36 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class SalaryNormalizer {
 
+    private static final BigDecimal ONE_THOUSAND =
+            BigDecimal.valueOf(1_000L);
+
     private static final BigDecimal ONE_MILLION =
             BigDecimal.valueOf(1_000_000L);
 
-    private static final Pattern NUMBER_PATTERN =
-            Pattern.compile("(?<!\\d)(\\d+(?:[.,]\\d+)*)(?!\\d)");
+    private static final Pattern AMOUNT_PATTERN = Pattern.compile(
+            "(\\$\\s*)?(?<!\\d)(\\d+(?:[.,]\\d+)*)(?!\\d)"
+                    + "(?:\\s*(k|thousand|trieu|tr|million)(?![a-z]))?"
+    );
 
     private static final Pattern GROUPED_THOUSANDS_PATTERN =
             Pattern.compile("\\d{1,3}(?:[.,]\\d{3})+");
 
-    private static final Pattern PLUS_SUFFIX_PATTERN =
-            Pattern.compile("\\d(?:[\\d.,]*)\\s*\\+");
+    private static final Pattern PLUS_SUFFIX_PATTERN = Pattern.compile(
+            "\\d(?:[\\d.,]*)\\s*"
+                    + "(?:k|thousand|trieu|tr|million)?\\s*\\+"
+    );
+
+    private static final Pattern VND_CODE_PATTERN = Pattern.compile(
+            "(?<![a-z0-9])vnd(?![a-z0-9])"
+    );
+
+    private static final Pattern USD_CODE_PATTERN = Pattern.compile(
+            "(?<![a-z0-9])usd(?![a-z0-9])"
+    );
+
+    private static final Pattern VIETNAMESE_MILLION_PATTERN = Pattern.compile(
+            "(?<![a-z])(?:tr|trieu)\\b"
+    );
 
     private final TextNormalizer textNormalizer;
 
@@ -36,7 +55,16 @@ public class SalaryNormalizer {
         }
 
         String folded = NormalizationTextSupport.fold(cleaned);
-        String currency = detectCurrency(cleaned, folded);
+        CurrencyDetection currencyDetection = detectCurrency(
+                cleaned,
+                folded
+        );
+
+        if (currencyDetection.conflicting()) {
+            return emptyResult();
+        }
+
+        String currency = currencyDetection.currency();
 
         if (isNegotiable(folded)) {
             return new SalaryNormalizationResult(
@@ -46,13 +74,9 @@ public class SalaryNormalizer {
             );
         }
 
-        BigDecimal multiplier = hasMillionUnit(folded)
-                ? ONE_MILLION
-                : BigDecimal.ONE;
+        List<AmountToken> amountTokens = extractAmountTokens(folded);
 
-        List<Long> amounts = extractAmounts(cleaned, multiplier);
-
-        if (amounts.isEmpty()) {
+        if (amountTokens.isEmpty()) {
             return new SalaryNormalizationResult(
                     null,
                     null,
@@ -60,18 +84,54 @@ public class SalaryNormalizer {
             );
         }
 
-        if (amounts.size() >= 2) {
-            long first = amounts.get(0);
-            long second = amounts.get(1);
+        boolean range = hasRangeMarker(folded);
+
+        if (range && amountTokens.size() >= 2) {
+            AmountToken first = amountTokens.get(0);
+            AmountToken second = amountTokens.get(1);
+
+            SharedMultipliers sharedMultipliers = resolveSharedMultipliers(
+                    first,
+                    second
+            );
+
+            Long firstAmount = toLongAmount(
+                    first.numericValue(),
+                    sharedMultipliers.firstMultiplier()
+            );
+
+            Long secondAmount = toLongAmount(
+                    second.numericValue(),
+                    sharedMultipliers.secondMultiplier()
+            );
+
+            if (firstAmount == null || secondAmount == null) {
+                return new SalaryNormalizationResult(
+                        null,
+                        null,
+                        currency
+                );
+            }
 
             return new SalaryNormalizationResult(
-                    Math.min(first, second),
-                    Math.max(first, second),
+                    Math.min(firstAmount, secondAmount),
+                    Math.max(firstAmount, secondAmount),
                     currency
             );
         }
 
-        long amount = amounts.get(0);
+        Long amount = toLongAmount(
+                amountTokens.getFirst().numericValue(),
+                amountTokens.getFirst().multiplier()
+        );
+
+        if (amount == null) {
+            return new SalaryNormalizationResult(
+                    null,
+                    null,
+                    currency
+            );
+        }
 
         if (isUpperBoundOnly(folded)) {
             return new SalaryNormalizationResult(
@@ -81,7 +141,7 @@ public class SalaryNormalizer {
             );
         }
 
-        if (isLowerBoundOnly(cleaned, folded)) {
+        if (isLowerBoundOnly(folded)) {
             return new SalaryNormalizationResult(
                     amount,
                     null,
@@ -90,8 +150,17 @@ public class SalaryNormalizer {
         }
 
         /*
-         * "20 triệu" được xem là mức salary cố định.
+         * Có nhiều số nhưng không có range/lower/upper marker rõ ràng có thể
+         * là salary + bonus/allowance. Không đoán min/max trong trường hợp đó.
          */
+        if (amountTokens.size() > 1) {
+            return new SalaryNormalizationResult(
+                    null,
+                    null,
+                    currency
+            );
+        }
+
         return new SalaryNormalizationResult(
                 amount,
                 amount,
@@ -99,37 +168,104 @@ public class SalaryNormalizer {
         );
     }
 
-    private List<Long> extractAmounts(
-            String value,
-            BigDecimal multiplier
-    ) {
-        List<Long> amounts = new ArrayList<>();
-        Matcher matcher = NUMBER_PATTERN.matcher(value);
+    private List<AmountToken> extractAmountTokens(String folded) {
+        List<AmountToken> tokens = new ArrayList<>();
+        Matcher matcher = AMOUNT_PATTERN.matcher(folded);
 
         while (matcher.find()) {
-            parseAmount(matcher.group(1), multiplier)
-                    .ifPresent(amounts::add);
+            try {
+                BigDecimal numericValue = parseNumericToken(
+                        matcher.group(2)
+                );
+
+                BigDecimal multiplier = multiplierFor(matcher.group(3));
+
+                tokens.add(new AmountToken(
+                        numericValue,
+                        multiplier,
+                        matcher.group(3) != null
+                ));
+            } catch (NumberFormatException exception) {
+                // Skip malformed numeric token.
+            }
         }
 
-        return amounts;
+        return tokens;
     }
 
-    private java.util.Optional<Long> parseAmount(
-            String token,
+    private SharedMultipliers resolveSharedMultipliers(
+            AmountToken first,
+            AmountToken second
+    ) {
+        BigDecimal firstMultiplier = first.multiplier();
+        BigDecimal secondMultiplier = second.multiplier();
+
+        if (!first.explicitMultiplier()
+                && second.explicitMultiplier()
+                && shouldPropagateMillionMultiplier(
+                secondMultiplier,
+                first.numericValue()
+        )) {
+            firstMultiplier = secondMultiplier;
+        }
+
+        if (!second.explicitMultiplier()
+                && first.explicitMultiplier()
+                && shouldPropagateMillionMultiplier(
+                firstMultiplier,
+                second.numericValue()
+        )) {
+            secondMultiplier = firstMultiplier;
+        }
+
+        return new SharedMultipliers(
+                firstMultiplier,
+                secondMultiplier
+        );
+    }
+
+    private boolean shouldPropagateMillionMultiplier(
+            BigDecimal multiplier,
+            BigDecimal unscaledNumericValue
+    ) {
+        if (multiplier.compareTo(ONE_MILLION) < 0) {
+            return false;
+        }
+
+        /*
+         * "15 - 25 triệu" và "15.5 - 20.5 million" dùng unit chung ở
+         * cuối range. Nhưng không được biến "15,000,000 - 20 triệu" thành
+         * 15,000,000,000,000.
+         */
+        return unscaledNumericValue.compareTo(
+                BigDecimal.valueOf(100_000L)
+        ) < 0;
+    }
+
+    private Long toLongAmount(
+            BigDecimal numericValue,
             BigDecimal multiplier
     ) {
         try {
-            BigDecimal numericValue = parseNumericToken(token);
-
-            long amount = numericValue
+            return numericValue
                     .multiply(multiplier)
                     .setScale(0, RoundingMode.HALF_UP)
                     .longValueExact();
-
-            return java.util.Optional.of(amount);
-        } catch (ArithmeticException | NumberFormatException exception) {
-            return java.util.Optional.empty();
+        } catch (ArithmeticException exception) {
+            return null;
         }
+    }
+
+    private BigDecimal multiplierFor(String unit) {
+        if (unit == null) {
+            return BigDecimal.ONE;
+        }
+
+        return switch (unit) {
+            case "k", "thousand" -> ONE_THOUSAND;
+            case "tr", "trieu", "million" -> ONE_MILLION;
+            default -> BigDecimal.ONE;
+        };
     }
 
     private BigDecimal parseNumericToken(String token) {
@@ -200,23 +336,31 @@ public class SalaryNormalizer {
         return count;
     }
 
-    private String detectCurrency(
+    private CurrencyDetection detectCurrency(
             String original,
             String folded
     ) {
-        if (original.contains("$")
-                || containsWord(folded, "usd")
-                || folded.contains("us dollar")) {
-            return "USD";
+        boolean usd = original.contains("$")
+                || USD_CODE_PATTERN.matcher(folded).find()
+                || folded.contains("us dollar");
+
+        boolean vnd = original.contains("₫")
+                || VND_CODE_PATTERN.matcher(folded).find()
+                || VIETNAMESE_MILLION_PATTERN.matcher(folded).find();
+
+        if (usd && vnd) {
+            return new CurrencyDetection(null, true);
         }
 
-        if (original.contains("₫")
-                || containsWord(folded, "vnd")
-                || folded.contains("trieu")) {
-            return "VND";
+        if (usd) {
+            return new CurrencyDetection("USD", false);
         }
 
-        return null;
+        if (vnd) {
+            return new CurrencyDetection("VND", false);
+        }
+
+        return new CurrencyDetection(null, false);
     }
 
     private boolean isNegotiable(String folded) {
@@ -226,16 +370,23 @@ public class SalaryNormalizer {
                 "canh tranh",
                 "negotiable",
                 "competitive salary",
+                "competitive",
                 "luong thuong luong"
         );
     }
 
-    private boolean hasMillionUnit(String folded) {
-        return containsAny(
-                folded,
-                "trieu",
-                "million"
-        );
+    private boolean hasRangeMarker(String folded) {
+        if (folded.contains(" den ") || folded.contains(" to ")) {
+            return true;
+        }
+
+        Matcher matcher = Pattern.compile(
+                "\\d(?:[\\d.,]*)\\s*"
+                        + "(?:k|thousand|trieu|tr|million)?\\s*"
+                        + "[-–—]\\s*\\$?\\s*\\d"
+        ).matcher(folded);
+
+        return matcher.find();
     }
 
     private boolean isUpperBoundOnly(String folded) {
@@ -251,26 +402,17 @@ public class SalaryNormalizer {
         );
     }
 
-    private boolean isLowerBoundOnly(
-            String original,
-            String folded
-    ) {
+    private boolean isLowerBoundOnly(String folded) {
         return containsAny(
                 folded,
                 "tu ",
+                "from ",
                 "tren ",
                 "at least",
-                "from ",
                 "minimum",
                 "toi thieu",
                 "more than"
-        ) || PLUS_SUFFIX_PATTERN.matcher(original).find();
-    }
-
-    private boolean containsWord(String text, String word) {
-        return Pattern.compile(
-                "(?:^|\\s)" + Pattern.quote(word) + "(?:\\s|$)"
-        ).matcher(text).find();
+        ) || PLUS_SUFFIX_PATTERN.matcher(folded).find();
     }
 
     private boolean containsAny(
@@ -292,5 +434,24 @@ public class SalaryNormalizer {
                 null,
                 null
         );
+    }
+
+    private record AmountToken(
+            BigDecimal numericValue,
+            BigDecimal multiplier,
+            boolean explicitMultiplier
+    ) {
+    }
+
+    private record SharedMultipliers(
+            BigDecimal firstMultiplier,
+            BigDecimal secondMultiplier
+    ) {
+    }
+
+    private record CurrencyDetection(
+            String currency,
+            boolean conflicting
+    ) {
     }
 }

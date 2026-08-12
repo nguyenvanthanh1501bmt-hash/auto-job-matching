@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -17,18 +16,13 @@ import java.util.regex.Pattern;
 public class LocationNormalizer {
 
     /**
-     * Tách theo:
-     * - dấu phẩy
-     * - dấu chấm phẩy
-     * - dấu |
-     * - dấu /
-     * - xuống dòng
-     * - dấu gạch ngang có khoảng trắng hai bên
+     * Chỉ tách ở các separator có semantics rõ ràng cho danh sách location.
      *
-     * Không tách dấu gạch ngang nằm trong tên riêng.
+     * Không tách dấu gạch ngang vì nó có thể là một phần của tên địa danh:
+     * "Bà Rịa - Vũng Tàu" hoặc một display value như "Remote - Vietnam".
      */
     private static final Pattern LOCATION_SEPARATOR = Pattern.compile(
-            "(?:\\s*[,;|/]\\s*|\\R+|\\s+[-–—]\\s+)"
+            "(?:\\s*[,;|/]\\s*|\\R+)"
     );
 
     private static final Map<String, String> LOCATION_ALIASES =
@@ -39,14 +33,7 @@ public class LocationNormalizer {
     public List<String> normalize(String locationText) {
         /*
          * Phải giữ newline cho đến khi tách location.
-         *
-         * Không dùng normalizeInline() tại đây vì nó sẽ biến:
-         *
-         * "Hà Nội\nRemote"
-         *
-         * thành:
-         *
-         * "Hà Nội Remote"
+         * normalizeInline() sẽ làm mất separator này.
          */
         String cleaned = textNormalizer.normalizeMultiline(
                 locationText
@@ -68,8 +55,9 @@ public class LocationNormalizer {
                 continue;
             }
 
-            String deduplicationKey = canonicalLocation
-                    .toLowerCase(Locale.ROOT);
+            String deduplicationKey = NormalizationTextSupport.fold(
+                    canonicalLocation
+            );
 
             if (seenLocations.add(deduplicationKey)) {
                 normalizedLocations.add(canonicalLocation);
@@ -86,28 +74,23 @@ public class LocationNormalizer {
             return null;
         }
 
-        String compactKey =
-                NormalizationTextSupport.compactKey(cleaned);
-
-        String mappedLocation =
-                LOCATION_ALIASES.get(compactKey);
+        String compactKey = NormalizationTextSupport.compactKey(cleaned);
+        String mappedLocation = LOCATION_ALIASES.get(compactKey);
 
         if (mappedLocation != null) {
             return mappedLocation;
         }
 
-        String folded =
-                NormalizationTextSupport.fold(cleaned);
+        String folded = NormalizationTextSupport.fold(cleaned);
 
         if (shouldIgnore(folded)) {
             return null;
         }
 
         /*
-         * Không có alias thì giữ nguyên địa điểm đã cleanup.
-         *
-         * Ví dụ:
-         * "Bắc Giang" → "Bắc Giang"
+         * Không có alias thì giữ nguyên text đã cleanup.
+         * Đây là behavior quan trọng để normalizer dùng được cho tỉnh/thành,
+         * địa điểm nước ngoài và location mới chưa có trong alias map.
          */
         return cleaned;
     }
@@ -116,14 +99,7 @@ public class LocationNormalizer {
         return folded.isBlank()
                 || folded.equals("not available")
                 || folded.equals("n/a")
-                || folded.equals("unknown")
-                || folded.startsWith("quan ")
-                || folded.startsWith("district ")
-                || folded.startsWith("phuong ")
-                || folded.startsWith("ward ")
-                || folded.startsWith("duong ")
-                || folded.startsWith("street ")
-                || folded.startsWith("so ");
+                || folded.equals("unknown");
     }
 
     private static Map<String, String> buildAliases() {
@@ -131,11 +107,12 @@ public class LocationNormalizer {
 
         register(
                 aliases,
-                "Ho Chi Minh",
+                "Hồ Chí Minh",
                 "TP.HCM",
                 "TP HCM",
                 "TPHCM",
                 "HCM",
+                "HCMC",
                 "Hồ Chí Minh",
                 "Thành phố Hồ Chí Minh",
                 "Ho Chi Minh",
@@ -147,7 +124,7 @@ public class LocationNormalizer {
 
         register(
                 aliases,
-                "Ha Noi",
+                "Hà Nội",
                 "HN",
                 "Hà Nội",
                 "Ha Noi",
@@ -157,7 +134,7 @@ public class LocationNormalizer {
 
         register(
                 aliases,
-                "Da Nang",
+                "Đà Nẵng",
                 "Đà Nẵng",
                 "Da Nang",
                 "Danang"
@@ -175,37 +152,66 @@ public class LocationNormalizer {
 
         register(
                 aliases,
-                "Tay Ninh",
-                "Tây Ninh",
-                "Tay Ninh"
-        );
-
-        register(
-                aliases,
-                "Can Tho",
-                "Cần Thơ",
-                "Can Tho"
-        );
-
-        register(
-                aliases,
-                "Hai Phong",
-                "Hải Phòng",
-                "Hai Phong"
-        );
-
-        register(
-                aliases,
-                "Binh Duong",
+                "Bình Dương",
                 "Bình Dương",
                 "Binh Duong"
         );
 
         register(
                 aliases,
-                "Dong Nai",
+                "Bắc Ninh",
+                "Bắc Ninh",
+                "Bac Ninh"
+        );
+
+        register(
+                aliases,
+                "Hải Phòng",
+                "Hải Phòng",
+                "Hai Phong"
+        );
+
+        register(
+                aliases,
+                "Quảng Ninh",
+                "Quảng Ninh",
+                "Quang Ninh"
+        );
+
+        register(
+                aliases,
+                "Đồng Nai",
                 "Đồng Nai",
                 "Dong Nai"
+        );
+
+        register(
+                aliases,
+                "Cần Thơ",
+                "Cần Thơ",
+                "Can Tho"
+        );
+
+        register(
+                aliases,
+                "Long An",
+                "Long An"
+        );
+
+        register(
+                aliases,
+                "Bà Rịa - Vũng Tàu",
+                "Bà Rịa - Vũng Tàu",
+                "Ba Ria - Vung Tau",
+                "Bà Rịa Vũng Tàu",
+                "Ba Ria Vung Tau"
+        );
+
+        register(
+                aliases,
+                "Tây Ninh",
+                "Tây Ninh",
+                "Tay Ninh"
         );
 
         register(
@@ -216,14 +222,14 @@ public class LocationNormalizer {
 
         register(
                 aliases,
-                "Khanh Hoa",
+                "Khánh Hòa",
                 "Khánh Hòa",
                 "Khanh Hoa"
         );
 
         register(
                 aliases,
-                "Hue",
+                "Huế",
                 "Huế",
                 "Hue",
                 "Thừa Thiên Huế",

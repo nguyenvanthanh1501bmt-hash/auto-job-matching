@@ -16,7 +16,7 @@ server:
 
 autojob:
   normalization:
-    version: ${NORMALIZATION_VERSION:rule-v1}
+    version: ${NORMALIZATION_VERSION:rule-v2}
     timezone: ${NORMALIZATION_TIMEZONE:Asia/Ho_Chi_Minh}
     embedding-text-max-chars: ${NORMALIZATION_EMBEDDING_TEXT_MAX_CHARS:2400}
     embedding-description-max-chars: ${NORMALIZATION_DESCRIPTION_MAX_CHARS:6000}

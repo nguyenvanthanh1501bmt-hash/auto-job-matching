@@ -7,7 +7,10 @@ import java.util.regex.Pattern;
 final class NormalizationTextSupport {
 
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
-    private static final Pattern MULTIPLE_WHITESPACE = Pattern.compile("\\s+");
+    private static final Pattern ZERO_WIDTH_CHARACTERS =
+            Pattern.compile("[\\u200B-\\u200D\\u2060\\uFEFF]");
+    private static final Pattern MULTIPLE_WHITESPACE =
+            Pattern.compile("[\\s\\p{Z}]+");
     private static final Pattern NON_COMPACT_KEY_CHARACTERS =
             Pattern.compile("[^a-z0-9+#]+");
 
@@ -24,8 +27,11 @@ final class NormalizationTextSupport {
             return "";
         }
 
+        String withoutZeroWidth = ZERO_WIDTH_CHARACTERS.matcher(value)
+                .replaceAll("");
+
         String decomposed = Normalizer.normalize(
-                value,
+                withoutZeroWidth,
                 Normalizer.Form.NFD
         );
 
