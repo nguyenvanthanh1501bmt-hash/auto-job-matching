@@ -4,13 +4,13 @@ spring:
 
   config:
     import:
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/skills.yml"
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/locations.yml"
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/seniority.yml"
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/job-types.yml"
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/salary.yml"
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/experience.yml"
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/date.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/skills.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/locations.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/seniority.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/job-types.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/salary.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/experience.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/date.yml"
 
   data:
     mongodb:

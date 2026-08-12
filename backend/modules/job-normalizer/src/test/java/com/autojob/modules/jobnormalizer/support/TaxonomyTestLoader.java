@@ -110,7 +110,7 @@ public final class TaxonomyTestLoader {
         while (current != null) {
             Path candidate =
                     current.resolve(
-                            "configs/taxonomy"
+                            "configs/taxonomy/job-normalizer"
                     );
 
             if (Files.isDirectory(candidate)) {
@@ -121,7 +121,7 @@ public final class TaxonomyTestLoader {
         }
 
         throw new IllegalStateException(
-                "Cannot find configs/taxonomy. "
+                "Cannot find configs/taxonomy/job-normalizer. "
                         + "Current working directory: "
                         + System.getProperty(
                         "user.dir"

@@ -34,10 +34,15 @@ RUN_MINIO_INTEGRATION = (
         }
 )
 
-PROJECT_ROOT = (
+SERVICE_ROOT = (
     Path(__file__)
     .resolve()
     .parents[2]
+)
+
+REPOSITORY_ROOT = (
+    SERVICE_ROOT
+    .parents[1]
 )
 
 pytestmark = [
@@ -85,9 +90,10 @@ def _test_settings() -> Settings:
             "autojob-cvs",
         ),
         CV_TAXONOMY_DIRECTORY=str(
-            PROJECT_ROOT
-            / "app"
+            REPOSITORY_ROOT
+            / "configs"
             / "taxonomy"
+            / "cv-parser"
         ),
         CV_ALLOWED_OBJECT_PREFIXES=(
             "raw/,cvs/"

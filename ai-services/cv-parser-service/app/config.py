@@ -164,7 +164,7 @@ class Settings(BaseSettings):
     )
 
     taxonomy_directory: str = Field(
-        default="app/taxonomy",
+        default="../../configs/taxonomy/cv-parser",
         min_length=1,
         validation_alias="CV_TAXONOMY_DIRECTORY",
     )

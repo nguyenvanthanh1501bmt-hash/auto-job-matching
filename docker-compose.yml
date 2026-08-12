@@ -120,6 +120,7 @@ services:
       CV_PARSER_APP_NAME: ${CV_PARSER_APP_NAME:-autojob-cv-parser-service}
       CV_PARSER_VERSION: ${CV_PARSER_VERSION:-rule-v1}
       LOG_LEVEL: ${CV_PARSER_LOG_LEVEL:-INFO}
+      CV_TAXONOMY_DIRECTORY: /app/config/taxonomy
 
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
@@ -148,6 +149,9 @@ services:
       CV_MIN_TEXT_CHARACTERS: ${CV_MIN_TEXT_CHARACTERS:-40}
       CV_MAX_PDF_PAGES: ${CV_MAX_PDF_PAGES:-100}
       CV_ALLOWED_OBJECT_PREFIXES: '${CV_ALLOWED_OBJECT_PREFIXES:-["raw/","cvs/"]}'
+
+    volumes:
+      - ./configs/taxonomy/cv-parser:/app/config/taxonomy:ro
 
     healthcheck:
       test:
@@ -220,8 +224,6 @@ services:
 
     environment:
       SERVER_PORT: "8080"
-
-      # External Job Normalizer taxonomy configuration
       AUTOJOB_TAXONOMY_DIR: /app/config/taxonomy
 
       SPRING_DATA_MONGODB_URI: >-
@@ -288,8 +290,7 @@ services:
       RATE_LIMIT_TRUST_FORWARDED_HEADERS: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:-false}
 
     volumes:
-      # Mount taxonomy từ host vào container ở chế độ read-only
-      - ./configs/taxonomy:/app/config/taxonomy:ro
+      - ./configs/taxonomy/job-normalizer:/app/config/taxonomy:ro
 
     healthcheck:
       test:

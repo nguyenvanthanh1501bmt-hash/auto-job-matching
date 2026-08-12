@@ -7,6 +7,7 @@ import pytest
 
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = SERVICE_ROOT.parents[1]
 
 if str(SERVICE_ROOT) not in sys.path:
     sys.path.insert(
@@ -37,7 +38,10 @@ def settings(
         _env_file=None,
         CV_PARSER_VERSION="rule-v1",
         CV_TAXONOMY_DIRECTORY=str(
-            service_root / "app" / "taxonomy"
+            REPOSITORY_ROOT
+            / "configs"
+            / "taxonomy"
+            / "cv-parser"
         ),
         MINIO_ENDPOINT="127.0.0.1:9000",
         MINIO_ACCESS_KEY="test-access-key",
