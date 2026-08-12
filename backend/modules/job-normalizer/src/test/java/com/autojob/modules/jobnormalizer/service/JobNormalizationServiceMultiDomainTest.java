@@ -6,6 +6,7 @@ import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
 import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import com.autojob.modules.jobcrawler.service.RawPayloadPurgeService;
 import com.autojob.modules.jobnormalizer.config.NormalizationProperties;
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJobType;
 import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
@@ -21,6 +22,7 @@ import com.autojob.modules.jobnormalizer.normalization.SeniorityNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.SkillNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.TextNormalizer;
 import com.autojob.modules.jobnormalizer.repository.NormalizedJobRepository;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -75,16 +77,25 @@ class JobNormalizationServiceMultiDomainTest {
         properties.setVersion("rule-v2");
         properties.setTimezone("Asia/Ho_Chi_Minh");
 
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
         service = new JobNormalizationService(
                 rawJobRepository,
                 normalizedJobRepository,
                 textNormalizer,
                 new SalaryNormalizer(textNormalizer),
-                new SkillNormalizer(textNormalizer),
-                new LocationNormalizer(textNormalizer),
+                new SkillNormalizer(
+                        textNormalizer,
+                        taxonomy
+                ),
+                new LocationNormalizer(
+                        textNormalizer,
+                        taxonomy
+                ),
                 new ExperienceNormalizer(textNormalizer),
-                new SeniorityNormalizer(),
-                new JobTypeNormalizer(),
+                new SeniorityNormalizer(taxonomy),
+                new JobTypeNormalizer(taxonomy),
                 new DateNormalizer(
                         textNormalizer,
                         FIXED_CLOCK

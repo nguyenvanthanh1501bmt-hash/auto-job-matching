@@ -1,6 +1,8 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJobType;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +14,11 @@ class JobTypeNormalizerTest {
 
     @BeforeEach
     void setUp() {
-        jobTypeNormalizer = new JobTypeNormalizer();
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        jobTypeNormalizer =
+                new JobTypeNormalizer(taxonomy);
     }
 
     @Test

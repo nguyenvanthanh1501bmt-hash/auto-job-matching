@@ -221,6 +221,9 @@ services:
     environment:
       SERVER_PORT: "8080"
 
+      # External Job Normalizer taxonomy configuration
+      AUTOJOB_TAXONOMY_DIR: /app/config/taxonomy
+
       SPRING_DATA_MONGODB_URI: >-
         mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-password}@mongo:27017/${MONGO_DATABASE:-autojob}?authSource=admin
       MONGODB_AUTO_INDEX_CREATION: ${MONGODB_AUTO_INDEX_CREATION:-true}
@@ -263,7 +266,6 @@ services:
       QDRANT_VECTOR_DIMENSION: ${QDRANT_VECTOR_DIMENSION:-384}
       QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
 
-      # Quan trọng:
       # Container Java phải gọi mock-job-site bằng Docker service name,
       # không dùng localhost:18080.
       MOCK_CRAWLER_SOURCE_CODE: MOCK
@@ -284,6 +286,10 @@ services:
 
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_TRUST_FORWARDED_HEADERS: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:-false}
+
+    volumes:
+      # Mount taxonomy từ host vào container ở chế độ read-only
+      - ./configs/taxonomy:/app/config/taxonomy:ro
 
     healthcheck:
       test:

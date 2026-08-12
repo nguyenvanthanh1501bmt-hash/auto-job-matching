@@ -1,5 +1,7 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,8 +15,12 @@ class LocationNormalizerTest {
 
     @BeforeEach
     void setUp() {
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
         locationNormalizer = new LocationNormalizer(
-                new TextNormalizer()
+                new TextNormalizer(),
+                taxonomy
         );
     }
 

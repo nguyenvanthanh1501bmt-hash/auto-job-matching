@@ -1,6 +1,8 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +14,11 @@ class SeniorityNormalizerTest {
 
     @BeforeEach
     void setUp() {
-        seniorityNormalizer = new SeniorityNormalizer();
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        seniorityNormalizer =
+                new SeniorityNormalizer(taxonomy);
     }
 
     @Test

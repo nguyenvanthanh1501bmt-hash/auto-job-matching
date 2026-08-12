@@ -1,1 +1,411 @@
-# Placeholder taxonomy for skills.
+autojob:
+  normalization:
+    taxonomy:
+      skill:
+
+        rich-raw-skill-count: 2
+
+        ambiguous-prose-aliases:
+          - r
+          - c
+          - go
+          - ai
+          - hr
+          - js
+          - ts
+          - react
+          - word
+          - excel
+
+        safe-short-prose-aliases:
+          - 5s
+          - c&b
+
+        aliases:
+
+          - canonical: "Java"
+            aliases:
+              - java
+
+          - canonical: "Python"
+            aliases:
+              - python
+
+          - canonical: "Spring Boot"
+            aliases:
+              - spring boot
+              - springboot
+              - spring-boot
+
+          - canonical: "JavaScript"
+            aliases:
+              - javascript
+              - java script
+              - js
+
+          - canonical: "TypeScript"
+            aliases:
+              - typescript
+              - type script
+              - ts
+
+          - canonical: "Node.js"
+            aliases:
+              - nodejs
+              - node.js
+              - node js
+
+          - canonical: "React"
+            aliases:
+              - react
+              - reactjs
+              - react.js
+              - react js
+
+          - canonical: "SQL"
+            aliases:
+              - sql
+
+          - canonical: "PostgreSQL"
+            aliases:
+              - postgres
+              - postgresql
+              - postgre sql
+
+          - canonical: "MongoDB"
+            aliases:
+              - mongodb
+              - mongo db
+
+          - canonical: "Docker"
+            aliases:
+              - docker
+
+          - canonical: "Kubernetes"
+            aliases:
+              - k8s
+              - kubernetes
+
+          - canonical: "AWS"
+            aliases:
+              - aws
+              - amazon web services
+
+          - canonical: "Git"
+            aliases:
+              - git
+
+          - canonical: "Go"
+            aliases:
+              - go
+              - golang
+
+          - canonical: "Artificial Intelligence"
+            aliases:
+              - ai
+              - artificial intelligence
+
+          - canonical: "MISA"
+            aliases:
+              - misa
+
+          - canonical: "Kế toán tổng hợp"
+            aliases:
+              - ke toan tong hop
+              - kế toán tổng hợp
+
+          - canonical: "Kế toán thuế"
+            aliases:
+              - ke toan thue
+              - kế toán thuế
+
+          - canonical: "Lập báo cáo tài chính"
+            aliases:
+              - lap bao cao tai chinh
+              - lập báo cáo tài chính
+
+          - canonical: "VAS"
+            aliases:
+              - vas
+              - vietnamese accounting standards
+
+          - canonical: "IFRS"
+            aliases:
+              - ifrs
+              - international financial reporting standards
+
+          - canonical: "Financial Analysis"
+            aliases:
+              - financial analysis
+              - phan tich tai chinh
+              - phân tích tài chính
+
+          - canonical: "B2B Sales"
+            aliases:
+              - b2b sales
+              - sales b2b
+              - ban hang b2b
+              - bán hàng b2b
+
+          - canonical: "Telesales"
+            aliases:
+              - telesales
+              - tele sales
+
+          - canonical: "Negotiation"
+            aliases:
+              - negotiation
+              - dam phan
+              - đàm phán
+              - thuong luong
+              - thương lượng
+
+          - canonical: "Customer Relationship Management"
+            aliases:
+              - crm
+              - customer relationship management
+
+          - canonical: "Lead Generation"
+            aliases:
+              - lead generation
+              - tao lead
+              - tạo lead
+
+          - canonical: "Customer Service"
+            aliases:
+              - customer service
+              - cham soc khach hang
+              - chăm sóc khách hàng
+
+          - canonical: "Search Engine Optimization"
+            aliases:
+              - seo
+              - search engine optimization
+
+          - canonical: "Google Ads"
+            aliases:
+              - google ads
+              - google adwords
+              - adwords
+
+          - canonical: "Facebook Ads"
+            aliases:
+              - facebook ads
+              - meta ads
+
+          - canonical: "Content Marketing"
+            aliases:
+              - content marketing
+
+          - canonical: "Branding"
+            aliases:
+              - branding
+              - brand management
+
+          - canonical: "Market Research"
+            aliases:
+              - market research
+              - nghien cuu thi truong
+              - nghiên cứu thị trường
+
+          - canonical: "Recruitment"
+            aliases:
+              - recruitment
+              - tuyen dung
+              - tuyển dụng
+
+          - canonical: "C&B"
+            aliases:
+              - c&b
+              - compensation and benefits
+              - compensation & benefits
+
+          - canonical: "Payroll"
+            aliases:
+              - payroll
+              - tinh luong
+              - tính lương
+
+          - canonical: "Labor Law"
+            aliases:
+              - labor law
+              - labour law
+              - luat lao dong
+              - luật lao động
+
+          - canonical: "HRIS"
+            aliases:
+              - hris
+              - human resources information system
+
+          - canonical: "Điều dưỡng"
+            aliases:
+              - dieu duong
+              - điều dưỡng
+              - nursing
+
+          - canonical: "Chăm sóc bệnh nhân"
+            aliases:
+              - cham soc benh nhan
+              - chăm sóc bệnh nhân
+              - patient care
+
+          - canonical: "Dược lâm sàng"
+            aliases:
+              - duoc lam sang
+              - dược lâm sàng
+              - clinical pharmacy
+
+          - canonical: "GPP"
+            aliases:
+              - gpp
+              - good pharmacy practice
+
+          - canonical: "CNC"
+            aliases:
+              - cnc
+              - computer numerical control
+
+          - canonical: "AutoCAD"
+            aliases:
+              - autocad
+              - auto cad
+
+          - canonical: "SolidWorks"
+            aliases:
+              - solidworks
+              - solid works
+
+          - canonical: "Lean Manufacturing"
+            aliases:
+              - lean manufacturing
+              - san xuat tinh gon
+              - sản xuất tinh gọn
+
+          - canonical: "5S"
+            aliases:
+              - 5s
+
+          - canonical: "Kaizen"
+            aliases:
+              - kaizen
+
+          - canonical: "Đọc bản vẽ kỹ thuật"
+            aliases:
+              - doc ban ve ky thuat
+              - đọc bản vẽ kỹ thuật
+
+          - canonical: "Quality Control"
+            aliases:
+              - quality control
+              - kiem soat chat luong
+              - kiểm soát chất lượng
+              - qc
+
+          - canonical: "Import/Export"
+            aliases:
+              - import export
+              - import/export
+              - xuat nhap khau
+              - xuất nhập khẩu
+
+          - canonical: "Incoterms"
+            aliases:
+              - incoterms
+
+          - canonical: "Customs Declaration"
+            aliases:
+              - customs declaration
+              - khai bao hai quan
+              - khai báo hải quan
+
+          - canonical: "Warehouse Management"
+            aliases:
+              - warehouse management
+              - quan ly kho
+              - quản lý kho
+
+          - canonical: "Supply Chain"
+            aliases:
+              - supply chain
+              - chuoi cung ung
+              - chuỗi cung ứng
+
+          - canonical: "Teaching"
+            aliases:
+              - teaching
+              - giang day
+              - giảng dạy
+
+          - canonical: "IELTS"
+            aliases:
+              - ielts
+
+          - canonical: "Lesson Planning"
+            aliases:
+              - lesson planning
+              - soan giao an
+              - soạn giáo án
+
+          - canonical: "Classroom Management"
+            aliases:
+              - classroom management
+              - quan ly lop hoc
+              - quản lý lớp học
+
+          - canonical: "Food Safety"
+            aliases:
+              - food safety
+              - an toan thuc pham
+              - an toàn thực phẩm
+
+          - canonical: "HACCP"
+            aliases:
+              - haccp
+
+          - canonical: "Front Office"
+            aliases:
+              - front office
+              - le tan
+              - lễ tân
+
+          - canonical: "Housekeeping"
+            aliases:
+              - housekeeping
+              - buong phong
+              - buồng phòng
+
+          - canonical: "Operations Management"
+            aliases:
+              - operations management
+              - quan ly van hanh
+              - quản lý vận hành
+
+          - canonical: "Microsoft Excel"
+            aliases:
+              - excel
+              - ms excel
+              - microsoft excel
+
+          - canonical: "Microsoft Word"
+            aliases:
+              - word
+              - ms word
+              - microsoft word
+
+          - canonical: "Microsoft PowerPoint"
+            aliases:
+              - powerpoint
+              - power point
+              - ms powerpoint
+              - microsoft powerpoint
+
+          - canonical: "Adobe Photoshop"
+            aliases:
+              - photoshop
+              - adobe photoshop
+
+          - canonical: "Adobe Illustrator"
+            aliases:
+              - illustrator
+              - adobe illustrator

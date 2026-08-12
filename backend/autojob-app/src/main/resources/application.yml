@@ -2,6 +2,13 @@ spring:
   application:
     name: autojob-app
 
+  config:
+    import:
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/skills.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/locations.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/seniority.yml"
+      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy}/job-types.yml"
+
   data:
     mongodb:
       auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}

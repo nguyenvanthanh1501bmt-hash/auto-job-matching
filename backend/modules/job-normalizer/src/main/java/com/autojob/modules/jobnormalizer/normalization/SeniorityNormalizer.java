@@ -1,93 +1,42 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Component
 public class SeniorityNormalizer {
 
-    private static final Pattern DIRECTOR_PATTERN = Pattern.compile(
-            "\\bdirector\\b"
-                    + "|\\bhead of\\b"
-                    + "|\\bceo\\b"
-                    + "|\\bcto\\b"
-                    + "|\\bcfo\\b"
-                    + "|\\bcoo\\b"
-                    + "|\\bchief executive officer\\b"
-                    + "|\\bchief technology officer\\b"
-                    + "|\\bchief financial officer\\b"
-                    + "|\\bchief operating officer\\b"
-                    + "|\\bgiam doc\\b"
-                    + "|\\bpho giam doc\\b"
-                    + "|\\btruong khoi\\b"
-    );
+    /**
+     * Rule regex được compile một lần khi Spring tạo bean,
+     * không compile lại mỗi lần normalize job.
+     */
+    private final List<CompiledRule> rules;
 
-    private static final Pattern MANAGER_PATTERN = Pattern.compile(
-            "\\bmanager\\b"
-                    + "|\\bsupervisor\\b"
-                    + "|\\bquan ly\\b"
-                    + "|\\btruong phong\\b"
-                    + "|\\btruong bo phan\\b"
-                    + "|\\bke toan truong\\b"
-                    + "|\\bchief accountant\\b"
-    );
+    /**
+     * Các threshold experience lấy từ seniority.yml.
+     */
+    private final NormalizationTaxonomyProperties.ExperienceThresholds
+            experienceThresholds;
 
-    private static final Pattern LEAD_PATTERN = Pattern.compile(
-            "\\bteam lead\\b"
-                    + "|\\btech lead\\b"
-                    + "|\\btechnical lead\\b"
-                    + "|\\bproject lead\\b"
-                    + "|\\bsales lead\\b"
-                    + "|\\bmarketing lead\\b"
-                    + "|\\boperations lead\\b"
-                    + "|\\brecruitment lead\\b"
-                    + "|\\bleader\\b"
-                    + "|\\btruong nhom\\b"
-                    + "|\\bto truong\\b"
-                    + "|^lead\\b"
-                    + "|\\blead$"
-    );
+    public SeniorityNormalizer(
+            NormalizationTaxonomyProperties taxonomyProperties
+    ) {
+        NormalizationTaxonomyProperties.Seniority config =
+                taxonomyProperties.getSeniority();
 
-    private static final Pattern SENIOR_PATTERN = Pattern.compile(
-            "\\bsenior\\b"
-                    + "|\\bsr\\.?\\b"
-                    + "|\\bchuyen vien cao cap\\b"
-                    + "|\\bnhan vien cao cap\\b"
-    );
+        this.rules = config
+                .getRules()
+                .stream()
+                .map(this::compileRule)
+                .toList();
 
-    private static final Pattern MID_PATTERN = Pattern.compile(
-            "\\bmiddle\\b"
-                    + "|\\bmid[- ]?level\\b"
-                    + "|\\bintermediate\\b"
-    );
-
-    private static final Pattern JUNIOR_PATTERN = Pattern.compile(
-            "\\bjunior\\b"
-                    + "|\\bjr\\.?\\b"
-    );
-
-    private static final Pattern INTERN_PATTERN = Pattern.compile(
-            "\\bintern\\b"
-                    + "|\\binternship\\b"
-                    + "|\\btrainee\\b"
-                    + "|\\bthuc tap\\b"
-                    + "|\\bthuc tap sinh\\b"
-    );
-
-    private static final Pattern FRESHER_PATTERN = Pattern.compile(
-            "\\bfresher\\b"
-                    + "|\\bfresh graduate\\b"
-                    + "|\\bnew graduate\\b"
-                    + "|\\bgraduate trainee\\b"
-                    + "|\\bgraduate\\b"
-                    + "|\\bentry[- ]?level\\b"
-                    + "|\\bmoi tot nghiep\\b"
-                    + "|\\bkhong yeu cau kinh nghiem\\b"
-                    + "|\\bkhong can kinh nghiem\\b"
-                    + "|\\bchua co kinh nghiem\\b"
-    );
+        this.experienceThresholds =
+                config.getExperience();
+    }
 
     /**
      * Thứ tự ưu tiên:
@@ -102,86 +51,107 @@ public class SeniorityNormalizer {
             String title,
             ExperienceNormalizationResult experience
     ) {
-        SeniorityLevel fromSeniorityText = detectExplicitLevel(
-                seniorityText
-        );
+        SeniorityLevel fromSeniorityText =
+                detectExplicitLevel(
+                        seniorityText
+                );
 
-        if (fromSeniorityText != SeniorityLevel.UNKNOWN) {
+        if (fromSeniorityText
+                != SeniorityLevel.UNKNOWN) {
             return fromSeniorityText;
         }
 
-        SeniorityLevel fromTitle = detectExplicitLevel(title);
+        SeniorityLevel fromTitle =
+                detectExplicitLevel(title);
 
-        if (fromTitle != SeniorityLevel.UNKNOWN) {
+        if (fromTitle
+                != SeniorityLevel.UNKNOWN) {
             return fromTitle;
         }
 
         return inferFromExperience(experience);
     }
 
-    private SeniorityLevel detectExplicitLevel(String value) {
-        String folded = NormalizationTextSupport.fold(value);
+    private SeniorityLevel detectExplicitLevel(
+            String value
+    ) {
+        String folded =
+                NormalizationTextSupport.fold(value);
 
         if (folded.isBlank()) {
             return SeniorityLevel.UNKNOWN;
         }
 
         /*
-         * Kiểm tra level quản lý trước senior/lead để title như
-         * "Senior Sales Manager" vẫn ra MANAGER.
+         * Priority nằm trong thứ tự rules của seniority.yml.
+         *
+         * Ví dụ:
+         *
+         * DIRECTOR
+         * MANAGER
+         * LEAD
+         * SENIOR
+         * ...
+         *
+         * Vì vậy title "Senior Sales Manager"
+         * vẫn ra MANAGER nếu MANAGER đứng trước SENIOR.
          */
-        if (DIRECTOR_PATTERN.matcher(folded).find()) {
-            return SeniorityLevel.DIRECTOR;
-        }
+        for (CompiledRule rule : rules) {
 
-        if (MANAGER_PATTERN.matcher(folded).find()) {
-            return SeniorityLevel.MANAGER;
-        }
+            if (!matchesAny(
+                    rule.patterns(),
+                    folded
+            )) {
+                continue;
+            }
 
-        if (LEAD_PATTERN.matcher(folded).find()
-                && !isLeadGenerationRole(folded)) {
-            return SeniorityLevel.LEAD;
-        }
+            boolean excluded =
+                    matchesAny(
+                            rule.excludePatterns(),
+                            folded
+                    );
 
-        if (SENIOR_PATTERN.matcher(folded).find()) {
-            return SeniorityLevel.SENIOR;
-        }
+            if (!excluded) {
+                return rule.level();
+            }
 
-        if (MID_PATTERN.matcher(folded).find()) {
-            return SeniorityLevel.MID;
-        }
+            /*
+             * Nếu match exclude nhưng đồng thời match allow,
+             * rule vẫn được chấp nhận.
+             *
+             * Dùng cho trường hợp như LEAD:
+             *
+             * "Lead Generation"         -> không phải LEAD
+             * "Lead Generation Leader"  -> LEAD
+             */
+            boolean explicitlyAllowed =
+                    matchesAny(
+                            rule.allowPatterns(),
+                            folded
+                    );
 
-        if (JUNIOR_PATTERN.matcher(folded).find()) {
-            return SeniorityLevel.JUNIOR;
-        }
-
-        if (INTERN_PATTERN.matcher(folded).find()) {
-            return SeniorityLevel.INTERN;
-        }
-
-        if (FRESHER_PATTERN.matcher(folded).find()) {
-            return SeniorityLevel.FRESHER;
+            if (explicitlyAllowed) {
+                return rule.level();
+            }
         }
 
         return SeniorityLevel.UNKNOWN;
     }
 
-    private boolean isLeadGenerationRole(String folded) {
-        return folded.startsWith("lead generation")
-                && !folded.contains("team lead")
-                && !folded.contains("leader");
-    }
-
     private SeniorityLevel inferFromExperience(
             ExperienceNormalizationResult experience
     ) {
-        if (experience == null || !experience.known()) {
+        if (experience == null
+                || !experience.known()) {
             return SeniorityLevel.UNKNOWN;
         }
 
         Double min = experience.min();
         Double max = experience.max();
 
+        /*
+         * Defensive handling nếu upstream đưa experience âm.
+         */
         if (min != null && min < 0) {
             min = null;
         }
@@ -194,25 +164,96 @@ public class SeniorityNormalizer {
             return SeniorityLevel.UNKNOWN;
         }
 
-        double effectiveYears = min != null
-                ? min
-                : max;
+        /*
+         * Giữ nguyên behavior cũ:
+         * ưu tiên min nếu có.
+         */
+        double effectiveYears =
+                min != null
+                        ? min
+                        : max;
 
-        if (effectiveYears < 1.0) {
+        if (effectiveYears
+                < experienceThresholds.getFresherUnder()) {
             return SeniorityLevel.FRESHER;
         }
 
-        if (effectiveYears < 2.0) {
+        if (effectiveYears
+                < experienceThresholds.getJuniorUnder()) {
             return SeniorityLevel.JUNIOR;
         }
 
-        if (effectiveYears < 5.0) {
+        if (effectiveYears
+                < experienceThresholds.getMidUnder()) {
             return SeniorityLevel.MID;
         }
 
         /*
-         * Experience fallback tuyệt đối không suy ra LEAD/MANAGER/DIRECTOR.
+         * Experience fallback tuyệt đối không suy ra
+         * LEAD / MANAGER / DIRECTOR.
          */
         return SeniorityLevel.SENIOR;
+    }
+
+    private CompiledRule compileRule(
+            NormalizationTaxonomyProperties.SeniorityRule rule
+    ) {
+        return new CompiledRule(
+                rule.getLevel(),
+                compilePatterns(
+                        rule.getPatterns()
+                ),
+                compilePatterns(
+                        rule.getExcludePatterns()
+                ),
+                compilePatterns(
+                        rule.getAllowPatterns()
+                )
+        );
+    }
+
+    private List<Pattern> compilePatterns(
+            List<String> configuredPatterns
+    ) {
+        if (configuredPatterns == null
+                || configuredPatterns.isEmpty()) {
+            return List.of();
+        }
+
+        return configuredPatterns
+                .stream()
+                .filter(pattern ->
+                        pattern != null
+                                && !pattern.isBlank()
+                )
+                .map(Pattern::compile)
+                .toList();
+    }
+
+    private boolean matchesAny(
+            List<Pattern> patterns,
+            String value
+    ) {
+        if (patterns == null
+                || patterns.isEmpty()) {
+            return false;
+        }
+
+        return patterns
+                .stream()
+                .anyMatch(
+                        pattern ->
+                                pattern
+                                        .matcher(value)
+                                        .find()
+                );
+    }
+
+    private record CompiledRule(
+            SeniorityLevel level,
+            List<Pattern> patterns,
+            List<Pattern> excludePatterns,
+            List<Pattern> allowPatterns
+    ) {
     }
 }

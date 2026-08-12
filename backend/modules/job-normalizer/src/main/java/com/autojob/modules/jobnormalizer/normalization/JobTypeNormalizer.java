@@ -1,111 +1,119 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJobType;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Component
 public class JobTypeNormalizer {
 
-    private static final Pattern INTERNSHIP_PATTERN = Pattern.compile(
-            "\\bintern\\b"
-                    + "|\\binternship\\b"
-                    + "|\\btrainee\\b"
-                    + "|\\bthuc tap\\b"
-                    + "|\\bthuc tap sinh\\b"
-    );
+    /**
+     * Job type business rules được load từ job-types.yml
+     * và compile regex một lần khi Spring tạo bean.
+     */
+    private final List<CompiledRule> rules;
 
-    private static final Pattern PART_TIME_PATTERN = Pattern.compile(
-            "\\bpart[- ]?time\\b"
-                    + "|\\bban thoi gian\\b"
-    );
-
-    private static final Pattern FREELANCE_PATTERN = Pattern.compile(
-            "\\bfreelance\\b"
-                    + "|\\bfreelancer\\b"
-                    + "|\\bcong tac vien\\b"
-                    + "|\\bctv\\b"
-    );
-
-    private static final Pattern TEMPORARY_PATTERN = Pattern.compile(
-            "\\btemporary\\b"
-                    + "|\\bseasonal\\b"
-                    + "|\\bthoi vu\\b"
-                    + "|\\bngan han\\b"
-    );
-
-    private static final Pattern CONTRACT_PATTERN = Pattern.compile(
-            "\\bcontract\\b"
-                    + "|\\bcontractor\\b"
-                    + "|\\bfixed[- ]?term\\b"
-                    + "|\\bhop dong\\b"
-    );
-
-    private static final Pattern FULL_TIME_PATTERN = Pattern.compile(
-            "\\bfull[- ]?time\\b"
-                    + "|\\btoan thoi gian\\b"
-                    + "|\\bnhan vien chinh thuc\\b"
-                    + "|\\bchinh thuc\\b"
-                    + "|\\bpermanent\\b"
-    );
+    public JobTypeNormalizer(
+            NormalizationTaxonomyProperties taxonomyProperties
+    ) {
+        this.rules = taxonomyProperties
+                .getJobType()
+                .getRules()
+                .stream()
+                .map(this::compileRule)
+                .toList();
+    }
 
     /**
      * Ưu tiên jobTypeText từ crawler.
-     * Chỉ dùng title làm fallback cho các trường hợp rõ ràng.
+     * Chỉ dùng title làm fallback.
      */
     public NormalizedJobType normalize(
             String jobTypeText,
             String title
     ) {
-        NormalizedJobType fromJobTypeText = detect(jobTypeText);
+        NormalizedJobType fromJobTypeText =
+                detect(jobTypeText);
 
-        if (fromJobTypeText != NormalizedJobType.UNKNOWN) {
+        if (fromJobTypeText
+                != NormalizedJobType.UNKNOWN) {
             return fromJobTypeText;
         }
 
         return detect(title);
     }
 
-    private NormalizedJobType detect(String value) {
-        String folded = NormalizationTextSupport.fold(value);
+    private NormalizedJobType detect(
+            String value
+    ) {
+        String folded =
+                NormalizationTextSupport.fold(value);
 
         if (folded.isBlank()) {
             return NormalizedJobType.UNKNOWN;
         }
 
         /*
-         * Schema.org/crawler có thể dùng các giá trị như FULL_TIME, PART_TIME, CONTRACTOR.
+         * Schema.org hoặc crawler có thể trả:
+         *
+         * FULL_TIME
+         * PART_TIME
+         *
+         * Chuyển "_" thành space để cùng match với rule YAML.
          */
-        folded = folded
+        String normalizedValue = folded
                 .replace('_', ' ')
                 .replaceAll("\\s+", " ")
                 .trim();
 
-        if (INTERNSHIP_PATTERN.matcher(folded).find()) {
-            return NormalizedJobType.INTERNSHIP;
-        }
+        /*
+         * Priority chính là thứ tự rule trong job-types.yml.
+         */
+        for (CompiledRule rule : rules) {
 
-        if (PART_TIME_PATTERN.matcher(folded).find()) {
-            return NormalizedJobType.PART_TIME;
-        }
+            boolean matched =
+                    rule.patterns()
+                            .stream()
+                            .anyMatch(
+                                    pattern ->
+                                            pattern
+                                                    .matcher(normalizedValue)
+                                                    .find()
+                            );
 
-        if (FREELANCE_PATTERN.matcher(folded).find()) {
-            return NormalizedJobType.FREELANCE;
-        }
-
-        if (TEMPORARY_PATTERN.matcher(folded).find()) {
-            return NormalizedJobType.TEMPORARY;
-        }
-
-        if (CONTRACT_PATTERN.matcher(folded).find()) {
-            return NormalizedJobType.CONTRACT;
-        }
-
-        if (FULL_TIME_PATTERN.matcher(folded).find()) {
-            return NormalizedJobType.FULL_TIME;
+            if (matched) {
+                return rule.type();
+            }
         }
 
         return NormalizedJobType.UNKNOWN;
+    }
+
+    private CompiledRule compileRule(
+            NormalizationTaxonomyProperties.JobTypeRule rule
+    ) {
+        List<Pattern> patterns =
+                rule.getPatterns()
+                        .stream()
+                        .filter(pattern ->
+                                pattern != null
+                                        && !pattern.isBlank()
+                        )
+                        .map(Pattern::compile)
+                        .toList();
+
+        return new CompiledRule(
+                rule.getType(),
+                patterns
+        );
+    }
+
+    private record CompiledRule(
+            NormalizedJobType type,
+            List<Pattern> patterns
+    ) {
     }
 }

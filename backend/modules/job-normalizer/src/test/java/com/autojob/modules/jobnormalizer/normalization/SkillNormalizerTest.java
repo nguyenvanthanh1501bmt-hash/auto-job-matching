@@ -1,5 +1,7 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,24 +15,30 @@ class SkillNormalizerTest {
 
     @BeforeEach
     void setUp() {
-        skillNormalizer = new SkillNormalizer(
-                new TextNormalizer()
-        );
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        skillNormalizer =
+                new SkillNormalizer(
+                        new TextNormalizer(),
+                        taxonomy
+                );
     }
 
     @Test
     void shouldNormalizeKnownAliases() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "springboot",
-                        "java script",
-                        "node.js",
-                        "mongo db",
-                        "postgres",
-                        "k8s",
-                        "amazon web services"
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "springboot",
+                                "java script",
+                                "node.js",
+                                "mongo db",
+                                "postgres",
+                                "k8s",
+                                "amazon web services"
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "Spring Boot",
@@ -45,18 +53,19 @@ class SkillNormalizerTest {
 
     @Test
     void shouldNormalizeCommonNonItAliases() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "excel",
-                        "ms word",
-                        "power point",
-                        "photoshop",
-                        "adwords",
-                        "meta ads",
-                        "seo",
-                        "crm"
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "excel",
+                                "ms word",
+                                "power point",
+                                "photoshop",
+                                "adwords",
+                                "meta ads",
+                                "seo",
+                                "crm"
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "Microsoft Excel",
@@ -72,16 +81,17 @@ class SkillNormalizerTest {
 
     @Test
     void shouldKeepUnknownSkillsFromAnyIndustry() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "Vận hành máy CNC",
-                        "Kế toán tổng hợp",
-                        "Điều dưỡng nội khoa",
-                        "Kỹ thuật hàn TIG",
-                        "Phần mềm MISA",
-                        "Nghiệp vụ xuất nhập khẩu"
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "Vận hành máy CNC",
+                                "Kế toán tổng hợp",
+                                "Điều dưỡng nội khoa",
+                                "Kỹ thuật hàn TIG",
+                                "Phần mềm MISA",
+                                "Nghiệp vụ xuất nhập khẩu"
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "Vận hành máy CNC",
@@ -95,11 +105,12 @@ class SkillNormalizerTest {
 
     @Test
     void shouldSplitSkillGroupsBySafeSeparators() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "Spring Boot, Java; MongoDB|Docker\nGit"
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "Spring Boot, Java; MongoDB|Docker\nGit"
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "Spring Boot",
@@ -112,11 +123,12 @@ class SkillNormalizerTest {
 
     @Test
     void shouldPreserveSlashInsideSkillNames() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "UI/UX, Import/Export, B2B/B2C, CI/CD"
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "UI/UX, Import/Export, B2B/B2C, CI/CD"
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "UI/UX",
@@ -128,16 +140,17 @@ class SkillNormalizerTest {
 
     @Test
     void shouldRemoveDuplicatesIgnoringCaseAndAliases() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "springboot",
-                        "SPRING-BOOT",
-                        "Spring Boot",
-                        "mongo db",
-                        "MongoDB",
-                        "MONGODB"
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "springboot",
+                                "SPRING-BOOT",
+                                "Spring Boot",
+                                "mongo db",
+                                "MongoDB",
+                                "MONGODB"
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "Spring Boot",
@@ -147,14 +160,15 @@ class SkillNormalizerTest {
 
     @Test
     void shouldRemoveDuplicatesIgnoringVietnameseDiacritics() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "Vận hành máy CNC",
-                        "van hanh may cnc",
-                        "Kỹ năng giao tiếp",
-                        "ky nang giao tiep"
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "Vận hành máy CNC",
+                                "van hanh may cnc",
+                                "Kỹ năng giao tiếp",
+                                "ky nang giao tiep"
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "Vận hành máy CNC",
@@ -164,12 +178,13 @@ class SkillNormalizerTest {
 
     @Test
     void shouldTrimAndCollapseWhitespace() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "  Vận hành   máy CNC  ",
-                        "  Kế toán\t tổng hợp "
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "  Vận hành   máy CNC  ",
+                                "  Kế toán\t tổng hợp "
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "Vận hành máy CNC",
@@ -179,14 +194,15 @@ class SkillNormalizerTest {
 
     @Test
     void shouldIgnoreBlankSkillValues() {
-        List<String> result = skillNormalizer.normalize(
-                List.of(
-                        "Java",
-                        " ",
-                        ", ; |",
-                        "MongoDB"
-                )
-        );
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "Java",
+                                " ",
+                                ", ; |",
+                                "MongoDB"
+                        )
+                );
 
         assertThat(result).containsExactly(
                 "Java",
@@ -196,10 +212,12 @@ class SkillNormalizerTest {
 
     @Test
     void shouldReturnEmptyListForNullOrEmptyInput() {
-        assertThat(skillNormalizer.normalize(null))
-                .isEmpty();
+        assertThat(
+                skillNormalizer.normalize(null)
+        ).isEmpty();
 
-        assertThat(skillNormalizer.normalize(List.of()))
-                .isEmpty();
+        assertThat(
+                skillNormalizer.normalize(List.of())
+        ).isEmpty();
     }
 }

@@ -1,14 +1,25 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJobType;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JobTypeNormalizerV2Test {
 
-    private final JobTypeNormalizer normalizer =
-            new JobTypeNormalizer();
+    private JobTypeNormalizer normalizer;
+
+    @BeforeEach
+    void setUp() {
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        normalizer =
+                new JobTypeNormalizer(taxonomy);
+    }
 
     @Test
     void shouldNormalizeRequiredVietnameseAndEnglishValues() {

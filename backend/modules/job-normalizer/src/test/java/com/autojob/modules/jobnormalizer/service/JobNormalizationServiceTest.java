@@ -7,6 +7,7 @@ import com.autojob.modules.jobcrawler.domain.RawPayloadPurgeResult;
 import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import com.autojob.modules.jobcrawler.service.RawPayloadPurgeService;
 import com.autojob.modules.jobnormalizer.config.NormalizationProperties;
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.NormalizationAction;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.exception.RawJobNotFoundException;
@@ -22,6 +23,7 @@ import com.autojob.modules.jobnormalizer.normalization.SeniorityNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.SkillNormalizer;
 import com.autojob.modules.jobnormalizer.normalization.TextNormalizer;
 import com.autojob.modules.jobnormalizer.repository.NormalizedJobRepository;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -75,20 +77,28 @@ class JobNormalizationServiceTest {
     private TextNormalizer textNormalizer;
     private RawJobContentHasher rawJobContentHasher;
     private NormalizationProperties normalizationProperties;
+    private NormalizationTaxonomyProperties normalizationTaxonomyProperties;
     private JobNormalizationService jobNormalizationService;
 
     @BeforeEach
     void setUp() {
         textNormalizer = new TextNormalizer();
+
         rawJobContentHasher = new RawJobContentHasher(
                 textNormalizer
         );
 
-        normalizationProperties = new NormalizationProperties();
+        normalizationProperties =
+                new NormalizationProperties();
+
         normalizationProperties.setVersion("rule-v1");
+
         normalizationProperties.setTimezone(
                 "Asia/Ho_Chi_Minh"
         );
+
+        normalizationTaxonomyProperties =
+                TaxonomyTestLoader.load();
 
         jobNormalizationService = createService(
                 rawJobContentHasher,
@@ -96,21 +106,28 @@ class JobNormalizationServiceTest {
         );
 
         lenient().when(
-                rawPayloadPurgeService.purgeRawPayload(anyString())
-        ).thenAnswer(invocation -> new RawPayloadPurgeResult(
-                invocation.getArgument(0),
-                1,
-                1,
-                FIXED_NOW
-        ));
+                rawPayloadPurgeService.purgeRawPayload(
+                        anyString()
+                )
+        ).thenAnswer(
+                invocation -> new RawPayloadPurgeResult(
+                        invocation.getArgument(0),
+                        1,
+                        1,
+                        FIXED_NOW
+                )
+        );
     }
 
     @Test
     void shouldCreatePublishAndPurge() {
         RawJob rawJob = createRawJob();
 
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
+        when(
+                rawJobRepository.findById("raw-001")
+        ).thenReturn(
+                Optional.of(rawJob)
+        );
 
         when(
                 normalizedJobRepository
@@ -118,26 +135,42 @@ class JobNormalizationServiceTest {
                                 "raw-001",
                                 "rule-v1"
                         )
-        ).thenReturn(Optional.empty());
+        ).thenReturn(
+                Optional.empty()
+        );
 
-        when(normalizedJobRepository.insert(
-                any(NormalizedJob.class)
-        )).thenAnswer(invocation -> {
-            NormalizedJob inserted = invocation.getArgument(0);
+        when(
+                normalizedJobRepository.insert(
+                        any(NormalizedJob.class)
+                )
+        ).thenAnswer(invocation -> {
+            NormalizedJob inserted =
+                    invocation.getArgument(0);
+
             inserted.setId("normalized-001");
+
             return inserted;
         });
 
         NormalizationRunResult result =
-                jobNormalizationService.normalizeByRawJobId(
-                        "raw-001"
-                );
+                jobNormalizationService
+                        .normalizeByRawJobId(
+                                "raw-001"
+                        );
 
-        assertThat(result.execution().action())
-                .isEqualTo(NormalizationAction.CREATED);
+        assertThat(
+                result.execution().action()
+        ).isEqualTo(
+                NormalizationAction.CREATED
+        );
 
-        assertThat(result.execution().normalizedJob().getId())
-                .isEqualTo("normalized-001");
+        assertThat(
+                result.execution()
+                        .normalizedJob()
+                        .getId()
+        ).isEqualTo(
+                "normalized-001"
+        );
 
         assertThat(
                 result.execution()
@@ -154,37 +187,70 @@ class JobNormalizationServiceTest {
                 .startsWith(
                         "query: Title: Senior Java Backend Engineer"
                 )
-                .contains("Skills: Java, MongoDB, Spring Boot")
-                .contains("Requirements: Java 21 Spring Boot 3");
+                .contains(
+                        "Skills: Java, MongoDB, Spring Boot"
+                )
+                .contains(
+                        "Requirements: Java 21 Spring Boot 3"
+                );
 
-        assertThat(result.rawPayloadPurged()).isTrue();
-        assertThat(result.purgeFailed()).isFalse();
+        assertThat(
+                result.rawPayloadPurged()
+        ).isTrue();
+
+        assertThat(
+                result.purgeFailed()
+        ).isFalse();
 
         ArgumentCaptor<Object> eventCaptor =
-                ArgumentCaptor.forClass(Object.class);
+                ArgumentCaptor.forClass(
+                        Object.class
+                );
 
-        verify(eventPublisher).publishEvent(
+        verify(
+                eventPublisher
+        ).publishEvent(
                 eventCaptor.capture()
         );
 
-        assertThat(eventCaptor.getValue())
-                .isInstanceOf(JobNormalizedReadyEvent.class);
+        assertThat(
+                eventCaptor.getValue()
+        ).isInstanceOf(
+                JobNormalizedReadyEvent.class
+        );
 
-        verify(rawPayloadPurgeService)
-                .purgeRawPayload("raw-001");
+        verify(
+                rawPayloadPurgeService
+        ).purgeRawPayload(
+                "raw-001"
+        );
     }
 
     @Test
     void shouldUpdateWhenBusinessContentChangesAndKeepId() {
         RawJob rawJob = createRawJob();
-        String oldHash = rawJobContentHasher.hash(rawJob);
 
-        rawJob.setSalaryText("50 - 60 triệu");
+        String oldHash =
+                rawJobContentHasher.hash(
+                        rawJob
+                );
 
-        NormalizedJob existing = existingNormalizedJob(oldHash);
+        rawJob.setSalaryText(
+                "50 - 60 triệu"
+        );
 
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
+        NormalizedJob existing =
+                existingNormalizedJob(
+                        oldHash
+                );
+
+        when(
+                rawJobRepository.findById(
+                        "raw-001"
+                )
+        ).thenReturn(
+                Optional.of(rawJob)
+        );
 
         when(
                 normalizedJobRepository
@@ -192,27 +258,45 @@ class JobNormalizationServiceTest {
                                 "raw-001",
                                 "rule-v1"
                         )
-        ).thenReturn(Optional.of(existing));
+        ).thenReturn(
+                Optional.of(existing)
+        );
 
-        when(normalizedJobRepository.save(existing))
-                .thenReturn(existing);
+        when(
+                normalizedJobRepository.save(
+                        existing
+                )
+        ).thenReturn(
+                existing
+        );
 
         NormalizationRunResult result =
-                jobNormalizationService.normalizeByRawJobId(
-                        "raw-001"
-                );
+                jobNormalizationService
+                        .normalizeByRawJobId(
+                                "raw-001"
+                        );
 
-        assertThat(result.execution().action())
-                .isEqualTo(NormalizationAction.UPDATED);
+        assertThat(
+                result.execution().action()
+        ).isEqualTo(
+                NormalizationAction.UPDATED
+        );
 
-        assertThat(result.execution().normalizedJob().getId())
-                .isEqualTo("normalized-existing");
+        assertThat(
+                result.execution()
+                        .normalizedJob()
+                        .getId()
+        ).isEqualTo(
+                "normalized-existing"
+        );
 
         assertThat(
                 result.execution()
                         .normalizedJob()
                         .getRawContentHash()
-        ).isNotEqualTo(oldHash);
+        ).isNotEqualTo(
+                oldHash
+        );
 
         assertThat(
                 result.execution()
@@ -220,23 +304,44 @@ class JobNormalizationServiceTest {
                         .getEmbeddingText()
         ).isNotBlank();
 
-        verify(normalizedJobRepository).save(existing);
-        verify(eventPublisher).publishEvent(any(Object.class));
+        verify(
+                normalizedJobRepository
+        ).save(
+                existing
+        );
 
-        verify(rawPayloadPurgeService)
-                .purgeRawPayload("raw-001");
+        verify(
+                eventPublisher
+        ).publishEvent(
+                any(Object.class)
+        );
+
+        verify(
+                rawPayloadPurgeService
+        ).purgeRawPayload(
+                "raw-001"
+        );
     }
 
     @Test
     void shouldReturnUnchangedWithoutSaveOrReadyEventButStillPurge() {
-        RawJob rawJob = createRawJob();
+        RawJob rawJob =
+                createRawJob();
 
-        NormalizedJob existing = existingNormalizedJob(
-                rawJobContentHasher.hash(rawJob)
+        NormalizedJob existing =
+                existingNormalizedJob(
+                        rawJobContentHasher.hash(
+                                rawJob
+                        )
+                );
+
+        when(
+                rawJobRepository.findById(
+                        "raw-001"
+                )
+        ).thenReturn(
+                Optional.of(rawJob)
         );
-
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
 
         when(
                 normalizedJobRepository
@@ -244,55 +349,105 @@ class JobNormalizationServiceTest {
                                 "raw-001",
                                 "rule-v1"
                         )
-        ).thenReturn(Optional.of(existing));
+        ).thenReturn(
+                Optional.of(existing)
+        );
 
         NormalizationRunResult result =
-                jobNormalizationService.normalizeByRawJobId(
-                        "raw-001"
-                );
+                jobNormalizationService
+                        .normalizeByRawJobId(
+                                "raw-001"
+                        );
 
-        assertThat(result.execution().action())
-                .isEqualTo(NormalizationAction.UNCHANGED);
+        assertThat(
+                result.execution().action()
+        ).isEqualTo(
+                NormalizationAction.UNCHANGED
+        );
 
-        verify(normalizedJobRepository, never())
-                .save(any(NormalizedJob.class));
+        verify(
+                normalizedJobRepository,
+                never()
+        ).save(
+                any(NormalizedJob.class)
+        );
 
-        verify(normalizedJobRepository, never())
-                .insert(any(NormalizedJob.class));
+        verify(
+                normalizedJobRepository,
+                never()
+        ).insert(
+                any(NormalizedJob.class)
+        );
 
-        verifyNoInteractions(eventPublisher);
+        verifyNoInteractions(
+                eventPublisher
+        );
 
-        verify(rawPayloadPurgeService)
-                .purgeRawPayload("raw-001");
+        verify(
+                rawPayloadPurgeService
+        ).purgeRawPayload(
+                "raw-001"
+        );
     }
 
     @Test
     void shouldIgnoreMetadataAndRawPayloadChangesInHash() {
-        RawJob rawJob = createRawJob();
-        String businessHash = rawJobContentHasher.hash(rawJob);
+        RawJob rawJob =
+                createRawJob();
+
+        String businessHash =
+                rawJobContentHasher.hash(
+                        rawJob
+                );
 
         rawJob.setFirstSeenAt(
-                Instant.parse("2026-06-01T00:00:00Z")
+                Instant.parse(
+                        "2026-06-01T00:00:00Z"
+                )
         );
+
         rawJob.setLastSeenAt(
-                Instant.parse("2026-07-12T03:00:00Z")
+                Instant.parse(
+                        "2026-07-12T03:00:00Z"
+                )
         );
+
         rawJob.setCollectedAt(
-                Instant.parse("2026-07-12T03:01:00Z")
+                Instant.parse(
+                        "2026-07-12T03:01:00Z"
+                )
         );
+
         rawJob.setExpiresAt(
-                Instant.parse("2026-07-01T00:00:00Z")
-        );
-        rawJob.setRawHtml("<html>new payload</html>");
-        rawJob.setRawText("new raw text");
-        rawJob.setRawPayloadPurgedAt(FIXED_NOW);
-
-        NormalizedJob existing = existingNormalizedJob(
-                businessHash
+                Instant.parse(
+                        "2026-07-01T00:00:00Z"
+                )
         );
 
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
+        rawJob.setRawHtml(
+                "<html>new payload</html>"
+        );
+
+        rawJob.setRawText(
+                "new raw text"
+        );
+
+        rawJob.setRawPayloadPurgedAt(
+                FIXED_NOW
+        );
+
+        NormalizedJob existing =
+                existingNormalizedJob(
+                        businessHash
+                );
+
+        when(
+                rawJobRepository.findById(
+                        "raw-001"
+                )
+        ).thenReturn(
+                Optional.of(rawJob)
+        );
 
         when(
                 normalizedJobRepository
@@ -300,28 +455,46 @@ class JobNormalizationServiceTest {
                                 "raw-001",
                                 "rule-v1"
                         )
-        ).thenReturn(Optional.of(existing));
+        ).thenReturn(
+                Optional.of(existing)
+        );
 
         NormalizationRunResult result =
-                jobNormalizationService.normalizeByRawJobId(
-                        "raw-001"
-                );
+                jobNormalizationService
+                        .normalizeByRawJobId(
+                                "raw-001"
+                        );
 
-        assertThat(result.execution().action())
-                .isEqualTo(NormalizationAction.UNCHANGED);
+        assertThat(
+                result.execution().action()
+        ).isEqualTo(
+                NormalizationAction.UNCHANGED
+        );
 
-        verify(normalizedJobRepository, never())
-                .save(any(NormalizedJob.class));
+        verify(
+                normalizedJobRepository,
+                never()
+        ).save(
+                any(NormalizedJob.class)
+        );
     }
 
     @Test
     void shouldCreateNewDocumentForNewVersion() {
-        normalizationProperties.setVersion("rule-v2");
+        normalizationProperties.setVersion(
+                "rule-v2"
+        );
 
-        RawJob rawJob = createRawJob();
+        RawJob rawJob =
+                createRawJob();
 
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
+        when(
+                rawJobRepository.findById(
+                        "raw-001"
+                )
+        ).thenReturn(
+                Optional.of(rawJob)
+        );
 
         when(
                 normalizedJobRepository
@@ -329,44 +502,72 @@ class JobNormalizationServiceTest {
                                 "raw-001",
                                 "rule-v2"
                         )
-        ).thenReturn(Optional.empty());
+        ).thenReturn(
+                Optional.empty()
+        );
 
-        when(normalizedJobRepository.insert(
-                any(NormalizedJob.class)
-        )).thenAnswer(invocation -> {
-            NormalizedJob inserted = invocation.getArgument(0);
-            inserted.setId("normalized-v2");
+        when(
+                normalizedJobRepository.insert(
+                        any(NormalizedJob.class)
+                )
+        ).thenAnswer(invocation -> {
+            NormalizedJob inserted =
+                    invocation.getArgument(0);
+
+            inserted.setId(
+                    "normalized-v2"
+            );
+
             return inserted;
         });
 
         NormalizationRunResult result =
-                jobNormalizationService.normalizeByRawJobId(
-                        "raw-001"
-                );
+                jobNormalizationService
+                        .normalizeByRawJobId(
+                                "raw-001"
+                        );
 
-        assertThat(result.execution().action())
-                .isEqualTo(NormalizationAction.CREATED);
+        assertThat(
+                result.execution().action()
+        ).isEqualTo(
+                NormalizationAction.CREATED
+        );
 
         assertThat(
                 result.execution()
                         .normalizedJob()
                         .getNormalizationVersion()
-        ).isEqualTo("rule-v2");
+        ).isEqualTo(
+                "rule-v2"
+        );
 
-        verify(normalizedJobRepository, never())
-                .delete(any(NormalizedJob.class));
+        verify(
+                normalizedJobRepository,
+                never()
+        ).delete(
+                any(NormalizedJob.class)
+        );
     }
 
     @Test
     void shouldUpdateWhenForceIsTrueEvenIfHashIsEqual() {
-        RawJob rawJob = createRawJob();
+        RawJob rawJob =
+                createRawJob();
 
-        NormalizedJob existing = existingNormalizedJob(
-                rawJobContentHasher.hash(rawJob)
+        NormalizedJob existing =
+                existingNormalizedJob(
+                        rawJobContentHasher.hash(
+                                rawJob
+                        )
+                );
+
+        when(
+                rawJobRepository.findById(
+                        "raw-001"
+                )
+        ).thenReturn(
+                Optional.of(rawJob)
         );
-
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
 
         when(
                 normalizedJobRepository
@@ -374,34 +575,63 @@ class JobNormalizationServiceTest {
                                 "raw-001",
                                 "rule-v1"
                         )
-        ).thenReturn(Optional.of(existing));
+        ).thenReturn(
+                Optional.of(existing)
+        );
 
-        when(normalizedJobRepository.save(existing))
-                .thenReturn(existing);
+        when(
+                normalizedJobRepository.save(
+                        existing
+                )
+        ).thenReturn(
+                existing
+        );
 
         NormalizationRunResult result =
-                jobNormalizationService.normalizeByRawJobId(
-                        "raw-001",
-                        true
-                );
+                jobNormalizationService
+                        .normalizeByRawJobId(
+                                "raw-001",
+                                true
+                        );
 
-        assertThat(result.execution().action())
-                .isEqualTo(NormalizationAction.UPDATED);
+        assertThat(
+                result.execution().action()
+        ).isEqualTo(
+                NormalizationAction.UPDATED
+        );
 
-        verify(normalizedJobRepository).save(existing);
-        verify(eventPublisher).publishEvent(any(Object.class));
+        verify(
+                normalizedJobRepository
+        ).save(
+                existing
+        );
+
+        verify(
+                eventPublisher
+        ).publishEvent(
+                any(Object.class)
+        );
     }
 
     @Test
     void shouldRecoverFromDuplicateKeyRaceWithoutDuplicate() {
-        RawJob rawJob = createRawJob();
+        RawJob rawJob =
+                createRawJob();
 
-        NormalizedJob concurrent = existingNormalizedJob(
-                rawJobContentHasher.hash(rawJob)
+        NormalizedJob concurrent =
+                existingNormalizedJob(
+                        rawJobContentHasher.hash(
+                                rawJob
+                        )
+                );
+
+        when(
+                rawJobRepository.findById(
+                        "raw-001"
+                )
+        ).thenReturn(
+                Optional.of(rawJob)
         );
-
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
 
         when(
                 normalizedJobRepository
@@ -414,67 +644,118 @@ class JobNormalizationServiceTest {
                 Optional.of(concurrent)
         );
 
-        when(normalizedJobRepository.insert(
-                any(NormalizedJob.class)
-        )).thenThrow(
-                new DuplicateKeyException("duplicate")
+        when(
+                normalizedJobRepository.insert(
+                        any(NormalizedJob.class)
+                )
+        ).thenThrow(
+                new DuplicateKeyException(
+                        "duplicate"
+                )
         );
 
         NormalizationRunResult result =
-                jobNormalizationService.normalizeByRawJobId(
-                        "raw-001"
-                );
+                jobNormalizationService
+                        .normalizeByRawJobId(
+                                "raw-001"
+                        );
 
-        assertThat(result.execution().action())
-                .isEqualTo(NormalizationAction.UNCHANGED);
+        assertThat(
+                result.execution().action()
+        ).isEqualTo(
+                NormalizationAction.UNCHANGED
+        );
 
-        assertThat(result.execution().normalizedJob().getId())
-                .isEqualTo("normalized-existing");
+        assertThat(
+                result.execution()
+                        .normalizedJob()
+                        .getId()
+        ).isEqualTo(
+                "normalized-existing"
+        );
 
-        verify(normalizedJobRepository, never())
-                .save(any(NormalizedJob.class));
+        verify(
+                normalizedJobRepository,
+                never()
+        ).save(
+                any(NormalizedJob.class)
+        );
 
-        verifyNoInteractions(eventPublisher);
+        verifyNoInteractions(
+                eventPublisher
+        );
     }
 
     @Test
     void shouldNotPurgeWhenNormalizationFails() {
-        RawJob rawJob = createRawJob();
+        RawJob rawJob =
+                createRawJob();
 
         RawJobContentHasher throwingHasher =
-                mock(RawJobContentHasher.class);
-
-        JobNormalizationService service = createService(
-                throwingHasher,
-                rawPayloadPurgeService
-        );
-
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
-
-        when(throwingHasher.hash(rawJob))
-                .thenThrow(
-                        new IllegalStateException("hash failed")
+                mock(
+                        RawJobContentHasher.class
                 );
 
+        JobNormalizationService service =
+                createService(
+                        throwingHasher,
+                        rawPayloadPurgeService
+                );
+
+        when(
+                rawJobRepository.findById(
+                        "raw-001"
+                )
+        ).thenReturn(
+                Optional.of(rawJob)
+        );
+
+        when(
+                throwingHasher.hash(
+                        rawJob
+                )
+        ).thenThrow(
+                new IllegalStateException(
+                        "hash failed"
+                )
+        );
+
         assertThatThrownBy(
-                () -> service.normalizeByRawJobId("raw-001")
+                () -> service.normalizeByRawJobId(
+                        "raw-001"
+                )
         )
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("hash failed");
+                .isInstanceOf(
+                        IllegalStateException.class
+                )
+                .hasMessage(
+                        "hash failed"
+                );
 
-        verify(rawPayloadPurgeService, never())
-                .purgeRawPayload(anyString());
+        verify(
+                rawPayloadPurgeService,
+                never()
+        ).purgeRawPayload(
+                anyString()
+        );
 
-        verifyNoInteractions(eventPublisher);
+        verifyNoInteractions(
+                eventPublisher
+        );
     }
 
     @Test
     void shouldKeepNormalizationSuccessfulWhenPurgeFails() {
-        RawJob rawJob = createRawJob();
+        RawJob rawJob =
+                createRawJob();
 
-        when(rawJobRepository.findById("raw-001"))
-                .thenReturn(Optional.of(rawJob));
+        when(
+                rawJobRepository.findById(
+                        "raw-001"
+                )
+        ).thenReturn(
+                Optional.of(rawJob)
+        );
 
         when(
                 normalizedJobRepository
@@ -482,56 +763,101 @@ class JobNormalizationServiceTest {
                                 "raw-001",
                                 "rule-v1"
                         )
-        ).thenReturn(Optional.empty());
+        ).thenReturn(
+                Optional.empty()
+        );
 
-        when(normalizedJobRepository.insert(
-                any(NormalizedJob.class)
-        )).thenAnswer(invocation -> {
-            NormalizedJob inserted = invocation.getArgument(0);
-            inserted.setId("normalized-001");
+        when(
+                normalizedJobRepository.insert(
+                        any(NormalizedJob.class)
+                )
+        ).thenAnswer(invocation -> {
+            NormalizedJob inserted =
+                    invocation.getArgument(0);
+
+            inserted.setId(
+                    "normalized-001"
+            );
+
             return inserted;
         });
 
-        doThrow(new IllegalStateException("purge failed"))
-                .when(rawPayloadPurgeService)
-                .purgeRawPayload("raw-001");
-
-        NormalizationRunResult result =
-                jobNormalizationService.normalizeByRawJobId(
+        doThrow(
+                new IllegalStateException(
+                        "purge failed"
+                )
+        )
+                .when(
+                        rawPayloadPurgeService
+                )
+                .purgeRawPayload(
                         "raw-001"
                 );
 
-        assertThat(result.execution().action())
-                .isEqualTo(NormalizationAction.CREATED);
+        NormalizationRunResult result =
+                jobNormalizationService
+                        .normalizeByRawJobId(
+                                "raw-001"
+                        );
 
-        assertThat(result.purgeFailed()).isTrue();
-        assertThat(result.purgeError()).isEqualTo("purge failed");
+        assertThat(
+                result.execution().action()
+        ).isEqualTo(
+                NormalizationAction.CREATED
+        );
 
-        verify(eventPublisher).publishEvent(any(Object.class));
+        assertThat(
+                result.purgeFailed()
+        ).isTrue();
+
+        assertThat(
+                result.purgeError()
+        ).isEqualTo(
+                "purge failed"
+        );
+
+        verify(
+                eventPublisher
+        ).publishEvent(
+                any(Object.class)
+        );
     }
 
     @Test
     void shouldThrowWhenRawJobDoesNotExist() {
-        when(rawJobRepository.findById("missing"))
-                .thenReturn(Optional.empty());
-
-        assertThatThrownBy(
-                () -> jobNormalizationService.normalizeByRawJobId(
+        when(
+                rawJobRepository.findById(
                         "missing"
                 )
-        ).isInstanceOf(RawJobNotFoundException.class);
+        ).thenReturn(
+                Optional.empty()
+        );
 
-        verify(rawPayloadPurgeService, never())
-                .purgeRawPayload(anyString());
+        assertThatThrownBy(
+                () -> jobNormalizationService
+                        .normalizeByRawJobId(
+                                "missing"
+                        )
+        ).isInstanceOf(
+                RawJobNotFoundException.class
+        );
+
+        verify(
+                rawPayloadPurgeService,
+                never()
+        ).purgeRawPayload(
+                anyString()
+        );
     }
 
     private JobNormalizationService createService(
             RawJobContentHasher hasher,
             RawPayloadPurgeService purgeService
     ) {
-        SalaryNormalizer salaryNormalizer = new SalaryNormalizer(
-                textNormalizer
-        );
+        SalaryNormalizer salaryNormalizer =
+                new SalaryNormalizer(
+                        textNormalizer
+                );
 
         JobEmbeddingTextBuilder embeddingTextBuilder =
                 new JobEmbeddingTextBuilder(
@@ -544,16 +870,30 @@ class JobNormalizationServiceTest {
                 normalizedJobRepository,
                 textNormalizer,
                 salaryNormalizer,
-                new SkillNormalizer(textNormalizer),
-                new LocationNormalizer(textNormalizer),
-                new ExperienceNormalizer(textNormalizer),
-                new SeniorityNormalizer(),
-                new JobTypeNormalizer(),
+                new SkillNormalizer(
+                        textNormalizer,
+                        normalizationTaxonomyProperties
+                ),
+                new LocationNormalizer(
+                        textNormalizer,
+                        normalizationTaxonomyProperties
+                ),
+                new ExperienceNormalizer(
+                        textNormalizer
+                ),
+                new SeniorityNormalizer(
+                        normalizationTaxonomyProperties
+                ),
+                new JobTypeNormalizer(
+                        normalizationTaxonomyProperties
+                ),
                 new DateNormalizer(
                         textNormalizer,
                         FIXED_CLOCK
                 ),
-                new ApplyInformationNormalizer(textNormalizer),
+                new ApplyInformationNormalizer(
+                        textNormalizer
+                ),
                 hasher,
                 embeddingTextBuilder,
                 normalizationProperties,
@@ -563,7 +903,9 @@ class JobNormalizationServiceTest {
         );
     }
 
-    private NormalizedJob existingNormalizedJob(String hash) {
+    private NormalizedJob existingNormalizedJob(
+            String hash
+    ) {
         return NormalizedJob.builder()
                 .id("normalized-existing")
                 .rawJobId("raw-001")
@@ -590,32 +932,64 @@ class JobNormalizationServiceTest {
                 .applyUrl(
                         "https://company.example.com/apply/java"
                 )
-                .applyType(ApplyType.DETAIL_PAGE)
-                .title("Senior Java Backend Engineer")
-                .companyName("AutoJob Labs")
-                .salaryText("30 - 45 triệu")
-                .locationText("TP.HCM / Remote")
-                .experienceText("5+ years")
-                .seniorityText("Senior")
-                .jobTypeText("FULL_TIME")
-                .deadlineText("2026-07-30")
-                .postedText("Hôm nay")
-                .skills(List.of(
-                        "Java",
-                        "springboot",
-                        "mongo db"
-                ))
+                .applyType(
+                        ApplyType.DETAIL_PAGE
+                )
+                .title(
+                        "Senior Java Backend Engineer"
+                )
+                .companyName(
+                        "AutoJob Labs"
+                )
+                .salaryText(
+                        "30 - 45 triệu"
+                )
+                .locationText(
+                        "TP.HCM / Remote"
+                )
+                .experienceText(
+                        "5+ years"
+                )
+                .seniorityText(
+                        "Senior"
+                )
+                .jobTypeText(
+                        "FULL_TIME"
+                )
+                .deadlineText(
+                        "2026-07-30"
+                )
+                .postedText(
+                        "Hôm nay"
+                )
+                .skills(
+                        List.of(
+                                "Java",
+                                "springboot",
+                                "mongo db"
+                        )
+                )
                 .descriptionText(
                         "Build scalable backend services."
                 )
                 .requirementsText(
                         "Java 21\nSpring Boot 3"
                 )
-                .benefitsText("Remote friendly")
-                .fingerprint("MOCK:java-backend")
-                .rawHtml("<html>payload</html>")
-                .rawText("payload")
-                .collectedAt(FIXED_NOW)
+                .benefitsText(
+                        "Remote friendly"
+                )
+                .fingerprint(
+                        "MOCK:java-backend"
+                )
+                .rawHtml(
+                        "<html>payload</html>"
+                )
+                .rawText(
+                        "payload"
+                )
+                .collectedAt(
+                        FIXED_NOW
+                )
                 .build();
     }
 }

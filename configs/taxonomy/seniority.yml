@@ -1,1 +1,105 @@
-# Placeholder taxonomy for seniority levels.
+autojob:
+  normalization:
+    taxonomy:
+      seniority:
+
+        # Rule được kiểm tra theo đúng thứ tự bên dưới.
+        # Thứ tự này giữ nguyên behavior của SeniorityNormalizer cũ.
+        rules:
+
+          - level: DIRECTOR
+            patterns:
+              - '\bdirector\b'
+              - '\bhead of\b'
+              - '\bceo\b'
+              - '\bcto\b'
+              - '\bcfo\b'
+              - '\bcoo\b'
+              - '\bchief executive officer\b'
+              - '\bchief technology officer\b'
+              - '\bchief financial officer\b'
+              - '\bchief operating officer\b'
+              - '\bgiam doc\b'
+              - '\bpho giam doc\b'
+              - '\btruong khoi\b'
+
+          - level: MANAGER
+            patterns:
+              - '\bmanager\b'
+              - '\bsupervisor\b'
+              - '\bquan ly\b'
+              - '\btruong phong\b'
+              - '\btruong bo phan\b'
+              - '\bke toan truong\b'
+              - '\bchief accountant\b'
+
+          - level: LEAD
+            patterns:
+              - '\bteam lead\b'
+              - '\btech lead\b'
+              - '\btechnical lead\b'
+              - '\bproject lead\b'
+              - '\bsales lead\b'
+              - '\bmarketing lead\b'
+              - '\boperations lead\b'
+              - '\brecruitment lead\b'
+              - '\bleader\b'
+              - '\btruong nhom\b'
+              - '\bto truong\b'
+              - '^lead\b'
+              - '\blead$'
+
+            # Tránh hiểu "Lead Generation" là seniority LEAD.
+            exclude-patterns:
+              - '^lead generation'
+
+            # Nhưng các title thực sự chứa Team Lead/Leader
+            # vẫn được phép match.
+            allow-patterns:
+              - '\bteam lead\b'
+              - '\bleader\b'
+
+          - level: SENIOR
+            patterns:
+              - '\bsenior\b'
+              - '\bsr\.?\b'
+              - '\bchuyen vien cao cap\b'
+              - '\bnhan vien cao cap\b'
+
+          - level: MID
+            patterns:
+              - '\bmiddle\b'
+              - '\bmid[- ]?level\b'
+              - '\bintermediate\b'
+
+          - level: JUNIOR
+            patterns:
+              - '\bjunior\b'
+              - '\bjr\.?\b'
+
+          - level: INTERN
+            patterns:
+              - '\bintern\b'
+              - '\binternship\b'
+              - '\btrainee\b'
+              - '\bthuc tap\b'
+              - '\bthuc tap sinh\b'
+
+          - level: FRESHER
+            patterns:
+              - '\bfresher\b'
+              - '\bfresh graduate\b'
+              - '\bnew graduate\b'
+              - '\bgraduate trainee\b'
+              - '\bgraduate\b'
+              - '\bentry[- ]?level\b'
+              - '\bmoi tot nghiep\b'
+              - '\bkhong yeu cau kinh nghiem\b'
+              - '\bkhong can kinh nghiem\b'
+              - '\bchua co kinh nghiem\b'
+
+        # Fallback khi title/seniorityText không xác định được level.
+        experience:
+          fresher-under: 1.0
+          junior-under: 2.0
+          mid-under: 5.0

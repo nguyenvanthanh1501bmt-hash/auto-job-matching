@@ -1,14 +1,25 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
+import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
+import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SeniorityNormalizerV2Test {
 
-    private final SeniorityNormalizer normalizer =
-            new SeniorityNormalizer();
+    private SeniorityNormalizer normalizer;
+
+    @BeforeEach
+    void setUp() {
+        NormalizationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader.load();
+
+        normalizer =
+                new SeniorityNormalizer(taxonomy);
+    }
 
     @Test
     void shouldNormalizeMultiDomainTitles() {
@@ -102,7 +113,8 @@ class SeniorityNormalizerV2Test {
                 )
         );
 
-        assertThat(result).isEqualTo(SeniorityLevel.SENIOR);
+        assertThat(result)
+                .isEqualTo(SeniorityLevel.SENIOR);
     }
 
     @Test
@@ -113,7 +125,8 @@ class SeniorityNormalizerV2Test {
                 null
         );
 
-        assertThat(result).isEqualTo(SeniorityLevel.UNKNOWN);
+        assertThat(result)
+                .isEqualTo(SeniorityLevel.UNKNOWN);
     }
 
     @Test

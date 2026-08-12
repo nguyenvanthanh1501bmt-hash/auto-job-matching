@@ -1,0 +1,50 @@
+autojob:
+  normalization:
+    taxonomy:
+      job-type:
+
+        # Rule được kiểm tra theo đúng thứ tự bên dưới.
+        # Giữ nguyên priority của JobTypeNormalizer cũ.
+        rules:
+
+          - type: INTERNSHIP
+            patterns:
+              - '\bintern\b'
+              - '\binternship\b'
+              - '\btrainee\b'
+              - '\bthuc tap\b'
+              - '\bthuc tap sinh\b'
+
+          - type: PART_TIME
+            patterns:
+              - '\bpart[- ]?time\b'
+              - '\bban thoi gian\b'
+
+          - type: FREELANCE
+            patterns:
+              - '\bfreelance\b'
+              - '\bfreelancer\b'
+              - '\bcong tac vien\b'
+              - '\bctv\b'
+
+          - type: TEMPORARY
+            patterns:
+              - '\btemporary\b'
+              - '\bseasonal\b'
+              - '\bthoi vu\b'
+              - '\bngan han\b'
+
+          - type: CONTRACT
+            patterns:
+              - '\bcontract\b'
+              - '\bcontractor\b'
+              - '\bfixed[- ]?term\b'
+              - '\bhop dong\b'
+
+          - type: FULL_TIME
+            patterns:
+              - '\bfull[- ]?time\b'
+              - '\btoan thoi gian\b'
+              - '\bnhan vien chinh thuc\b'
+              - '\bchinh thuc\b'
+              - '\bpermanent\b'
