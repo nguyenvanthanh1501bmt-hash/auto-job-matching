@@ -1,6 +1,6 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.config.SharedSkillTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,8 +15,9 @@ class SkillNormalizerV2Test {
 
     @BeforeEach
     void setUp() {
-        NormalizationTaxonomyProperties taxonomy =
-                TaxonomyTestLoader.load();
+        SharedSkillTaxonomyProperties taxonomy =
+                TaxonomyTestLoader
+                        .loadSharedSkills();
 
         normalizer =
                 new SkillNormalizer(
@@ -44,19 +45,53 @@ class SkillNormalizerV2Test {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Java",
-                "Spring Boot",
-                "MISA",
-                "Kế toán thuế",
-                "Telesales",
-                "B2B Sales",
-                "CNC",
-                "AutoCAD",
-                "Điều dưỡng",
-                "Incoterms",
-                "Import/Export"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Java",
+                        "Spring Boot",
+                        "MISA",
+                        "Kế toán thuế",
+                        "Telesales",
+                        "B2B Sales",
+                        "CNC",
+                        "AutoCAD",
+                        "Điều dưỡng",
+                        "Incoterms",
+                        "Import/Export"
+                );
+    }
+
+    /**
+     * Đây là test quan trọng cho shared taxonomy.
+     *
+     * Các canonical cũ từ CV taxonomy phải resolve
+     * về canonical chung mà Job Normalizer cũng dùng.
+     */
+    @Test
+    void shouldCanonicalizeFormerCvNamesUsingSharedTaxonomy() {
+        List<String> result =
+                normalizer.normalize(
+                        List.of(
+                                "Amazon Web Services",
+                                "Tax Accounting",
+                                "Financial Reporting",
+                                "Brand Management",
+                                "Computer Numerical Control",
+                                "Reading Technical Drawings",
+                                "Front Office Operations"
+                        )
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        "AWS",
+                        "Kế toán thuế",
+                        "Lập báo cáo tài chính",
+                        "Branding",
+                        "CNC",
+                        "Đọc bản vẽ kỹ thuật",
+                        "Front Office"
+                );
     }
 
     @Test
@@ -68,9 +103,10 @@ class SkillNormalizerV2Test {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Kỹ thuật vận hành máy ABC"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Kỹ thuật vận hành máy ABC"
+                );
     }
 
     @Test
@@ -147,8 +183,12 @@ class SkillNormalizerV2Test {
                 );
 
         assertThat(result)
-                .contains("JavaScript")
-                .doesNotContain("Go")
+                .contains(
+                        "JavaScript"
+                )
+                .doesNotContain(
+                        "Go"
+                )
                 .doesNotContain(
                         "Artificial Intelligence"
                 );
@@ -165,7 +205,11 @@ class SkillNormalizerV2Test {
                 );
 
         assertThat(result)
-                .contains("JavaScript")
-                .doesNotContain("Java");
+                .contains(
+                        "JavaScript"
+                )
+                .doesNotContain(
+                        "Java"
+                );
     }
 }

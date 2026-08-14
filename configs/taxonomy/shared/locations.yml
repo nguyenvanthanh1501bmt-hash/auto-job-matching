@@ -1,0 +1,195 @@
+version: location-v1
+autojob:
+  taxonomy:
+    shared:
+      locations:
+        ignored-values:
+        - n/a
+        - not available
+        - unknown
+        ambiguous-aliases:
+        - DN
+        items:
+        - id: ho-chi-minh
+          canonical: Hồ Chí Minh
+          kind: CITY
+          aliases:
+          - TP.HCM
+          - TP HCM
+          - TPHCM
+          - HCM
+          - HCMC
+          - Thành phố Hồ Chí Minh
+          - Ho Chi Minh
+          - Ho Chi Minh City
+          - Sai Gon
+          - Sài Gòn
+          - Saigon
+        - id: ha-noi
+          canonical: Hà Nội
+          kind: CITY
+          aliases:
+          - HN
+          - Ha Noi
+          - Hanoi
+          - Thành phố Hà Nội
+          - TP Hà Nội
+        - id: da-nang
+          canonical: Đà Nẵng
+          kind: CITY
+          aliases:
+          - Da Nang
+          - Danang
+          - TP Đà Nẵng
+        - id: binh-duong
+          canonical: Bình Dương
+          kind: REGION
+          aliases:
+          - Binh Duong
+          - BD
+        - id: bac-ninh
+          canonical: Bắc Ninh
+          kind: REGION
+          aliases:
+          - Bac Ninh
+          - BN
+        - id: hai-phong
+          canonical: Hải Phòng
+          kind: CITY
+          aliases:
+          - Hai Phong
+          - TP Hải Phòng
+          - HP
+        - id: quang-ninh
+          canonical: Quảng Ninh
+          kind: REGION
+          aliases:
+          - Quang Ninh
+          - QN
+        - id: dong-nai
+          canonical: Đồng Nai
+          kind: REGION
+          aliases:
+          - Dong Nai
+        - id: can-tho
+          canonical: Cần Thơ
+          kind: CITY
+          aliases:
+          - Can Tho
+          - TP Cần Thơ
+        - id: long-an
+          canonical: Long An
+          kind: REGION
+          aliases: []
+        - id: ba-ria-vung-tau
+          canonical: Bà Rịa - Vũng Tàu
+          kind: REGION
+          aliases:
+          - Ba Ria - Vung Tau
+          - Bà Rịa Vũng Tàu
+          - Ba Ria Vung Tau
+          - BR-VT
+        - id: tay-ninh
+          canonical: Tây Ninh
+          kind: REGION
+          aliases:
+          - Tay Ninh
+        - id: gia-lai
+          canonical: Gia Lai
+          kind: REGION
+          aliases: []
+        - id: khanh-hoa
+          canonical: Khánh Hòa
+          kind: REGION
+          aliases:
+          - Khanh Hoa
+        - id: hue
+          canonical: Huế
+          kind: CITY
+          aliases:
+          - Hue
+          - Thành phố Huế
+          - TP Huế
+        - id: vung-tau
+          canonical: Vung Tau
+          kind: CITY
+          aliases:
+          - Vũng Tàu
+        - id: thua-thien-hue
+          canonical: Thua Thien Hue
+          kind: REGION
+          aliases:
+          - Thừa Thiên Huế
+        - id: nha-trang
+          canonical: Nha Trang
+          kind: CITY
+          aliases: []
+        - id: vietnam
+          canonical: Vietnam
+          kind: COUNTRY
+          aliases:
+          - Viet Nam
+          - Việt Nam
+          - VN
+        - id: singapore
+          canonical: Singapore
+          kind: COUNTRY
+          aliases:
+          - Sing
+        - id: bangkok
+          canonical: Bangkok
+          kind: CITY
+          aliases: []
+        - id: kuala-lumpur
+          canonical: Kuala Lumpur
+          kind: CITY
+          aliases: []
+        - id: tokyo
+          canonical: Tokyo
+          kind: CITY
+          aliases: []
+        - id: seoul
+          canonical: Seoul
+          kind: CITY
+          aliases: []
+        - id: london
+          canonical: London
+          kind: CITY
+          aliases: []
+        - id: new-york
+          canonical: New York
+          kind: CITY
+          aliases:
+          - NYC
+        - id: california
+          canonical: California
+          kind: REGION
+          aliases:
+          - CA
+        - id: texas
+          canonical: Texas
+          kind: REGION
+          aliases:
+          - TX
+        - id: ontario
+          canonical: Ontario
+          kind: REGION
+          aliases: []
+        - id: toronto
+          canonical: Toronto
+          kind: CITY
+          aliases: []
+        - id: sydney
+          canonical: Sydney
+          kind: CITY
+          aliases: []
+        - id: melbourne
+          canonical: Melbourne
+          kind: CITY
+          aliases: []
+        non-geographic-aliases:
+        - Remote
+        - Work from home
+        - WFH
+        - Từ xa
+        - Làm việc từ xa

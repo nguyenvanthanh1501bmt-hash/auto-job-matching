@@ -4,10 +4,12 @@ import com.autojob.common.embedding.client.EmbeddingClient;
 import com.autojob.common.embedding.client.dto.EmbeddingResponse;
 import com.autojob.common.embedding.config.EmbeddingProperties;
 import com.autojob.common.embedding.service.EmbeddingTextHashCalculator;
+import com.autojob.modules.jobembedding.config.JobEmbeddingProperties;
 import com.autojob.modules.jobembedding.config.QdrantProperties;
 import com.autojob.modules.jobembedding.domain.JobEmbedding;
 import com.autojob.modules.jobembedding.domain.JobEmbeddingStatus;
 import com.autojob.modules.jobembedding.repository.JobEmbeddingRepository;
+import com.autojob.modules.jobembedding.text.JobEmbeddingTextBuilder;
 import com.autojob.modules.jobembedding.vectorstore.JobVectorPoint;
 import com.autojob.modules.jobembedding.vectorstore.JobVectorStore;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
@@ -19,7 +21,6 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -29,107 +30,166 @@ import java.util.Objects;
 @Slf4j
 public class JobEmbeddingService {
 
-    private final NormalizedJobRepository normalizedJobRepository;
-    private final JobEmbeddingRepository jobEmbeddingRepository;
-    private final EmbeddingClient embeddingClient;
-    private final JobVectorStore jobVectorStore;
-    private final EmbeddingTextHashCalculator textHashCalculator;
-    private final JobEmbeddingPointIdFactory pointIdFactory;
-    private final EmbeddingProperties embeddingProperties;
-    private final QdrantProperties qdrantProperties;
+    private final NormalizedJobRepository
+            normalizedJobRepository;
+
+    private final JobEmbeddingRepository
+            jobEmbeddingRepository;
+
+    private final EmbeddingClient
+            embeddingClient;
+
+    private final JobVectorStore
+            jobVectorStore;
+
+    private final EmbeddingTextHashCalculator
+            textHashCalculator;
+
+    private final JobEmbeddingTextBuilder
+            textBuilder;
+
+    private final JobEmbeddingPointIdFactory
+            pointIdFactory;
+
+    private final EmbeddingProperties
+            embeddingProperties;
+
+    private final JobEmbeddingProperties
+            jobEmbeddingProperties;
+
+    private final QdrantProperties
+            qdrantProperties;
+
     private final Clock normalizationClock;
 
-    public JobEmbedding embed(String normalizedJobId) {
-        return embed(normalizedJobId, false);
+    public JobEmbedding embed(
+            String normalizedJobId
+    ) {
+        return embed(
+                normalizedJobId,
+                false
+        );
     }
 
     public JobEmbedding embed(
             String normalizedJobId,
             boolean force
     ) {
-        validateNormalizedJobId(normalizedJobId);
+        validateNormalizedJobId(
+                normalizedJobId
+        );
 
-        NormalizedJob normalizedJob = normalizedJobRepository
-                .findById(normalizedJobId)
-                .orElseThrow(
-                        () -> new NormalizedJobNotFoundException(
+        NormalizedJob job =
+                normalizedJobRepository
+                        .findById(
                                 normalizedJobId
                         )
-                );
-
-        String embeddingText = normalizedJob.getEmbeddingText();
-        String textHash = null;
-        String activeVersion = configuredExpectedVersion();
-        JobEmbedding processingRecord = null;
-
-        try {
-            validateEmbeddingText(embeddingText);
-            textHash = textHashCalculator.calculate(embeddingText);
-
-            if (activeVersion != null) {
-                ProcessingPreparation preparation =
-                        prepareProcessing(
-                                normalizedJob,
-                                activeVersion,
-                                textHash,
-                                force
+                        .orElseThrow(
+                                () ->
+                                        new NormalizedJobNotFoundException(
+                                                normalizedJobId
+                                        )
                         );
 
-                if (!preparation.shouldProcess()) {
-                    return preparation.embedding();
-                }
+        String embeddingVersion =
+                currentEmbeddingVersion();
 
-                processingRecord = preparation.embedding();
-            }
+        String textVersion =
+                currentTextVersion();
 
-            log.info(
-                    "Job embedding started normalizedJobId={} "
-                            + "embeddingVersion={} textHash={} status=PROCESSING",
-                    normalizedJobId,
-                    activeVersion == null
-                            ? "DISCOVER_FROM_PROVIDER"
-                            : activeVersion,
+        /*
+         * Quan trọng:
+         *
+         * JobEmbeddingService tự build text từ
+         * structured NormalizedJob.
+         *
+         * Không dùng normalizedJob.getEmbeddingText()
+         * legacy nữa.
+         */
+        String embeddingText =
+                textBuilder.build(job);
+
+        validateEmbeddingText(
+                embeddingText
+        );
+
+        String textHash =
+                textHashCalculator.calculate(
+                        embeddingText
+                );
+
+        JobEmbedding record =
+                loadOrCreateRecord(
+                        job,
+                        embeddingVersion,
+                        textVersion,
+                        textHash
+                );
+
+        /*
+         * Nếu Mongo metadata và Qdrant point
+         * đều còn đúng thì bỏ qua.
+         */
+        if (!force
+                && isReadyAndUnchanged(
+                record,
+                textHash
+        )) {
+            return record;
+        }
+
+        /*
+         * Nếu record cũ FAILED/READY/stale
+         * thì đưa lại về PROCESSING.
+         */
+        if (record.getStatus()
+                != JobEmbeddingStatus.PROCESSING
+                || !Objects.equals(
+                record.getTextHash(),
+                textHash
+        )) {
+            applyProcessingState(
+                    record,
+                    job,
+                    embeddingVersion,
+                    textVersion,
                     textHash
             );
 
+            record =
+                    jobEmbeddingRepository.save(
+                            record
+                    );
+        }
+
+        try {
             EmbeddingResponse response =
-                    embeddingClient.embed(embeddingText);
+                    embeddingClient.embed(
+                            embeddingText
+                    );
 
-            validateEmbeddingResponse(response, textHash);
-            activeVersion = response.embeddingVersion();
-
-            if (processingRecord == null) {
-                ProcessingPreparation preparation =
-                        prepareProcessing(
-                                normalizedJob,
-                                activeVersion,
-                                textHash,
-                                force
-                        );
-
-                if (!preparation.shouldProcess()) {
-                    return preparation.embedding();
-                }
-
-                processingRecord = preparation.embedding();
-            } else if (!Objects.equals(
-                    processingRecord.getEmbeddingVersion(),
-                    activeVersion
-            )) {
-                throw new IllegalStateException(
-                        "Embedding version changed during processing"
-                );
-            }
-
-            applyResponseMetadata(
-                    processingRecord,
-                    response
+            validateEmbeddingResponse(
+                    response,
+                    embeddingVersion,
+                    textHash
             );
 
-            String pointId = pointIdFactory.create(
-                    normalizedJobId,
-                    activeVersion
-            );
+            /*
+             * Point ID vẫn giữ contract:
+             *
+             * normalizedJobId + embeddingVersion.
+             *
+             * Khi textVersion đổi, vector mới
+             * overwrite active point cũ thay vì
+             * tạo duplicate vector cho cùng job.
+             *
+             * textVersion được lưu trong payload.
+             */
+            String pointId =
+                    pointIdFactory.create(
+                            normalizedJobId,
+                            embeddingVersion
+                    );
 
             jobVectorStore.ensureCollection();
 
@@ -137,62 +197,94 @@ public class JobEmbeddingService {
                     new JobVectorPoint(
                             pointId,
                             normalizedJobId,
-                            normalizedJob.getSourceCode(),
-                            normalizedJob.getNormalizationVersion(),
-                            activeVersion,
+                            job.getSourceCode(),
+                            job.getNormalizationVersion(),
+                            embeddingVersion,
+                            textVersion,
                             textHash,
                             response.vector()
                     )
             );
 
-            Instant now = Instant.now(normalizationClock);
+            Instant now =
+                    Instant.now(
+                            normalizationClock
+                    );
 
-            processingRecord.setQdrantCollection(
+            record.setNormalizationVersion(
+                    job.getNormalizationVersion()
+            );
+
+            record.setTextVersion(
+                    textVersion
+            );
+
+            record.setModelName(
+                    response.modelName()
+            );
+
+            record.setModelRevision(
+                    response.modelRevision()
+            );
+
+            record.setEmbeddingVersion(
+                    response.embeddingVersion()
+            );
+
+            record.setTextHash(
+                    response.textHash()
+            );
+
+            record.setDimension(
+                    response.dimension()
+            );
+
+            record.setNormalized(
+                    response.normalized()
+            );
+
+            record.setQdrantCollection(
                     qdrantProperties.getCollection()
             );
-            processingRecord.setQdrantPointId(pointId);
-            processingRecord.setStatus(JobEmbeddingStatus.READY);
-            processingRecord.setLastError(null);
-            processingRecord.setEmbeddedAt(now);
-            processingRecord.setUpdatedAt(now);
 
-            JobEmbedding ready =
-                    jobEmbeddingRepository.save(processingRecord);
+            record.setQdrantPointId(
+                    pointId
+            );
+
+            record.setStatus(
+                    JobEmbeddingStatus.READY
+            );
+
+            record.setLastError(null);
+            record.setEmbeddedAt(now);
+            record.setUpdatedAt(now);
+
+            JobEmbedding saved =
+                    jobEmbeddingRepository.save(
+                            record
+                    );
 
             log.info(
-                    "Job embedding ready normalizedJobId={} "
-                            + "modelName={} embeddingVersion={} "
-                            + "textHash={} qdrantPointId={} status=READY",
+                    "Job embedding ready "
+                            + "normalizedJobId={} "
+                            + "embeddingVersion={} "
+                            + "textVersion={} "
+                            + "qdrantPointId={}",
                     normalizedJobId,
-                    ready.getModelName(),
-                    ready.getEmbeddingVersion(),
-                    ready.getTextHash(),
-                    ready.getQdrantPointId()
+                    embeddingVersion,
+                    textVersion,
+                    pointId
             );
 
-            return ready;
-        } catch (NormalizedJobNotFoundException exception) {
-            throw exception;
+            return saved;
         } catch (RuntimeException exception) {
             markFailed(
-                    normalizedJob,
-                    processingRecord,
-                    activeVersion,
+                    record,
+                    job,
+                    embeddingVersion,
+                    textVersion,
                     textHash,
                     exception
-            );
-
-            String safeError = safeError(exception);
-
-            log.error(
-                    "Job embedding failed normalizedJobId={} "
-                            + "embeddingVersion={} textHash={} "
-                            + "errorType={} message={} status=FAILED",
-                    normalizedJobId,
-                    activeVersion,
-                    textHash,
-                    exception.getClass().getSimpleName(),
-                    safeError
             );
 
             if (exception
@@ -203,265 +295,231 @@ public class JobEmbeddingService {
 
             throw new JobEmbeddingProcessingException(
                     normalizedJobId,
-                    safeError,
+                    safeError(exception),
                     exception
             );
         }
     }
 
-    public JobEmbedding getLatest(String normalizedJobId) {
-        validateNormalizedJobId(normalizedJobId);
+    public JobEmbedding getLatest(
+            String normalizedJobId
+    ) {
+        validateNormalizedJobId(
+                normalizedJobId
+        );
 
         return jobEmbeddingRepository
                 .findFirstByNormalizedJobIdOrderByUpdatedAtDesc(
                         normalizedJobId
                 )
                 .orElseThrow(
-                        () -> new JobEmbeddingNotFoundException(
-                                normalizedJobId
-                        )
+                        () ->
+                                new JobEmbeddingNotFoundException(
+                                        normalizedJobId
+                                )
                 );
     }
 
-    private ProcessingPreparation prepareProcessing(
-            NormalizedJob normalizedJob,
+    private JobEmbedding loadOrCreateRecord(
+            NormalizedJob job,
             String embeddingVersion,
-            String textHash,
-            boolean force
+            String textVersion,
+            String textHash
     ) {
-        String normalizedJobId = normalizedJob.getId();
-
         return jobEmbeddingRepository
-                .findByNormalizedJobIdAndEmbeddingVersion(
-                        normalizedJobId,
-                        embeddingVersion
-                )
-                .map(existing -> prepareExisting(
-                        existing,
-                        normalizedJob,
-                        textHash,
-                        force
-                ))
-                .orElseGet(() -> insertProcessing(
-                        normalizedJob,
+                .findByNormalizedJobIdAndEmbeddingVersionAndTextVersion(
+                        job.getId(),
                         embeddingVersion,
-                        textHash,
-                        force
-                ));
+                        textVersion
+                )
+                .orElseGet(
+                        () ->
+                                insertProcessingRecord(
+                                        job,
+                                        embeddingVersion,
+                                        textVersion,
+                                        textHash
+                                )
+                );
     }
 
-    private ProcessingPreparation prepareExisting(
-            JobEmbedding existing,
-            NormalizedJob normalizedJob,
-            String textHash,
-            boolean force
-    ) {
-        String pointId = pointIdFactory.create(
-                normalizedJob.getId(),
-                existing.getEmbeddingVersion()
-        );
-
-        if (!force
-                && isReadyAndUnchanged(
-                existing,
-                textHash,
-                pointId
-        )) {
-            log.info(
-                    "Job embedding skipped normalizedJobId={} "
-                            + "embeddingVersion={} textHash={} "
-                            + "qdrantPointId={} reason=UNCHANGED",
-                    normalizedJob.getId(),
-                    existing.getEmbeddingVersion(),
-                    textHash,
-                    pointId
-            );
-
-            return new ProcessingPreparation(
-                    existing,
-                    false
-            );
-        }
-
-        if (!force
-                && isFreshProcessing(existing, textHash)) {
-            log.info(
-                    "Job embedding skipped normalizedJobId={} "
-                            + "embeddingVersion={} textHash={} "
-                            + "reason=ALREADY_PROCESSING",
-                    normalizedJob.getId(),
-                    existing.getEmbeddingVersion(),
-                    textHash
-            );
-
-            return new ProcessingPreparation(
-                    existing,
-                    false
-            );
-        }
-
-        applyProcessingState(
-                existing,
-                normalizedJob,
-                existing.getEmbeddingVersion(),
-                textHash
-        );
-
-        return new ProcessingPreparation(
-                jobEmbeddingRepository.save(existing),
-                true
-        );
-    }
-
-    private ProcessingPreparation insertProcessing(
-            NormalizedJob normalizedJob,
+    private JobEmbedding insertProcessingRecord(
+            NormalizedJob job,
             String embeddingVersion,
-            String textHash,
-            boolean force
+            String textVersion,
+            String textHash
     ) {
-        Instant now = Instant.now(normalizationClock);
-        String pointId = pointIdFactory.create(
-                normalizedJob.getId(),
-                embeddingVersion
-        );
+        Instant now =
+                Instant.now(
+                        normalizationClock
+                );
 
-        JobEmbedding newRecord = JobEmbedding.builder()
-                .normalizedJobId(normalizedJob.getId())
-                .normalizationVersion(
-                        normalizedJob.getNormalizationVersion()
-                )
-                .embeddingVersion(embeddingVersion)
-                .textHash(textHash)
-                .dimension(
-                        embeddingProperties.getExpectedDimension()
-                )
-                .qdrantCollection(
-                        qdrantProperties.getCollection()
-                )
-                .qdrantPointId(pointId)
-                .status(JobEmbeddingStatus.PROCESSING)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+        JobEmbedding record =
+                JobEmbedding.builder()
+                        .normalizedJobId(
+                                job.getId()
+                        )
+                        .normalizationVersion(
+                                job.getNormalizationVersion()
+                        )
+                        .textVersion(
+                                textVersion
+                        )
+                        .embeddingVersion(
+                                embeddingVersion
+                        )
+                        .textHash(
+                                textHash
+                        )
+                        .dimension(
+                                embeddingProperties
+                                        .getExpectedDimension()
+                        )
+                        .qdrantCollection(
+                                qdrantProperties
+                                        .getCollection()
+                        )
+                        .qdrantPointId(
+                                pointIdFactory.create(
+                                        job.getId(),
+                                        embeddingVersion
+                                )
+                        )
+                        .status(
+                                JobEmbeddingStatus.PROCESSING
+                        )
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build();
 
         try {
-            return new ProcessingPreparation(
-                    jobEmbeddingRepository.insert(newRecord),
-                    true
+            return jobEmbeddingRepository.insert(
+                    record
             );
         } catch (DuplicateKeyException exception) {
-            JobEmbedding concurrent =
-                    jobEmbeddingRepository
-                            .findByNormalizedJobIdAndEmbeddingVersion(
-                                    normalizedJob.getId(),
-                                    embeddingVersion
-                            )
-                            .orElseThrow(() -> exception);
-
-            return prepareExisting(
-                    concurrent,
-                    normalizedJob,
-                    textHash,
-                    force
-            );
+            return jobEmbeddingRepository
+                    .findByNormalizedJobIdAndEmbeddingVersionAndTextVersion(
+                            job.getId(),
+                            embeddingVersion,
+                            textVersion
+                    )
+                    .orElseThrow(
+                            () -> exception
+                    );
         }
     }
 
     private void applyProcessingState(
-            JobEmbedding embedding,
-            NormalizedJob normalizedJob,
+            JobEmbedding record,
+            NormalizedJob job,
             String embeddingVersion,
+            String textVersion,
             String textHash
     ) {
-        Instant now = Instant.now(normalizationClock);
+        Instant now =
+                Instant.now(
+                        normalizationClock
+                );
 
-        embedding.setNormalizedJobId(normalizedJob.getId());
-        embedding.setNormalizationVersion(
-                normalizedJob.getNormalizationVersion()
+        record.setNormalizedJobId(
+                job.getId()
         );
-        embedding.setEmbeddingVersion(embeddingVersion);
-        embedding.setTextHash(textHash);
-        embedding.setDimension(
-                embeddingProperties.getExpectedDimension()
+
+        record.setNormalizationVersion(
+                job.getNormalizationVersion()
         );
-        embedding.setNormalized(null);
-        embedding.setModelName(null);
-        embedding.setModelRevision(null);
-        embedding.setQdrantCollection(
+
+        record.setTextVersion(
+                textVersion
+        );
+
+        record.setEmbeddingVersion(
+                embeddingVersion
+        );
+
+        record.setTextHash(
+                textHash
+        );
+
+        record.setDimension(
+                embeddingProperties
+                        .getExpectedDimension()
+        );
+
+        record.setNormalized(null);
+        record.setModelName(null);
+        record.setModelRevision(null);
+
+        record.setQdrantCollection(
                 qdrantProperties.getCollection()
         );
-        embedding.setQdrantPointId(
+
+        record.setQdrantPointId(
                 pointIdFactory.create(
-                        normalizedJob.getId(),
+                        job.getId(),
                         embeddingVersion
                 )
         );
-        embedding.setStatus(JobEmbeddingStatus.PROCESSING);
-        embedding.setLastError(null);
-        embedding.setEmbeddedAt(null);
 
-        if (embedding.getCreatedAt() == null) {
-            embedding.setCreatedAt(now);
+        record.setStatus(
+                JobEmbeddingStatus.PROCESSING
+        );
+
+        record.setLastError(null);
+        record.setEmbeddedAt(null);
+
+        if (record.getCreatedAt() == null) {
+            record.setCreatedAt(now);
         }
 
-        embedding.setUpdatedAt(now);
+        record.setUpdatedAt(now);
     }
 
     private boolean isReadyAndUnchanged(
-            JobEmbedding embedding,
-            String textHash,
-            String expectedPointId
+            JobEmbedding record,
+            String textHash
     ) {
-        if (embedding.getStatus() != JobEmbeddingStatus.READY
-                || !Objects.equals(
-                embedding.getTextHash(),
+        if (record.getStatus()
+                != JobEmbeddingStatus.READY) {
+            return false;
+        }
+
+        if (!Objects.equals(
+                record.getTextHash(),
                 textHash
-        )
-                || !Objects.equals(
-                embedding.getQdrantPointId(),
-                expectedPointId
         )) {
             return false;
         }
 
-        return jobVectorStore.pointExists(expectedPointId);
-    }
-
-    private boolean isFreshProcessing(
-            JobEmbedding embedding,
-            String textHash
-    ) {
-        if (embedding.getStatus()
-                != JobEmbeddingStatus.PROCESSING
-                || !Objects.equals(
-                embedding.getTextHash(),
-                textHash
-        )
-                || embedding.getUpdatedAt() == null) {
+        if (record.getQdrantPointId() == null
+                || record
+                .getQdrantPointId()
+                .isBlank()) {
             return false;
         }
 
-        Duration lease = embeddingProperties
-                .getResponseTimeout()
-                .multipliedBy(2);
-
-        if (lease.compareTo(Duration.ofSeconds(60)) < 0) {
-            lease = Duration.ofSeconds(60);
-        }
-
-        Instant staleBefore = Instant.now(normalizationClock)
-                .minus(lease);
-
-        return embedding.getUpdatedAt().isAfter(staleBefore);
+        return jobVectorStore.pointExists(
+                record.getQdrantPointId()
+        );
     }
 
     private void validateEmbeddingResponse(
             EmbeddingResponse response,
+            String expectedEmbeddingVersion,
             String expectedTextHash
     ) {
         if (response == null) {
             throw new IllegalStateException(
                     "Embedding response must not be null"
+            );
+        }
+
+        if (!Objects.equals(
+                response.embeddingVersion(),
+                expectedEmbeddingVersion
+        )) {
+            throw new IllegalStateException(
+                    "Embedding response version mismatch"
             );
         }
 
@@ -476,54 +534,47 @@ public class JobEmbeddingService {
 
         if (response.dimension() == null
                 || response.dimension()
-                != embeddingProperties.getExpectedDimension()) {
+                != embeddingProperties
+                .getExpectedDimension()
+                || response.dimension()
+                != qdrantProperties
+                .getDimension()) {
             throw new IllegalStateException(
                     "Embedding response dimension mismatch"
             );
         }
 
-        if (response.dimension()
-                != qdrantProperties.getDimension()) {
-            throw new IllegalStateException(
-                    "Embedding and Qdrant dimensions do not match"
-            );
-        }
-
-        if (!Boolean.TRUE.equals(response.normalized())) {
+        if (!Boolean.TRUE.equals(
+                response.normalized()
+        )) {
             throw new IllegalStateException(
                     "Embedding response is not normalized"
             );
         }
 
-        if (isBlank(response.modelName())) {
+        if (isBlank(response.modelName())
+                || isBlank(
+                response.modelRevision()
+        )) {
             throw new IllegalStateException(
-                    "Embedding response modelName is blank"
+                    "Embedding response model metadata is blank"
             );
         }
 
-        if (isBlank(response.modelRevision())) {
-            throw new IllegalStateException(
-                    "Embedding response modelRevision is blank"
-            );
-        }
-
-        if (isBlank(response.embeddingVersion())) {
-            throw new IllegalStateException(
-                    "Embedding response embeddingVersion is blank"
-            );
-        }
-
-        List<Double> vector = response.vector();
+        List<Double> vector =
+                response.vector();
 
         if (vector == null
-                || vector.size() != response.dimension()) {
+                || vector.size()
+                != response.dimension()) {
             throw new IllegalStateException(
                     "Embedding response vector length mismatch"
             );
         }
 
         for (Double value : vector) {
-            if (value == null || !Double.isFinite(value)) {
+            if (value == null
+                    || !Double.isFinite(value)) {
                 throw new IllegalStateException(
                         "Embedding response contains a non-finite value"
                 );
@@ -531,127 +582,77 @@ public class JobEmbeddingService {
         }
     }
 
-    private void applyResponseMetadata(
-            JobEmbedding embedding,
-            EmbeddingResponse response
-    ) {
-        embedding.setModelName(response.modelName());
-        embedding.setModelRevision(response.modelRevision());
-        embedding.setEmbeddingVersion(
-                response.embeddingVersion()
-        );
-        embedding.setDimension(response.dimension());
-        embedding.setNormalized(response.normalized());
-        embedding.setTextHash(response.textHash());
-    }
-
     private void markFailed(
-            NormalizedJob normalizedJob,
-            JobEmbedding processingRecord,
+            JobEmbedding record,
+            NormalizedJob job,
             String embeddingVersion,
+            String textVersion,
             String textHash,
             RuntimeException failure
     ) {
-        if (isBlank(embeddingVersion)) {
-            return;
-        }
-
         try {
-            JobEmbedding failed = processingRecord;
+            Instant now =
+                    Instant.now(
+                            normalizationClock
+                    );
 
-            if (failed == null) {
-                failed = jobEmbeddingRepository
-                        .findByNormalizedJobIdAndEmbeddingVersion(
-                                normalizedJob.getId(),
-                                embeddingVersion
-                        )
-                        .orElseGet(() -> JobEmbedding.builder()
-                                .normalizedJobId(
-                                        normalizedJob.getId()
-                                )
-                                .normalizationVersion(
-                                        normalizedJob
-                                                .getNormalizationVersion()
-                                )
-                                .embeddingVersion(
-                                        embeddingVersion
-                                )
-                                .createdAt(
-                                        Instant.now(
-                                                normalizationClock
-                                        )
-                                )
-                                .build());
+            record.setNormalizedJobId(
+                    job.getId()
+            );
+
+            record.setNormalizationVersion(
+                    job.getNormalizationVersion()
+            );
+
+            record.setTextVersion(
+                    textVersion
+            );
+
+            record.setEmbeddingVersion(
+                    embeddingVersion
+            );
+
+            record.setTextHash(
+                    textHash
+            );
+
+            record.setStatus(
+                    JobEmbeddingStatus.FAILED
+            );
+
+            record.setLastError(
+                    safeError(failure)
+            );
+
+            record.setUpdatedAt(now);
+
+            if (record.getCreatedAt() == null) {
+                record.setCreatedAt(now);
             }
 
-            Instant now = Instant.now(normalizationClock);
-
-            failed.setNormalizedJobId(normalizedJob.getId());
-            failed.setNormalizationVersion(
-                    normalizedJob.getNormalizationVersion()
+            jobEmbeddingRepository.save(
+                    record
             );
-            failed.setEmbeddingVersion(embeddingVersion);
-            failed.setTextHash(textHash);
-            failed.setDimension(
-                    embeddingProperties.getExpectedDimension()
-            );
-            failed.setQdrantCollection(
-                    qdrantProperties.getCollection()
-            );
-            failed.setQdrantPointId(
-                    pointIdFactory.create(
-                            normalizedJob.getId(),
-                            embeddingVersion
-                    )
-            );
-            failed.setStatus(JobEmbeddingStatus.FAILED);
-            failed.setLastError(safeError(failure));
-            failed.setUpdatedAt(now);
-
-            if (failed.getCreatedAt() == null) {
-                failed.setCreatedAt(now);
-            }
-
-            try {
-                jobEmbeddingRepository.save(failed);
-            } catch (DuplicateKeyException duplicateKeyException) {
-                JobEmbedding concurrent =
-                        jobEmbeddingRepository
-                                .findByNormalizedJobIdAndEmbeddingVersion(
-                                        normalizedJob.getId(),
-                                        embeddingVersion
-                                )
-                                .orElseThrow(
-                                        () -> duplicateKeyException
-                                );
-
-                concurrent.setStatus(
-                        JobEmbeddingStatus.FAILED
-                );
-                concurrent.setLastError(safeError(failure));
-                concurrent.setTextHash(textHash);
-                concurrent.setUpdatedAt(now);
-
-                jobEmbeddingRepository.save(concurrent);
-            }
         } catch (RuntimeException persistenceFailure) {
             log.error(
-                    "Unable to persist FAILED job embedding "
-                            + "normalizedJobId={} embeddingVersion={} "
-                            + "errorType={} message={}",
-                    normalizedJob.getId(),
-                    embeddingVersion,
-                    persistenceFailure
-                            .getClass()
-                            .getSimpleName(),
-                    safeError(persistenceFailure)
+                    "Unable to persist FAILED "
+                            + "job embedding "
+                            + "normalizedJobId={} "
+                            + "error={}",
+                    job.getId(),
+                    safeError(
+                            persistenceFailure
+                    )
             );
         }
     }
 
-    private String configuredExpectedVersion() {
-        if (!embeddingProperties.hasExpectedVersion()) {
-            return null;
+    private String currentEmbeddingVersion() {
+        if (!embeddingProperties
+                .hasExpectedVersion()) {
+            throw new IllegalStateException(
+                    "autojob.embedding.expected-version must not be blank"
+            );
         }
 
         return embeddingProperties
@@ -659,41 +660,30 @@ public class JobEmbeddingService {
                 .trim();
     }
 
-    private String safeError(Throwable throwable) {
-        String message = throwable.getMessage();
+    private String currentTextVersion() {
+        String value =
+                jobEmbeddingProperties
+                        .getTextVersion();
 
-        if (message == null || message.isBlank()) {
-            message = throwable
-                    .getClass()
-                    .getSimpleName();
+        if (value == null
+                || value.isBlank()) {
+            throw new IllegalStateException(
+                    "autojob.job-embedding.text-version must not be blank"
+            );
         }
 
-        String normalized = message
-                .replaceAll("\\s+", " ")
-                .replaceAll(
-                        "(?i)bearer\\s+[^\\s,;]+",
-                        "Bearer [REDACTED]"
-                )
-                .replaceAll(
-                        "(?i)(token|password|secret)=([^\\s&]+)",
-                        "$1=[REDACTED]"
-                )
-                .trim();
+        return value.trim();
+    }
 
-        String result = throwable
-                .getClass()
-                .getSimpleName()
-                + ": "
-                + normalized;
-
-        int maxLength = embeddingProperties
-                .getMaxErrorLength();
-
-        if (result.length() > maxLength) {
-            return result.substring(0, maxLength);
+    private void validateEmbeddingText(
+            String text
+    ) {
+        if (text == null
+                || text.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Job embedding text must not be blank"
+            );
         }
-
-        return result;
     }
 
     private void validateNormalizedJobId(
@@ -707,21 +697,60 @@ public class JobEmbeddingService {
         }
     }
 
-    private void validateEmbeddingText(String text) {
-        if (text == null || text.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Normalized job embeddingText must not be blank"
+    private String safeError(
+            Throwable throwable
+    ) {
+        String message =
+                throwable.getMessage();
+
+        if (message == null
+                || message.isBlank()) {
+            message = throwable
+                    .getClass()
+                    .getSimpleName();
+        }
+
+        String normalized =
+                message
+                        .replaceAll(
+                                "\\s+",
+                                " "
+                        )
+                        .replaceAll(
+                                "(?i)bearer\\s+[^\\s,;]+",
+                                "Bearer [REDACTED]"
+                        )
+                        .replaceAll(
+                                "(?i)(token|password|secret)=([^\\s&]+)",
+                                "$1=[REDACTED]"
+                        )
+                        .trim();
+
+        String result =
+                throwable
+                        .getClass()
+                        .getSimpleName()
+                        + ": "
+                        + normalized;
+
+        int maxLength =
+                embeddingProperties
+                        .getMaxErrorLength();
+
+        if (result.length() > maxLength) {
+            return result.substring(
+                    0,
+                    maxLength
             );
         }
+
+        return result;
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
-
-    private record ProcessingPreparation(
-            JobEmbedding embedding,
-            boolean shouldProcess
+    private boolean isBlank(
+            String value
     ) {
+        return value == null
+                || value.isBlank();
     }
 }

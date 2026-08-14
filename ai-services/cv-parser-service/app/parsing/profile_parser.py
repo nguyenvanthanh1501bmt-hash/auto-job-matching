@@ -67,7 +67,7 @@ class ProfileParser:
         )
 
         self._experience_calculator = ExperienceCalculator()
-        self._seniority_parser = SeniorityParser()
+        self._seniority_parser = SeniorityParser(taxonomy.seniority)
         self._quality_calculator = ParseQualityCalculator()
 
     def parse(

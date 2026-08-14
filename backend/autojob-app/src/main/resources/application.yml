@@ -4,13 +4,28 @@ spring:
 
   config:
     import:
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/skills.yml"
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/locations.yml"
-      - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/seniority.yml"
+      # ==========================================================
+      # Shared taxonomy
+      # ==========================================================
+      #
+      # Skill là taxonomy dùng chung giữa Job Normalizer
+      # và CV Parser.
+      - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/skills.yml"
+      - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/locations.yml"
+      - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/seniority.yml"
+
+      # ==========================================================
+      # Job-specific taxonomy
+      # ==========================================================
+      #
+      # Skill KHÔNG còn nằm trong job-normalizer nữa.
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/job-types.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/salary.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/experience.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/date.yml"
+
+      # Matching configuration.
+      - "file:${AUTOJOB_MATCHING_CONFIG:../configs/matching/ranking.yml}"
 
   data:
     mongodb:
@@ -40,6 +55,13 @@ autojob:
     connect-timeout: ${EMBEDDING_CONNECT_TIMEOUT:3s}
     response-timeout: ${EMBEDDING_RESPONSE_TIMEOUT:30s}
     max-error-length: ${EMBEDDING_MAX_ERROR_LENGTH:1000}
+
+  job-embedding:
+    text-version: ${JOB_EMBEDDING_TEXT_VERSION:job-text-v2}
+    text-max-chars: ${JOB_EMBEDDING_TEXT_MAX_CHARS:2400}
+    description-max-chars: ${JOB_EMBEDDING_DESCRIPTION_MAX_CHARS:6000}
+    requirements-max-chars: ${JOB_EMBEDDING_REQUIREMENTS_MAX_CHARS:4000}
+    benefits-max-chars: ${JOB_EMBEDDING_BENEFITS_MAX_CHARS:2000}
 
   candidate-embedding:
     text-version: ${CANDIDATE_EMBEDDING_TEXT_VERSION:candidate-text-v1}

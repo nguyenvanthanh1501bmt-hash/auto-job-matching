@@ -1,0 +1,1078 @@
+version: skill-v1
+autojob:
+  taxonomy:
+    shared:
+      skills:
+        rich-raw-skill-count: 2
+        ambiguous-prose-aliases:
+        - r
+        - c
+        - go
+        - ai
+        - hr
+        - js
+        - ts
+        - react
+        - word
+        - excel
+        safe-short-prose-aliases:
+        - 5s
+        - c&b
+        items:
+        - id: java
+          canonical: Java
+          category: TECHNICAL
+          aliases: []
+        - id: python
+          canonical: Python
+          category: TECHNICAL
+          aliases: []
+        - id: spring-boot
+          canonical: Spring Boot
+          category: TECHNICAL
+          aliases:
+          - springboot
+          - spring-boot
+        - id: javascript
+          canonical: JavaScript
+          category: TECHNICAL
+          aliases:
+          - java script
+          - js
+        - id: typescript
+          canonical: TypeScript
+          category: TECHNICAL
+          aliases:
+          - type script
+          - ts
+        - id: node-js
+          canonical: Node.js
+          category: TECHNICAL
+          aliases:
+          - nodejs
+          - node js
+        - id: react
+          canonical: React
+          category: TECHNICAL
+          aliases:
+          - reactjs
+          - react.js
+          - react js
+        - id: sql
+          canonical: SQL
+          category: TECHNICAL
+          aliases:
+          - Structured Query Language
+        - id: postgresql
+          canonical: PostgreSQL
+          category: TECHNICAL
+          aliases:
+          - postgres
+          - postgre sql
+        - id: mongodb
+          canonical: MongoDB
+          category: TECHNICAL
+          aliases:
+          - mongo db
+        - id: docker
+          canonical: Docker
+          category: TOOL
+          aliases:
+          - Docker containers
+        - id: kubernetes
+          canonical: Kubernetes
+          category: TOOL
+          aliases:
+          - k8s
+        - id: aws
+          canonical: AWS
+          category: TECHNICAL
+          aliases:
+          - amazon web services
+        - id: git
+          canonical: Git
+          category: TOOL
+          aliases: []
+        - id: go
+          canonical: Go
+          category: TECHNICAL
+          aliases:
+          - golang
+        - id: artificial-intelligence
+          canonical: Artificial Intelligence
+          category: TECHNICAL
+          aliases:
+          - ai
+        - id: misa
+          canonical: MISA
+          category: SOFTWARE
+          aliases: []
+        - id: ke-toan-tong-hop
+          canonical: Kế toán tổng hợp
+          category: ACCOUNTING
+          aliases: []
+        - id: tax-accounting
+          canonical: Kế toán thuế
+          category: ACCOUNTING
+          aliases:
+          - Tax Accounting
+          - Taxation
+          - Tax Declaration
+          - Khai báo thuế
+          - Quyết toán thuế
+        - id: financial-reporting
+          canonical: Lập báo cáo tài chính
+          category: ACCOUNTING
+          aliases:
+          - Financial Reporting
+          - Financial Statements
+          - Báo cáo tài chính
+        - id: vas
+          canonical: VAS
+          category: COMPLIANCE
+          aliases:
+          - vietnamese accounting standards
+        - id: ifrs
+          canonical: IFRS
+          category: COMPLIANCE
+          aliases:
+          - international financial reporting standards
+        - id: financial-analysis
+          canonical: Financial Analysis
+          category: FINANCE
+          aliases:
+          - phan tich tai chinh
+        - id: b2b-sales
+          canonical: B2B Sales
+          category: SALES
+          aliases:
+          - sales b2b
+          - ban hang b2b
+          - Business-to-Business Sales
+          - Bán hàng doanh nghiệp
+        - id: telesales
+          canonical: Telesales
+          category: SALES
+          aliases:
+          - tele sales
+        - id: negotiation
+          canonical: Negotiation
+          category: BUSINESS
+          aliases:
+          - dam phan
+          - thuong luong
+          - Negotiating
+        - id: customer-relationship-management
+          canonical: Customer Relationship Management
+          category: SALES
+          aliases:
+          - crm
+          - Quản lý quan hệ khách hàng
+        - id: lead-generation
+          canonical: Lead Generation
+          category: SALES
+          aliases:
+          - tao lead
+          - Prospecting
+          - Tìm kiếm khách hàng
+          - Phát triển khách hàng tiềm năng
+        - id: customer-service
+          canonical: Customer Service
+          category: BUSINESS
+          aliases:
+          - cham soc khach hang
+          - Customer Care
+          - Dịch vụ khách hàng
+        - id: search-engine-optimization
+          canonical: Search Engine Optimization
+          category: MARKETING
+          aliases:
+          - seo
+          - Tối ưu hóa công cụ tìm kiếm
+        - id: google-ads
+          canonical: Google Ads
+          category: MARKETING
+          aliases:
+          - google adwords
+          - adwords
+        - id: facebook-ads
+          canonical: Facebook Ads
+          category: MARKETING
+          aliases:
+          - meta ads
+        - id: content-marketing
+          canonical: Content Marketing
+          category: MARKETING
+          aliases:
+          - Tiếp thị nội dung
+        - id: brand-management
+          canonical: Branding
+          category: MARKETING
+          aliases:
+          - brand management
+          - Quản lý thương hiệu
+          - Xây dựng thương hiệu
+        - id: market-research
+          canonical: Market Research
+          category: MARKETING
+          aliases:
+          - nghien cuu thi truong
+          - Marketing Research
+        - id: recruitment
+          canonical: Recruitment
+          category: BUSINESS
+          aliases:
+          - tuyen dung
+          - Recruiting
+        - id: c-and-b
+          canonical: C&B
+          category: BUSINESS
+          aliases:
+          - compensation and benefits
+          - compensation & benefits
+        - id: payroll
+          canonical: Payroll
+          category: ACCOUNTING
+          aliases:
+          - tinh luong
+          - Payroll Processing
+          - Bảng lương
+        - id: labor-law
+          canonical: Labor Law
+          category: COMPLIANCE
+          aliases:
+          - labour law
+          - luat lao dong
+        - id: hris
+          canonical: HRIS
+          category: SOFTWARE
+          aliases:
+          - human resources information system
+        - id: dieu-duong
+          canonical: Điều dưỡng
+          category: HEALTHCARE
+          aliases:
+          - nursing
+        - id: patient-care
+          canonical: Chăm sóc bệnh nhân
+          category: HEALTHCARE
+          aliases:
+          - patient care
+          - Chăm sóc người bệnh
+        - id: duoc-lam-sang
+          canonical: Dược lâm sàng
+          category: HEALTHCARE
+          aliases:
+          - clinical pharmacy
+        - id: gpp
+          canonical: GPP
+          category: COMPLIANCE
+          aliases:
+          - good pharmacy practice
+        - id: computer-numerical-control
+          canonical: CNC
+          category: MACHINERY
+          aliases:
+          - computer numerical control
+          - CNC Machine
+          - Máy CNC
+        - id: autocad
+          canonical: AutoCAD
+          category: SOFTWARE
+          aliases:
+          - auto cad
+        - id: solidworks
+          canonical: SolidWorks
+          category: SOFTWARE
+          aliases:
+          - solid works
+        - id: lean-manufacturing
+          canonical: Lean Manufacturing
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - san xuat tinh gon
+          - Lean Production
+        - id: 5s
+          canonical: 5S
+          category: DOMAIN_KNOWLEDGE
+          aliases: []
+        - id: kaizen
+          canonical: Kaizen
+          category: DOMAIN_KNOWLEDGE
+          aliases: []
+        - id: reading-technical-drawings
+          canonical: Đọc bản vẽ kỹ thuật
+          category: ENGINEERING
+          aliases:
+          - Reading Technical Drawings
+          - Blueprint Reading
+          - Đọc bản vẽ
+        - id: quality-control
+          canonical: Quality Control
+          category: COMPLIANCE
+          aliases:
+          - kiem soat chat luong
+          - qc
+        - id: import-export
+          canonical: Import/Export
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - import export
+          - xuat nhap khau
+        - id: incoterms
+          canonical: Incoterms
+          category: DOMAIN_KNOWLEDGE
+          aliases: []
+        - id: customs-declaration
+          canonical: Customs Declaration
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - khai bao hai quan
+        - id: warehouse-management
+          canonical: Warehouse Management
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - quan ly kho
+          - Warehouse Operations
+          - Vận hành kho
+        - id: supply-chain
+          canonical: Supply Chain
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - chuoi cung ung
+          - Supply Chain Management
+          - Quản lý chuỗi cung ứng
+        - id: teaching
+          canonical: Teaching
+          category: EDUCATION
+          aliases:
+          - giang day
+          - Training Delivery
+          - Facilitation
+          - Tổ chức đào tạo
+        - id: ielts
+          canonical: IELTS
+          category: LANGUAGE
+          aliases: []
+        - id: lesson-planning
+          canonical: Lesson Planning
+          category: EDUCATION
+          aliases:
+          - soan giao an
+          - Lesson Preparation
+          - Lập kế hoạch bài giảng
+        - id: classroom-management
+          canonical: Classroom Management
+          category: EDUCATION
+          aliases:
+          - quan ly lop hoc
+        - id: food-safety
+          canonical: Food Safety
+          category: SAFETY
+          aliases:
+          - an toan thuc pham
+          - Food Hygiene
+          - Vệ sinh thực phẩm
+        - id: haccp
+          canonical: HACCP
+          category: COMPLIANCE
+          aliases: []
+        - id: front-office
+          canonical: Front Office
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - le tan
+          - Front Office Operations
+          - Front Desk Operations
+          - Nghiệp vụ lễ tân
+          - Vận hành tiền sảnh
+        - id: housekeeping
+          canonical: Housekeeping
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - buong phong
+          - Room Cleaning
+          - Nghiệp vụ buồng phòng
+          - Dọn phòng
+        - id: operations-management
+          canonical: Operations Management
+          category: MANAGEMENT
+          aliases:
+          - quan ly van hanh
+        - id: microsoft-excel
+          canonical: Microsoft Excel
+          category: SOFTWARE
+          aliases:
+          - excel
+          - ms excel
+          - Excel nâng cao
+        - id: microsoft-word
+          canonical: Microsoft Word
+          category: SOFTWARE
+          aliases:
+          - word
+          - ms word
+        - id: microsoft-powerpoint
+          canonical: Microsoft PowerPoint
+          category: SOFTWARE
+          aliases:
+          - powerpoint
+          - power point
+          - ms powerpoint
+        - id: adobe-photoshop
+          canonical: Adobe Photoshop
+          category: SOFTWARE
+          aliases:
+          - photoshop
+        - id: adobe-illustrator
+          canonical: Adobe Illustrator
+          category: SOFTWARE
+          aliases:
+          - illustrator
+        - id: html
+          canonical: HTML
+          category: TECHNICAL
+          aliases:
+          - HTML5
+        - id: css
+          canonical: CSS
+          category: TECHNICAL
+          aliases:
+          - CSS3
+        - id: next-js
+          canonical: Next.js
+          category: TECHNICAL
+          aliases:
+          - NextJS
+          - Next JS
+        - id: express
+          canonical: Express
+          category: TECHNICAL
+          aliases:
+          - Express.js
+          - ExpressJS
+        - id: tailwind-css
+          canonical: Tailwind CSS
+          category: TECHNICAL
+          aliases:
+          - TailwindCSS
+          - Tailwind
+        - id: sql-server
+          canonical: SQL Server
+          category: TECHNICAL
+          aliases:
+          - Microsoft SQL Server
+          - MSSQL
+        - id: supabase
+          canonical: Supabase
+          category: TECHNICAL
+          aliases: []
+        - id: github
+          canonical: GitHub
+          category: TOOL
+          aliases: []
+        - id: postman
+          canonical: Postman
+          category: TOOL
+          aliases: []
+        - id: notion
+          canonical: Notion
+          category: TOOL
+          aliases: []
+        - id: draw-io
+          canonical: Draw.io
+          category: TOOL
+          aliases:
+          - diagrams.net
+        - id: power-bi
+          canonical: Power BI
+          category: SOFTWARE
+          aliases:
+          - PowerBI
+        - id: sap
+          canonical: SAP
+          category: SOFTWARE
+          aliases:
+          - SAP ERP
+        - id: oracle
+          canonical: Oracle
+          category: SOFTWARE
+          aliases:
+          - Oracle ERP
+        - id: salesforce
+          canonical: Salesforce
+          category: SOFTWARE
+          aliases:
+          - Salesforce CRM
+        - id: bookkeeping
+          canonical: Bookkeeping
+          category: ACCOUNTING
+          aliases:
+          - Ghi sổ kế toán
+          - Sổ sách kế toán
+        - id: accounts-payable
+          canonical: Accounts Payable
+          category: ACCOUNTING
+          aliases:
+          - AP Accounting
+          - Công nợ phải trả
+          - Kế toán phải trả
+        - id: accounts-receivable
+          canonical: Accounts Receivable
+          category: ACCOUNTING
+          aliases:
+          - AR Accounting
+          - Công nợ phải thu
+          - Kế toán phải thu
+        - id: auditing
+          canonical: Auditing
+          category: ACCOUNTING
+          aliases:
+          - Audit
+          - Kiểm toán
+        - id: budgeting
+          canonical: Budgeting
+          category: FINANCE
+          aliases:
+          - Budget Planning
+          - Lập ngân sách
+          - Quản lý ngân sách
+        - id: cost-accounting
+          canonical: Cost Accounting
+          category: ACCOUNTING
+          aliases:
+          - Product Costing
+          - Kế toán giá thành
+          - Tính giá thành
+        - id: gaap
+          canonical: GAAP
+          category: COMPLIANCE
+          aliases:
+          - Generally Accepted Accounting Principles
+        - id: cash-flow-management
+          canonical: Cash Flow Management
+          category: FINANCE
+          aliases:
+          - Cash Flow Forecasting
+          - Quản lý dòng tiền
+        - id: credit-analysis
+          canonical: Credit Analysis
+          category: FINANCE
+          aliases:
+          - Credit Assessment
+          - Phân tích tín dụng
+          - Thẩm định tín dụng
+        - id: b2c-sales
+          canonical: B2C Sales
+          category: SALES
+          aliases:
+          - Business-to-Consumer Sales
+          - Bán hàng cá nhân
+        - id: account-management
+          canonical: Account Management
+          category: SALES
+          aliases:
+          - Key Account Management
+          - Quản lý khách hàng
+          - Quản lý khách hàng trọng điểm
+        - id: search-engine-marketing
+          canonical: Search Engine Marketing
+          category: MARKETING
+          aliases:
+          - SEM
+          - Quảng cáo tìm kiếm
+        - id: social-media-marketing
+          canonical: Social Media Marketing
+          category: MARKETING
+          aliases:
+          - Social Marketing
+          - Tiếp thị mạng xã hội
+        - id: email-marketing
+          canonical: Email Marketing
+          category: MARKETING
+          aliases:
+          - Tiếp thị qua email
+        - id: campaign-management
+          canonical: Campaign Management
+          category: MARKETING
+          aliases:
+          - Marketing Campaign Management
+          - Quản lý chiến dịch
+        - id: talent-acquisition
+          canonical: Talent Acquisition
+          category: BUSINESS
+          aliases:
+          - Thu hút nhân tài
+        - id: payroll-administration
+          canonical: Payroll Administration
+          category: BUSINESS
+          aliases:
+          - Quản trị tiền lương
+          - Quản lý bảng lương
+        - id: employee-relations
+          canonical: Employee Relations
+          category: BUSINESS
+          aliases:
+          - Quan hệ lao động
+          - Quan hệ nhân viên
+        - id: performance-management
+          canonical: Performance Management
+          category: MANAGEMENT
+          aliases:
+          - Quản lý hiệu suất
+          - Đánh giá hiệu suất
+        - id: training-and-development
+          canonical: Training and Development
+          category: MANAGEMENT
+          aliases:
+          - Learning and Development
+          - L&D
+          - Đào tạo và phát triển
+        - id: office-administration
+          canonical: Office Administration
+          category: BUSINESS
+          aliases:
+          - Administrative Management
+          - Quản trị văn phòng
+          - Hành chính văn phòng
+        - id: document-management
+          canonical: Document Management
+          category: BUSINESS
+          aliases:
+          - Records Management
+          - Quản lý tài liệu
+          - Quản lý hồ sơ
+        - id: inventory-management
+          canonical: Inventory Management
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Stock Management
+          - Quản lý tồn kho
+          - Quản lý hàng tồn
+        - id: procurement
+          canonical: Procurement
+          category: BUSINESS
+          aliases:
+          - Purchasing
+          - Thu mua
+          - Mua hàng
+        - id: demand-planning
+          canonical: Demand Planning
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Forecast Planning
+          - Lập kế hoạch nhu cầu
+        - id: transportation-management
+          canonical: Transportation Management
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Fleet Management
+          - Quản lý vận tải
+          - Quản lý đội xe
+        - id: order-fulfillment
+          canonical: Order Fulfillment
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Order Processing
+          - Xử lý đơn hàng
+          - Hoàn tất đơn hàng
+        - id: quality-assurance
+          canonical: Quality Assurance
+          category: COMPLIANCE
+          aliases:
+          - QA
+          - Đảm bảo chất lượng
+        - id: six-sigma
+          canonical: Six Sigma
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - 6 Sigma
+        - id: forklift-operation
+          canonical: Forklift Operation
+          category: EQUIPMENT
+          aliases:
+          - Forklift Operations
+          - Forklift Driving
+          - Forklift
+          - Forklifts
+          - Vận hành xe nâng
+          - Lái xe nâng
+        - id: barcode-scanner
+          canonical: Barcode Scanner
+          category: EQUIPMENT
+          aliases:
+          - Barcode Scanners
+          - Handheld Scanner
+          - Handheld Scanners
+          - Máy quét mã vạch
+        - id: warehouse-management-system
+          canonical: Warehouse Management System
+          category: SOFTWARE
+          aliases:
+          - WMS
+          - Phần mềm quản lý kho
+        - id: programmable-logic-controller
+          canonical: Programmable Logic Controller
+          category: ENGINEERING
+          aliases:
+          - PLC
+          - Lập trình PLC
+        - id: electrical-maintenance
+          canonical: Electrical Maintenance
+          category: ENGINEERING
+          aliases:
+          - Bảo trì điện
+          - Bảo dưỡng hệ thống điện
+        - id: mechanical-maintenance
+          canonical: Mechanical Maintenance
+          category: ENGINEERING
+          aliases:
+          - Bảo trì cơ khí
+          - Bảo dưỡng cơ khí
+        - id: civil-engineering
+          canonical: Civil Engineering
+          category: ENGINEERING
+          aliases:
+          - Kỹ thuật xây dựng
+        - id: quantity-surveying
+          canonical: Quantity Surveying
+          category: ENGINEERING
+          aliases:
+          - Quantity Takeoff
+          - Bóc tách khối lượng
+          - Đo bóc khối lượng
+        - id: project-estimation
+          canonical: Project Estimation
+          category: ENGINEERING
+          aliases:
+          - Cost Estimation
+          - Dự toán công trình
+          - Lập dự toán
+        - id: construction-supervision
+          canonical: Construction Supervision
+          category: ENGINEERING
+          aliases:
+          - Site Supervision
+          - Giám sát xây dựng
+          - Giám sát công trình
+        - id: preventive-maintenance
+          canonical: Preventive Maintenance
+          category: ENGINEERING
+          aliases:
+          - Planned Maintenance
+          - Bảo trì phòng ngừa
+          - Bảo trì định kỳ
+        - id: medication-administration
+          canonical: Medication Administration
+          category: HEALTHCARE
+          aliases:
+          - Drug Administration
+          - Cấp phát thuốc
+          - Thực hiện thuốc
+        - id: clinical-assessment
+          canonical: Clinical Assessment
+          category: HEALTHCARE
+          aliases:
+          - Patient Assessment
+          - Đánh giá lâm sàng
+          - Đánh giá bệnh nhân
+        - id: emergency-care
+          canonical: Emergency Care
+          category: HEALTHCARE
+          aliases:
+          - Emergency Response
+          - Cấp cứu
+          - Chăm sóc cấp cứu
+        - id: medical-records
+          canonical: Medical Records
+          category: HEALTHCARE
+          aliases:
+          - Electronic Medical Records
+          - EMR
+          - Hồ sơ bệnh án
+          - Bệnh án điện tử
+        - id: pharmacy-operations
+          canonical: Pharmacy Operations
+          category: HEALTHCARE
+          aliases:
+          - Pharmacy Management
+          - Vận hành nhà thuốc
+          - Quản lý nhà thuốc
+        - id: laboratory-techniques
+          canonical: Laboratory Techniques
+          category: HEALTHCARE
+          aliases:
+          - Lab Techniques
+          - Kỹ thuật xét nghiệm
+          - Kỹ thuật phòng thí nghiệm
+        - id: infection-control
+          canonical: Infection Control
+          category: SAFETY
+          aliases:
+          - Infection Prevention
+          - Kiểm soát nhiễm khuẩn
+          - Phòng chống nhiễm khuẩn
+        - id: vital-signs-monitoring
+          canonical: Vital Signs Monitoring
+          category: HEALTHCARE
+          aliases:
+          - Monitor Vital Signs
+          - Theo dõi dấu hiệu sinh tồn
+        - id: curriculum-development
+          canonical: Curriculum Development
+          category: EDUCATION
+          aliases:
+          - Curriculum Design
+          - Phát triển chương trình học
+          - Thiết kế chương trình đào tạo
+        - id: student-assessment
+          canonical: Student Assessment
+          category: EDUCATION
+          aliases:
+          - Learning Assessment
+          - Đánh giá học sinh
+          - Đánh giá kết quả học tập
+        - id: educational-technology
+          canonical: Educational Technology
+          category: EDUCATION
+          aliases:
+          - EdTech
+          - Công nghệ giáo dục
+        - id: food-preparation
+          canonical: Food Preparation
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Meal Preparation
+          - Chuẩn bị thực phẩm
+          - Sơ chế thực phẩm
+        - id: restaurant-operations
+          canonical: Restaurant Operations
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Restaurant Management
+          - Vận hành nhà hàng
+          - Quản lý nhà hàng
+        - id: complaint-resolution
+          canonical: Complaint Resolution
+          category: BUSINESS
+          aliases:
+          - Complaint Handling
+          - Xử lý khiếu nại
+          - Giải quyết khiếu nại
+        - id: welding
+          canonical: Welding
+          category: TRADE
+          aliases:
+          - Arc Welding
+          - MIG Welding
+          - TIG Welding
+          - Hàn điện
+          - Hàn MIG
+          - Hàn TIG
+        - id: plumbing
+          canonical: Plumbing
+          category: TRADE
+          aliases:
+          - Pipe Fitting
+          - Sửa chữa ống nước
+          - Lắp đặt đường ống
+        - id: electrical-wiring
+          canonical: Electrical Wiring
+          category: TRADE
+          aliases:
+          - Wiring
+          - Đấu nối điện
+          - Đi dây điện
+        - id: carpentry
+          canonical: Carpentry
+          category: TRADE
+          aliases:
+          - Woodworking
+          - Nghề mộc
+          - Gia công gỗ
+        - id: machining
+          canonical: Machining
+          category: TRADE
+          aliases:
+          - Machine Tool Operation
+          - Gia công cơ khí
+          - Vận hành máy công cụ
+        - id: equipment-repair
+          canonical: Equipment Repair
+          category: TRADE
+          aliases:
+          - Machine Repair
+          - Sửa chữa thiết bị
+          - Sửa chữa máy móc
+        - id: occupational-safety
+          canonical: Occupational Safety
+          category: SAFETY
+          aliases:
+          - Workplace Safety
+          - Occupational Health and Safety
+          - OHS
+          - An toàn lao động
+          - An toàn vệ sinh lao động
+        - id: fire-safety
+          canonical: Fire Safety
+          category: SAFETY
+          aliases:
+          - Fire Prevention
+          - Phòng cháy chữa cháy
+          - PCCC
+        - id: first-aid
+          canonical: First Aid
+          category: SAFETY
+          aliases:
+          - Sơ cứu
+          - Sơ cấp cứu
+        - id: regulatory-compliance
+          canonical: Regulatory Compliance
+          category: COMPLIANCE
+          aliases:
+          - Legal Compliance
+          - Tuân thủ pháp luật
+          - Tuân thủ quy định
+        - id: team-management
+          canonical: Team Management
+          category: MANAGEMENT
+          aliases:
+          - People Management
+          - Quản lý đội nhóm
+          - Quản lý nhân viên
+        - id: project-management
+          canonical: Project Management
+          category: MANAGEMENT
+          aliases:
+          - Quản lý dự án
+        - id: leadership
+          canonical: Leadership
+          category: LEADERSHIP
+          aliases:
+          - Team Leadership
+          - Lãnh đạo
+          - Dẫn dắt đội nhóm
+        - id: communication
+          canonical: Communication
+          category: COMMUNICATION
+          aliases:
+          - Communication Skills
+          - Kỹ năng giao tiếp
+          - Giao tiếp
+        - id: presentation
+          canonical: Presentation
+          category: COMMUNICATION
+          aliases:
+          - Presentation Skills
+          - Public Speaking
+          - Thuyết trình
+          - Kỹ năng trình bày
+        - id: problem-solving
+          canonical: Problem Solving
+          category: BUSINESS
+          aliases:
+          - Troubleshooting
+          - Giải quyết vấn đề
+          - Xử lý sự cố
+        - id: critical-thinking
+          canonical: Critical Thinking
+          category: BUSINESS
+          aliases:
+          - Tư duy phản biện
+        - id: teamwork
+          canonical: Teamwork
+          category: COMMUNICATION
+          aliases:
+          - Team Work
+          - Collaboration
+          - Làm việc nhóm
+        - id: time-management
+          canonical: Time Management
+          category: BUSINESS
+          aliases:
+          - Quản lý thời gian
+        - id: process-improvement
+          canonical: Process Improvement
+          category: BUSINESS
+          aliases:
+          - Continuous Improvement
+          - Cải tiến quy trình
+          - Cải tiến liên tục
+        - id: data-analysis
+          canonical: Data Analysis
+          category: TECHNICAL
+          aliases:
+          - Data Analytics
+          - Phân tích dữ liệu
+        - id: research
+          canonical: Research
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Research Methods
+          - Nghiên cứu
+          - Phương pháp nghiên cứu
+        - id: legal-research
+          canonical: Legal Research
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Nghiên cứu pháp lý
+        - id: contract-review
+          canonical: Contract Review
+          category: COMPLIANCE
+          aliases:
+          - Contract Administration
+          - Rà soát hợp đồng
+          - Quản lý hợp đồng
+        - id: graphic-design
+          canonical: Graphic Design
+          category: TECHNICAL
+          aliases:
+          - Thiết kế đồ họa
+        - id: adobe-premiere-pro
+          canonical: Adobe Premiere Pro
+          category: SOFTWARE
+          aliases:
+          - Premiere Pro
+        - id: figma
+          canonical: Figma
+          category: SOFTWARE
+          aliases: []
+        - id: photography
+          canonical: Photography
+          category: TECHNICAL
+          aliases:
+          - Nhiếp ảnh
+        - id: video-editing
+          canonical: Video Editing
+          category: TECHNICAL
+          aliases:
+          - Biên tập video
+          - Dựng phim
+        - id: agricultural-production
+          canonical: Agricultural Production
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Crop Production
+          - Sản xuất nông nghiệp
+          - Trồng trọt
+        - id: irrigation
+          canonical: Irrigation
+          category: DOMAIN_KNOWLEDGE
+          aliases:
+          - Irrigation Systems
+          - Tưới tiêu
+          - Hệ thống tưới
+        - id: vehicle-maintenance
+          canonical: Vehicle Maintenance
+          category: TRADE
+          aliases:
+          - Automotive Maintenance
+          - Bảo dưỡng xe
+          - Bảo trì ô tô
+        - id: defensive-driving
+          canonical: Defensive Driving
+          category: SAFETY
+          aliases:
+          - Safe Driving
+          - Lái xe an toàn
+          - Lái xe phòng vệ

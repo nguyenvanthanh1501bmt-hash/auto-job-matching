@@ -873,18 +873,18 @@ class JobNormalizationServiceTest {
                 salaryNormalizer,
                 new SkillNormalizer(
                         textNormalizer,
-                        normalizationTaxonomyProperties
+                        TaxonomyTestLoader.loadSharedSkills()
                 ),
                 new LocationNormalizer(
-                        textNormalizer,
-                        normalizationTaxonomyProperties
-                ),
+                                textNormalizer,
+                                TaxonomyTestLoader.loadSharedLocations()
+                        ),
                 new ExperienceNormalizer(
                         textNormalizer,
                         normalizationTaxonomyProperties
                 ),
                 new SeniorityNormalizer(
-                        normalizationTaxonomyProperties
+                        TaxonomyTestLoader.loadSharedSeniority()
                 ),
                 new JobTypeNormalizer(
                         normalizationTaxonomyProperties

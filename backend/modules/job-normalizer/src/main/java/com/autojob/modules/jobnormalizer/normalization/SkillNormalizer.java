@@ -1,6 +1,6 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.config.SharedSkillTaxonomyProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -29,43 +29,58 @@ public class SkillNormalizer {
 
     private final List<SkillMatcher> proseMatchers;
 
+    /**
+     * SkillNormalizer giờ chỉ dùng shared taxonomy.
+     *
+     * Không còn constructor legacy nhận
+     * NormalizationTaxonomyProperties.
+     */
     public SkillNormalizer(
             TextNormalizer textNormalizer,
-            NormalizationTaxonomyProperties taxonomyProperties
+            SharedSkillTaxonomyProperties taxonomyProperties
     ) {
-        this.textNormalizer = textNormalizer;
-
-        NormalizationTaxonomyProperties.Skill config =
-                taxonomyProperties.getSkill();
+        this.textNormalizer =
+                textNormalizer;
 
         this.richRawSkillCount =
-                config.getRichRawSkillCount();
+                taxonomyProperties
+                        .getRichRawSkillCount();
 
         this.ambiguousProseAliases =
                 foldSet(
-                        config.getAmbiguousProseAliases()
+                        taxonomyProperties
+                                .getAmbiguousProseAliases()
                 );
 
         this.safeShortProseAliases =
                 foldSet(
-                        config.getSafeShortProseAliases()
+                        taxonomyProperties
+                                .getSafeShortProseAliases()
+                );
+
+        List<SkillDefinition> definitions =
+                fromSharedDefinitions(
+                        taxonomyProperties
+                                .getItems()
                 );
 
         this.canonicalAliases =
                 createCanonicalAliases(
-                        config.getAliases()
+                        definitions
                 );
 
         this.proseMatchers =
                 createProseMatchers(
-                        config.getAliases()
+                        definitions
                 );
     }
 
     public List<String> normalize(
             List<String> rawSkills
     ) {
-        return normalizeRawSkills(rawSkills);
+        return normalizeRawSkills(
+                rawSkills
+        );
     }
 
     public List<String> normalize(
@@ -75,7 +90,9 @@ public class SkillNormalizer {
             String descriptionText
     ) {
         List<String> normalizedRawSkills =
-                normalizeRawSkills(rawSkills);
+                normalizeRawSkills(
+                        rawSkills
+                );
 
         if (normalizedRawSkills.size()
                 >= richRawSkillCount) {
@@ -144,7 +161,9 @@ public class SkillNormalizer {
             }
         }
 
-        return List.copyOf(normalizedSkills);
+        return List.copyOf(
+                normalizedSkills
+        );
     }
 
     private List<String> extractKnownSkills(
@@ -155,9 +174,20 @@ public class SkillNormalizer {
         StringBuilder prose =
                 new StringBuilder();
 
-        appendProse(prose, title);
-        appendProse(prose, requirementsText);
-        appendProse(prose, descriptionText);
+        appendProse(
+                prose,
+                title
+        );
+
+        appendProse(
+                prose,
+                requirementsText
+        );
+
+        appendProse(
+                prose,
+                descriptionText
+        );
 
         String foldedProse =
                 NormalizationTextSupport.fold(
@@ -174,10 +204,14 @@ public class SkillNormalizer {
         Set<String> seen =
                 new LinkedHashSet<>();
 
-        for (SkillMatcher matcher : proseMatchers) {
+        for (SkillMatcher matcher
+                : proseMatchers) {
+
             if (!matcher
                     .pattern()
-                    .matcher(foldedProse)
+                    .matcher(
+                            foldedProse
+                    )
                     .find()) {
                 continue;
             }
@@ -187,14 +221,18 @@ public class SkillNormalizer {
                             matcher.canonical()
                     );
 
-            if (seen.add(deduplicationKey)) {
+            if (seen.add(
+                    deduplicationKey
+            )) {
                 extracted.add(
                         matcher.canonical()
                 );
             }
         }
 
-        return List.copyOf(extracted);
+        return List.copyOf(
+                extracted
+        );
     }
 
     private void appendProse(
@@ -202,9 +240,10 @@ public class SkillNormalizer {
             String value
     ) {
         String normalized =
-                textNormalizer.normalizeMultiline(
-                        value
-                );
+                textNormalizer
+                        .normalizeMultiline(
+                                value
+                        );
 
         if (normalized == null) {
             return;
@@ -214,7 +253,9 @@ public class SkillNormalizer {
             prose.append('\n');
         }
 
-        prose.append(normalized);
+        prose.append(
+                normalized
+        );
     }
 
     private List<String> mergeSkills(
@@ -226,7 +267,9 @@ public class SkillNormalizer {
         }
 
         List<String> merged =
-                new ArrayList<>(primary);
+                new ArrayList<>(
+                        primary
+                );
 
         Set<String> seen =
                 new LinkedHashSet<>();
@@ -248,39 +291,45 @@ public class SkillNormalizer {
             if (seen.add(
                     deduplicationKey
             )) {
-                merged.add(skill);
+                merged.add(
+                        skill
+                );
             }
         }
 
-        return List.copyOf(merged);
+        return List.copyOf(
+                merged
+        );
     }
 
     private String normalizeSingleSkill(
             String rawSkill
     ) {
         String cleaned =
-                textNormalizer.normalizeInline(
-                        rawSkill
-                );
+                textNormalizer
+                        .normalizeInline(
+                                rawSkill
+                        );
 
         if (cleaned == null) {
             return null;
         }
 
         String aliasKey =
-                NormalizationTextSupport.compactKey(
+                NormalizationTextSupport
+                        .compactKey(
+                                cleaned
+                        );
+
+        return canonicalAliases
+                .getOrDefault(
+                        aliasKey,
                         cleaned
                 );
-
-        return canonicalAliases.getOrDefault(
-                aliasKey,
-                cleaned
-        );
     }
 
     private Map<String, String> createCanonicalAliases(
-            List<NormalizationTaxonomyProperties.CanonicalAlias>
-                    configuredAliases
+            List<SkillDefinition> configuredAliases
     ) {
         if (configuredAliases == null
                 || configuredAliases.isEmpty()) {
@@ -290,7 +339,7 @@ public class SkillNormalizer {
         Map<String, String> aliases =
                 new LinkedHashMap<>();
 
-        for (NormalizationTaxonomyProperties.CanonicalAlias definition
+        for (SkillDefinition definition
                 : configuredAliases) {
 
             if (definition == null) {
@@ -298,7 +347,7 @@ public class SkillNormalizer {
             }
 
             String canonical =
-                    definition.getCanonical();
+                    definition.canonical();
 
             if (canonical == null
                     || canonical.isBlank()) {
@@ -312,7 +361,7 @@ public class SkillNormalizer {
             );
 
             List<String> values =
-                    definition.getAliases();
+                    definition.aliases();
 
             if (values == null) {
                 continue;
@@ -327,7 +376,9 @@ public class SkillNormalizer {
             }
         }
 
-        return Map.copyOf(aliases);
+        return Map.copyOf(
+                aliases
+        );
     }
 
     private void registerAlias(
@@ -341,23 +392,38 @@ public class SkillNormalizer {
         }
 
         String aliasKey =
-                NormalizationTextSupport.compactKey(
-                        alias
-                );
+                NormalizationTextSupport
+                        .compactKey(
+                                alias
+                        );
 
         if (aliasKey.isBlank()) {
             return;
         }
 
-        aliases.put(
-                aliasKey,
+        String existing =
+                aliases.putIfAbsent(
+                        aliasKey,
+                        canonical
+                );
+
+        if (existing != null
+                && !existing.equals(
                 canonical
-        );
+        )) {
+            throw new IllegalStateException(
+                    "Shared skill alias collision: alias="
+                            + alias
+                            + ", firstCanonical="
+                            + existing
+                            + ", secondCanonical="
+                            + canonical
+            );
+        }
     }
 
     private List<SkillMatcher> createProseMatchers(
-            List<NormalizationTaxonomyProperties.CanonicalAlias>
-                    configuredAliases
+            List<SkillDefinition> configuredAliases
     ) {
         if (configuredAliases == null
                 || configuredAliases.isEmpty()) {
@@ -370,7 +436,7 @@ public class SkillNormalizer {
         Set<String> registeredPatterns =
                 new LinkedHashSet<>();
 
-        for (NormalizationTaxonomyProperties.CanonicalAlias definition
+        for (SkillDefinition definition
                 : configuredAliases) {
 
             if (definition == null) {
@@ -378,7 +444,7 @@ public class SkillNormalizer {
             }
 
             String canonical =
-                    definition.getCanonical();
+                    definition.canonical();
 
             if (canonical == null
                     || canonical.isBlank()) {
@@ -388,11 +454,13 @@ public class SkillNormalizer {
             List<String> candidates =
                     new ArrayList<>();
 
-            candidates.add(canonical);
+            candidates.add(
+                    canonical
+            );
 
-            if (definition.getAliases() != null) {
+            if (definition.aliases() != null) {
                 candidates.addAll(
-                        definition.getAliases()
+                        definition.aliases()
                 );
             }
 
@@ -403,9 +471,10 @@ public class SkillNormalizer {
                 }
 
                 String foldedAlias =
-                        NormalizationTextSupport.fold(
-                                alias
-                        );
+                        NormalizationTextSupport
+                                .fold(
+                                        alias
+                                );
 
                 if (!isSafeForProseExtraction(
                         foldedAlias
@@ -442,7 +511,9 @@ public class SkillNormalizer {
             }
         }
 
-        return List.copyOf(matchers);
+        return List.copyOf(
+                matchers
+        );
     }
 
     private boolean isSafeForProseExtraction(
@@ -471,7 +542,43 @@ public class SkillNormalizer {
                         ""
                 );
 
-        return compact.length() >= 3;
+        return compact.length()
+                >= 3;
+    }
+
+    private static List<SkillDefinition> fromSharedDefinitions(
+            List<SharedSkillTaxonomyProperties.SkillDefinition> definitions
+    ) {
+        if (definitions == null
+                || definitions.isEmpty()) {
+            return List.of();
+        }
+
+        List<SkillDefinition> result =
+                new ArrayList<>();
+
+        for (SharedSkillTaxonomyProperties.SkillDefinition definition
+                : definitions) {
+
+            if (definition == null) {
+                continue;
+            }
+
+            result.add(
+                    new SkillDefinition(
+                            definition.getCanonical(),
+                            definition.getAliases() == null
+                                    ? List.of()
+                                    : List.copyOf(
+                                    definition.getAliases()
+                            )
+                    )
+            );
+        }
+
+        return List.copyOf(
+                result
+        );
     }
 
     private static Set<String> foldSet(
@@ -496,11 +603,21 @@ public class SkillNormalizer {
                     );
 
             if (!normalized.isBlank()) {
-                folded.add(normalized);
+                folded.add(
+                        normalized
+                );
             }
         }
 
-        return Set.copyOf(folded);
+        return Set.copyOf(
+                folded
+        );
+    }
+
+    private record SkillDefinition(
+            String canonical,
+            List<String> aliases
+    ) {
     }
 
     private record SkillMatcher(

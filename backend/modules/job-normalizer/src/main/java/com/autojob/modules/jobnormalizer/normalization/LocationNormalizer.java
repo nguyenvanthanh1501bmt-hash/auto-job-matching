@@ -1,6 +1,6 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.config.SharedLocationTaxonomyProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -25,30 +25,57 @@ public class LocationNormalizer {
 
     private final Set<String> ignoredValues;
 
+    private final Set<String> ambiguousAliases;
+
+    private final Set<String> nonGeographicAliases;
+
+    /**
+     * LocationNormalizer chỉ còn một constructor.
+     *
+     * Source of truth:
+     *
+     * configs/taxonomy/shared/locations.yml
+     */
     public LocationNormalizer(
             TextNormalizer textNormalizer,
-            NormalizationTaxonomyProperties taxonomyProperties
+            SharedLocationTaxonomyProperties taxonomyProperties
     ) {
-        this.textNormalizer = textNormalizer;
+        this.textNormalizer =
+                textNormalizer;
 
-        this.locationAliases = buildAliases(
-                taxonomyProperties
-                        .getLocation()
-                        .getAliases()
-        );
+        this.locationAliases =
+                buildAliases(
+                        taxonomyProperties
+                                .getItems()
+                );
 
-        this.ignoredValues = foldSet(
-                taxonomyProperties
-                        .getLocation()
-                        .getIgnoredValues()
-        );
+        this.ignoredValues =
+                foldSet(
+                        taxonomyProperties
+                                .getIgnoredValues()
+                );
+
+        this.ambiguousAliases =
+                compactSet(
+                        taxonomyProperties
+                                .getAmbiguousAliases()
+                );
+
+        this.nonGeographicAliases =
+                compactSet(
+                        taxonomyProperties
+                                .getNonGeographicAliases()
+                );
     }
 
-    public List<String> normalize(String locationText) {
+    public List<String> normalize(
+            String locationText
+    ) {
         String cleaned =
-                textNormalizer.normalizeMultiline(
-                        locationText
-                );
+                textNormalizer
+                        .normalizeMultiline(
+                                locationText
+                        );
 
         if (cleaned == null) {
             return List.of();
@@ -61,11 +88,17 @@ public class LocationNormalizer {
                 new LinkedHashSet<>();
 
         String[] locationParts =
-                LOCATION_SEPARATOR.split(cleaned);
+                LOCATION_SEPARATOR.split(
+                        cleaned
+                );
 
-        for (String locationPart : locationParts) {
+        for (String locationPart
+                : locationParts) {
+
             String canonicalLocation =
-                    canonicalize(locationPart);
+                    canonicalize(
+                            locationPart
+                    );
 
             if (canonicalLocation == null) {
                 continue;
@@ -76,65 +109,117 @@ public class LocationNormalizer {
                             canonicalLocation
                     );
 
-            if (seenLocations.add(deduplicationKey)) {
+            if (
+                    seenLocations.add(
+                            deduplicationKey
+                    )
+            ) {
                 normalizedLocations.add(
                         canonicalLocation
                 );
             }
         }
 
-        return List.copyOf(normalizedLocations);
+        return List.copyOf(
+                normalizedLocations
+        );
     }
 
-    private String canonicalize(String value) {
+    private String canonicalize(
+            String value
+    ) {
         String cleaned =
-                textNormalizer.normalizeInline(value);
+                textNormalizer
+                        .normalizeInline(
+                                value
+                        );
 
         if (cleaned == null) {
             return null;
         }
 
         String compactKey =
-                NormalizationTextSupport.compactKey(
-                        cleaned
-                );
+                NormalizationTextSupport
+                        .compactKey(
+                                cleaned
+                        );
+
+        /*
+         * Remote/WFH/... describe work mode,
+         * not geography.
+         */
+        if (
+                nonGeographicAliases.contains(
+                        compactKey
+                )
+        ) {
+            return null;
+        }
+
+        /*
+         * Never guess an ambiguous abbreviation.
+         *
+         * Example:
+         *
+         * DN = Da Nang OR Dong Nai.
+         */
+        if (
+                ambiguousAliases.contains(
+                        compactKey
+                )
+        ) {
+            return cleaned;
+        }
 
         String mappedLocation =
-                locationAliases.get(compactKey);
+                locationAliases.get(
+                        compactKey
+                );
 
         if (mappedLocation != null) {
             return mappedLocation;
         }
 
         String folded =
-                NormalizationTextSupport.fold(cleaned);
+                NormalizationTextSupport.fold(
+                        cleaned
+                );
 
-        if (folded.isBlank()
-                || ignoredValues.contains(folded)) {
+        if (
+                folded.isBlank()
+                        || ignoredValues.contains(
+                        folded
+                )
+        ) {
             return null;
         }
 
         /*
-         * Location chưa có taxonomy vẫn được giữ nguyên.
+         * Unknown geography is preserved instead of
+         * being incorrectly guessed.
          */
         return cleaned;
     }
 
     private static Map<String, String> buildAliases(
-            List<NormalizationTaxonomyProperties.CanonicalAlias>
-                    configuredAliases
+            List<SharedLocationTaxonomyProperties.LocationDefinition>
+                    definitions
     ) {
-        if (configuredAliases == null
-                || configuredAliases.isEmpty()) {
+        if (
+                definitions == null
+                        || definitions.isEmpty()
+        ) {
             return Map.of();
         }
 
         Map<String, String> aliases =
                 new LinkedHashMap<>();
 
-        for (NormalizationTaxonomyProperties.CanonicalAlias definition
-                : configuredAliases) {
-
+        for (
+                SharedLocationTaxonomyProperties.LocationDefinition
+                        definition
+                : definitions
+        ) {
             if (definition == null) {
                 continue;
             }
@@ -142,14 +227,13 @@ public class LocationNormalizer {
             String canonical =
                     definition.getCanonical();
 
-            if (canonical == null
-                    || canonical.isBlank()) {
+            if (
+                    canonical == null
+                            || canonical.isBlank()
+            ) {
                 continue;
             }
 
-            /*
-             * Canonical cũng normalize về chính nó.
-             */
             register(
                     aliases,
                     canonical,
@@ -172,7 +256,9 @@ public class LocationNormalizer {
             }
         }
 
-        return Map.copyOf(aliases);
+        return Map.copyOf(
+                aliases
+        );
     }
 
     private static void register(
@@ -180,31 +266,54 @@ public class LocationNormalizer {
             String canonical,
             String value
     ) {
-        if (value == null
-                || value.isBlank()) {
+        if (
+                value == null
+                        || value.isBlank()
+        ) {
             return;
         }
 
         String compactKey =
-                NormalizationTextSupport.compactKey(
-                        value
-                );
+                NormalizationTextSupport
+                        .compactKey(
+                                value
+                        );
 
         if (compactKey.isBlank()) {
             return;
         }
 
-        aliases.put(
-                compactKey,
-                canonical
-        );
+        String existing =
+                aliases.putIfAbsent(
+                        compactKey,
+                        canonical
+                );
+
+        if (
+                existing != null
+                        && !existing.equals(
+                        canonical
+                )
+        ) {
+            throw new IllegalStateException(
+                    "Shared location alias collision: "
+                            + "alias="
+                            + value
+                            + ", firstCanonical="
+                            + existing
+                            + ", secondCanonical="
+                            + canonical
+            );
+        }
     }
 
     private static Set<String> foldSet(
             Set<String> values
     ) {
-        if (values == null
-                || values.isEmpty()) {
+        if (
+                values == null
+                        || values.isEmpty()
+        ) {
             return Set.of();
         }
 
@@ -222,10 +331,50 @@ public class LocationNormalizer {
                     );
 
             if (!normalized.isBlank()) {
-                folded.add(normalized);
+                folded.add(
+                        normalized
+                );
             }
         }
 
-        return Set.copyOf(folded);
+        return Set.copyOf(
+                folded
+        );
+    }
+
+    private static Set<String> compactSet(
+            Set<String> values
+    ) {
+        if (
+                values == null
+                        || values.isEmpty()
+        ) {
+            return Set.of();
+        }
+
+        Set<String> compacted =
+                new LinkedHashSet<>();
+
+        for (String value : values) {
+            if (value == null) {
+                continue;
+            }
+
+            String key =
+                    NormalizationTextSupport
+                            .compactKey(
+                                    value
+                            );
+
+            if (!key.isBlank()) {
+                compacted.add(
+                        key
+                );
+            }
+        }
+
+        return Set.copyOf(
+                compacted
+        );
     }
 }

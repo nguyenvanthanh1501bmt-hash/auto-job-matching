@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,14 +12,17 @@ import yaml
 
 from app.normalization.text_normalizer import normalize_for_matching
 
+if TYPE_CHECKING:
+    from app.taxonomy.shared_taxonomy_loader import (
+        SharedSeniorityTaxonomy,
+    )
+
 
 # Danh sách các file YAML chứa dữ liệu taxonomy của CV parser.
 TAXONOMY_FILES = (
-    "skills.yml",
     "job_titles.yml",
     "sections.yml",
     "degrees.yml",
-    "locations.yml",
     "preferences.yml",
     "language_levels.yml",
 )
@@ -162,71 +167,203 @@ class TaxonomyBundle:
     locations: tuple[LocationTaxonomyItem, ...]
     preferences: PreferenceTaxonomy
     language_levels: tuple[LanguageLevelTaxonomyItem, ...]
+    seniority: "SharedSeniorityTaxonomy"
 
 
 class TaxonomyLoader:
-    # Load và validate dữ liệu taxonomy từ các file YAML.
+    # Assemble CV-specific taxonomy together with
+    # shared cross-pipeline taxonomy.
     def __init__(
             self,
             directory: str | Path,
             expected_version: str,
+            shared_taxonomy_directory: str | Path | None = None,
+            expected_skill_version: str = "skill-v1",
+            expected_location_version: str = "location-v1",
     ) -> None:
-        self._directory = Path(directory)
-        self._expected_version = expected_version
+        self._directory = Path(
+            directory
+        )
 
-    def load(self) -> TaxonomyBundle:
-        # Load toàn bộ taxonomy files trước khi bắt đầu validation.
+        self._expected_version = (
+            expected_version
+        )
+
+        self._shared_taxonomy_directory = (
+            Path(
+                shared_taxonomy_directory
+            )
+            if (
+                shared_taxonomy_directory
+                is not None
+            )
+            else (
+                self._directory.parent
+                / "shared"
+            )
+        )
+
+        self._expected_skill_version = (
+            expected_skill_version
+        )
+
+        self._expected_location_version = (
+            expected_location_version
+        )
+
+    def load(
+            self,
+    ) -> TaxonomyBundle:
+        # Only CV-specific files belong here.
+        #
+        # Skills and locations are now loaded
+        # from the shared taxonomy directory.
         documents = {
-            filename: self._read_yaml(filename)
+            filename: self._read_yaml(
+                filename
+            )
             for filename in TAXONOMY_FILES
         }
 
-        # Đảm bảo tất cả taxonomy files đều khai báo version hợp lệ.
         versions = {
             self._require_non_blank_string(
-                document.get("version"),
+                document.get(
+                    "version"
+                ),
                 f"{filename}.version",
             )
-            for filename, document in documents.items()
+            for filename, document
+            in documents.items()
         }
 
-        # Tất cả taxonomy files phải sử dụng cùng một version.
         if len(versions) != 1:
             raise TaxonomyValidationError(
-                "All taxonomy files must use the same version"
+                "All CV-specific taxonomy files "
+                "must use the same version"
             )
 
-        version = next(iter(versions))
+        version = next(
+            iter(versions)
+        )
 
-        # Taxonomy version phải khớp với version mà parser hiện tại yêu cầu.
-        if version != self._expected_version:
+        if (
+            version
+            != self._expected_version
+        ):
             raise TaxonomyValidationError(
-                "Taxonomy version does not match CV_PARSER_VERSION"
+                "Taxonomy version does not "
+                "match CV_PARSER_VERSION"
             )
 
-        # Parse từng nhóm taxonomy thành các domain object tương ứng.
+        shared = (
+            self._shared_loader()
+        )
+
+        shared_skills = (
+            shared.load_skills()
+        )
+
+        shared_locations = (
+            shared.load_locations()
+        )
+
         return TaxonomyBundle(
             version=version,
-            skills=self._parse_skills(
-                documents["skills.yml"]
+
+            skills=tuple(
+                SkillTaxonomyItem(
+                    canonical=(
+                        item.canonical
+                    ),
+                    category=(
+                        item.category
+                    ),
+                    aliases=(
+                        item.aliases
+                    ),
+                )
+                for item
+                in shared_skills.items
             ),
-            job_titles=self._parse_job_titles(
-                documents["job_titles.yml"]
+
+            job_titles=(
+                self._parse_job_titles(
+                    documents[
+                        "job_titles.yml"
+                    ]
+                )
             ),
-            sections=self._parse_sections(
-                documents["sections.yml"]
+
+            sections=(
+                self._parse_sections(
+                    documents[
+                        "sections.yml"
+                    ]
+                )
             ),
-            degrees=self._parse_degrees(
-                documents["degrees.yml"]
+
+            degrees=(
+                self._parse_degrees(
+                    documents[
+                        "degrees.yml"
+                    ]
+                )
             ),
-            locations=self._parse_locations(
-                documents["locations.yml"]
+
+            locations=tuple(
+                LocationTaxonomyItem(
+                    canonical=(
+                        item.canonical
+                    ),
+                    kind=(
+                        item.kind
+                    ),
+                    aliases=(
+                        item.aliases
+                    ),
+                )
+                for item
+                in shared_locations.items
             ),
-            preferences=self._parse_preferences(
-                documents["preferences.yml"]
+
+            preferences=(
+                self._parse_preferences(
+                    documents[
+                        "preferences.yml"
+                    ]
+                )
             ),
-            language_levels=self._parse_language_levels(
-                documents["language_levels.yml"]
+
+            language_levels=(
+                self._parse_language_levels(
+                    documents[
+                        "language_levels.yml"
+                    ]
+                )
+            ),
+            seniority=shared.load_seniority(),
+        )
+
+    def _shared_loader(
+            self,
+    ):
+        # Local import avoids module-level circular dependency.
+        #
+        # shared_taxonomy_loader reuses validation
+        # helpers declared in this module.
+        from app.taxonomy.shared_taxonomy_loader import (
+            SharedTaxonomyLoader,
+        )
+
+        return SharedTaxonomyLoader(
+            directory=(
+                self._shared_taxonomy_directory
+            ),
+            expected_skill_version=(
+                self._expected_skill_version
+            ),
+            expected_location_version=(
+                self._expected_location_version
             ),
         )
 
@@ -262,86 +399,6 @@ class TaxonomyLoader:
             )
 
         return value
-
-    def _parse_skills(
-            self,
-            document: dict[str, Any],
-    ) -> tuple[SkillTaxonomyItem, ...]:
-        # Lấy danh sách skill và kiểm tra cấu trúc của từng item.
-        raw_items = self._require_list(
-            document.get("items"),
-            "skills.yml.items",
-        )
-        result: list[SkillTaxonomyItem] = []
-        canonical_names: set[str] = set()
-        aliases: set[str] = set()
-
-        for index, raw_item in enumerate(raw_items):
-            item = self._require_mapping(
-                raw_item,
-                f"skills.yml.items[{index}]",
-            )
-            canonical = self._require_non_blank_string(
-                item.get("canonical"),
-                f"skills.yml.items[{index}].canonical",
-            )
-            category = self._require_non_blank_string(
-                item.get("category"),
-                f"skills.yml.items[{index}].category",
-            ).upper()
-
-            # Category phải thuộc danh sách category mà parser hỗ trợ.
-            if category not in SKILL_CATEGORIES:
-                raise TaxonomyValidationError(
-                    f"Unsupported skill category: {category}"
-                )
-
-            # Parse và chuẩn hóa danh sách alias của skill.
-            item_aliases = self._parse_aliases(
-                item.get("aliases"),
-                canonical,
-                f"skills.yml.items[{index}].aliases",
-            )
-
-            canonical_key = normalize_for_matching(canonical)
-
-            # Không cho phép hai skill có cùng canonical sau khi normalize.
-            if canonical_key in canonical_names:
-                raise TaxonomyValidationError(
-                    f"Duplicate skill canonical name: {canonical}"
-                )
-
-            canonical_names.add(canonical_key)
-
-            # Không cho phép alias bị trùng sau khi normalize.
-            for alias in item_aliases:
-                alias_key = normalize_for_matching(alias)
-
-                if alias_key in aliases:
-                    raise TaxonomyValidationError(
-                        f"Duplicate skill alias: {alias}"
-                    )
-
-                aliases.add(alias_key)
-
-            result.append(
-                SkillTaxonomyItem(
-                    canonical=canonical,
-                    category=category,
-                    aliases=item_aliases,
-                )
-            )
-
-        # Sắp xếp kết quả để taxonomy có thứ tự deterministic.
-        return tuple(
-            sorted(
-                result,
-                key=lambda item: (
-                    item.category,
-                    item.canonical.casefold(),
-                ),
-            )
-        )
 
     def _parse_job_titles(
             self,
@@ -480,55 +537,6 @@ class TaxonomyLoader:
             result.append(
                 DegreeTaxonomyItem(
                     level=level,
-                    aliases=aliases,
-                )
-            )
-
-        return tuple(result)
-
-    def _parse_locations(
-            self,
-            document: dict[str, Any],
-    ) -> tuple[LocationTaxonomyItem, ...]:
-        # Lấy và validate danh sách location taxonomy.
-        raw_items = self._require_list(
-            document.get("items"),
-            "locations.yml.items",
-        )
-        result: list[LocationTaxonomyItem] = []
-
-        for index, raw_item in enumerate(raw_items):
-            item = self._require_mapping(
-                raw_item,
-                f"locations.yml.items[{index}]",
-            )
-
-            canonical = self._require_non_blank_string(
-                item.get("canonical"),
-                f"locations.yml.items[{index}].canonical",
-            )
-
-            kind = self._require_non_blank_string(
-                item.get("kind"),
-                f"locations.yml.items[{index}].kind",
-            ).upper()
-
-            # Location kind phải thuộc các loại địa điểm được hỗ trợ.
-            if kind not in LOCATION_KINDS:
-                raise TaxonomyValidationError(
-                    f"Unsupported location kind: {kind}"
-                )
-
-            aliases = self._parse_aliases(
-                item.get("aliases"),
-                canonical,
-                f"locations.yml.items[{index}].aliases",
-            )
-
-            result.append(
-                LocationTaxonomyItem(
-                    canonical=canonical,
-                    kind=kind,
                     aliases=aliases,
                 )
             )

@@ -10,25 +10,32 @@ import java.util.Optional;
 public interface JobEmbeddingRepository
         extends MongoRepository<JobEmbedding, String> {
 
-    Optional<JobEmbedding> findByNormalizedJobIdAndEmbeddingVersion(
+    Optional<JobEmbedding>
+    findByNormalizedJobIdAndEmbeddingVersionAndTextVersion(
             String normalizedJobId,
-            String embeddingVersion
+            String embeddingVersion,
+            String textVersion
     );
 
-    Optional<JobEmbedding> findFirstByNormalizedJobIdOrderByUpdatedAtDesc(
+    Optional<JobEmbedding>
+    findFirstByNormalizedJobIdOrderByUpdatedAtDesc(
             String normalizedJobId
     );
 
-    List<JobEmbedding> findAllByNormalizedJobIdOrderByUpdatedAtDesc(
+    List<JobEmbedding>
+    findAllByNormalizedJobIdOrderByUpdatedAtDesc(
             String normalizedJobId
     );
 
-    List<JobEmbedding> findByStatusOrderByUpdatedAtAsc(
+    List<JobEmbedding>
+    findByStatusOrderByUpdatedAtAsc(
             JobEmbeddingStatus status
     );
 
-    boolean existsByNormalizedJobIdAndEmbeddingVersion(
+    boolean
+    existsByNormalizedJobIdAndEmbeddingVersionAndTextVersion(
             String normalizedJobId,
-            String embeddingVersion
+            String embeddingVersion,
+            String textVersion
     );
 }

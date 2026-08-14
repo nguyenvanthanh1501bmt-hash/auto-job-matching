@@ -129,7 +129,7 @@ def test_profile_parser_builds_complete_candidate_profile(
     ]
 
     assert profile.preferred_locations == [
-        "Ho Chi Minh City",
+        "Hồ Chí Minh",
     ]
 
     assert profile.preferred_work_modes == [
@@ -154,8 +154,8 @@ def test_profile_parser_builds_complete_candidate_profile(
     }
 
     assert {
-               "Financial Reporting",
-               "Tax Accounting",
+               "Lập báo cáo tài chính",
+               "Kế toán thuế",
                "Auditing",
                "Budgeting",
                "Microsoft Excel",

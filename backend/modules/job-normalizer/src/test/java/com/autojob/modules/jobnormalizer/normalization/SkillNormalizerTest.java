@@ -1,6 +1,6 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.config.SharedSkillTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,8 +15,9 @@ class SkillNormalizerTest {
 
     @BeforeEach
     void setUp() {
-        NormalizationTaxonomyProperties taxonomy =
-                TaxonomyTestLoader.load();
+        SharedSkillTaxonomyProperties taxonomy =
+                TaxonomyTestLoader
+                        .loadSharedSkills();
 
         skillNormalizer =
                 new SkillNormalizer(
@@ -40,15 +41,16 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Spring Boot",
-                "JavaScript",
-                "Node.js",
-                "MongoDB",
-                "PostgreSQL",
-                "Kubernetes",
-                "AWS"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Spring Boot",
+                        "JavaScript",
+                        "Node.js",
+                        "MongoDB",
+                        "PostgreSQL",
+                        "Kubernetes",
+                        "AWS"
+                );
     }
 
     @Test
@@ -67,16 +69,17 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Microsoft Excel",
-                "Microsoft Word",
-                "Microsoft PowerPoint",
-                "Adobe Photoshop",
-                "Google Ads",
-                "Facebook Ads",
-                "Search Engine Optimization",
-                "Customer Relationship Management"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Microsoft Excel",
+                        "Microsoft Word",
+                        "Microsoft PowerPoint",
+                        "Adobe Photoshop",
+                        "Google Ads",
+                        "Facebook Ads",
+                        "Search Engine Optimization",
+                        "Customer Relationship Management"
+                );
     }
 
     @Test
@@ -93,14 +96,15 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Vận hành máy CNC",
-                "Kế toán tổng hợp",
-                "Điều dưỡng nội khoa",
-                "Kỹ thuật hàn TIG",
-                "Phần mềm MISA",
-                "Nghiệp vụ xuất nhập khẩu"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Vận hành máy CNC",
+                        "Kế toán tổng hợp",
+                        "Điều dưỡng nội khoa",
+                        "Kỹ thuật hàn TIG",
+                        "Phần mềm MISA",
+                        "Nghiệp vụ xuất nhập khẩu"
+                );
     }
 
     @Test
@@ -112,13 +116,14 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Spring Boot",
-                "Java",
-                "MongoDB",
-                "Docker",
-                "Git"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Spring Boot",
+                        "Java",
+                        "MongoDB",
+                        "Docker",
+                        "Git"
+                );
     }
 
     @Test
@@ -130,12 +135,13 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "UI/UX",
-                "Import/Export",
-                "B2B/B2C",
-                "CI/CD"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "UI/UX",
+                        "Import/Export",
+                        "B2B/B2C",
+                        "CI/CD"
+                );
     }
 
     @Test
@@ -152,10 +158,11 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Spring Boot",
-                "MongoDB"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Spring Boot",
+                        "MongoDB"
+                );
     }
 
     @Test
@@ -170,10 +177,18 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Vận hành máy CNC",
-                "Kỹ năng giao tiếp"
-        );
+        /*
+         * "Kỹ năng giao tiếp" hiện là alias của shared
+         * canonical skill "Communication".
+         *
+         * Đây là behavior mong muốn:
+         * Job và CV phải resolve về cùng canonical.
+         */
+        assertThat(result)
+                .containsExactly(
+                        "Vận hành máy CNC",
+                        "Communication"
+                );
     }
 
     @Test
@@ -186,10 +201,11 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Vận hành máy CNC",
-                "Kế toán tổng hợp"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Vận hành máy CNC",
+                        "Kế toán tổng hợp"
+                );
     }
 
     @Test
@@ -204,20 +220,25 @@ class SkillNormalizerTest {
                         )
                 );
 
-        assertThat(result).containsExactly(
-                "Java",
-                "MongoDB"
-        );
+        assertThat(result)
+                .containsExactly(
+                        "Java",
+                        "MongoDB"
+                );
     }
 
     @Test
     void shouldReturnEmptyListForNullOrEmptyInput() {
         assertThat(
-                skillNormalizer.normalize(null)
+                skillNormalizer.normalize(
+                        null
+                )
         ).isEmpty();
 
         assertThat(
-                skillNormalizer.normalize(List.of())
+                skillNormalizer.normalize(
+                        List.of()
+                )
         ).isEmpty();
     }
 }

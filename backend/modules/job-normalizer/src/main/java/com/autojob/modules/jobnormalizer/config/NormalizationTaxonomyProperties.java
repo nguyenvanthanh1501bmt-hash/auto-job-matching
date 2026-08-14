@@ -1,7 +1,6 @@
 package com.autojob.modules.jobnormalizer.config;
 
 import com.autojob.modules.jobnormalizer.domain.NormalizedJobType;
-import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -23,126 +22,46 @@ import java.util.Set;
 @Setter
 @Component
 @Validated
-@ConfigurationProperties(prefix = "autojob.normalization.taxonomy")
+@ConfigurationProperties(
+        prefix = "autojob.normalization.taxonomy"
+)
 public class NormalizationTaxonomyProperties {
 
-    @Valid
-    @NotNull
-    private Skill skill = new Skill();
+    /*
+     * Shared taxonomies:
+     *
+     * Skills:
+     *   SharedSkillTaxonomyProperties
+     *
+     * Locations:
+     *   SharedLocationTaxonomyProperties
+     *
+     * Seniority:
+     *   SharedSeniorityTaxonomyProperties
+     *
+     * This class now contains only taxonomy that
+     * remains specific to Job Normalizer.
+     */
 
     @Valid
     @NotNull
-    private Location location = new Location();
+    private JobType jobType =
+            new JobType();
 
     @Valid
     @NotNull
-    private Seniority seniority = new Seniority();
+    private Salary salary =
+            new Salary();
 
     @Valid
     @NotNull
-    private JobType jobType = new JobType();
+    private Experience experience =
+            new Experience();
 
     @Valid
     @NotNull
-    private Salary salary = new Salary();
-
-    @Valid
-    @NotNull
-    private Experience experience = new Experience();
-
-    @Valid
-    @NotNull
-    private DateRules date = new DateRules();
-
-    @Getter
-    @Setter
-    public static class Skill {
-
-        @Min(1)
-        private int richRawSkillCount = 2;
-
-        private Set<String> ambiguousProseAliases =
-                new LinkedHashSet<>();
-
-        private Set<String> safeShortProseAliases =
-                new LinkedHashSet<>();
-
-        @Valid
-        @NotEmpty
-        private List<CanonicalAlias> aliases =
-                new ArrayList<>();
-    }
-
-    @Getter
-    @Setter
-    public static class Location {
-
-        private Set<String> ignoredValues =
-                new LinkedHashSet<>();
-
-        @Valid
-        @NotEmpty
-        private List<CanonicalAlias> aliases =
-                new ArrayList<>();
-    }
-
-    @Getter
-    @Setter
-    public static class CanonicalAlias {
-
-        @NotBlank
-        private String canonical;
-
-        private List<String> aliases =
-                new ArrayList<>();
-    }
-
-    @Getter
-    @Setter
-    public static class Seniority {
-
-        @Valid
-        @NotEmpty
-        private List<SeniorityRule> rules =
-                new ArrayList<>();
-
-        @Valid
-        @NotNull
-        private ExperienceThresholds experience =
-                new ExperienceThresholds();
-    }
-
-    @Getter
-    @Setter
-    public static class SeniorityRule {
-
-        @NotNull
-        private SeniorityLevel level;
-
-        @NotEmpty
-        private List<@NotBlank String> patterns =
-                new ArrayList<>();
-
-        private List<@NotBlank String> excludePatterns =
-                new ArrayList<>();
-
-        private List<@NotBlank String> allowPatterns =
-                new ArrayList<>();
-    }
-
-    @Getter
-    @Setter
-    public static class ExperienceThresholds {
-
-        @DecimalMin("0.0")
-        private double fresherUnder = 1.0;
-
-        @DecimalMin("0.0")
-        private double juniorUnder = 2.0;
-
-        @DecimalMin("0.0")
-        private double midUnder = 5.0;
-    }
+    private DateRules date =
+            new DateRules();
 
     @Getter
     @Setter
@@ -268,12 +187,6 @@ public class NormalizationTaxonomyProperties {
         YEAR,
         MONTH
     }
-
-    /*
-     * ============================================================
-     * Date normalization
-     * ============================================================
-     */
 
     @Getter
     @Setter

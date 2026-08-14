@@ -188,7 +188,7 @@ def generate_integration_fixtures(
                 "SENIOR_ACCOUNTANT"
             ),
             expected_skill=(
-                "Financial Reporting"
+                "Lập báo cáo tài chính"
             ),
         ),
         GeneratedCvFixture(
@@ -273,7 +273,7 @@ def generate_integration_fixtures(
             expected_normalized_job_title=(
                 "REGISTERED_NURSE"
             ),
-            expected_skill="Patient Care",
+            expected_skill="Chăm sóc bệnh nhân",
         ),
     )
 

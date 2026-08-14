@@ -16,8 +16,8 @@ from app.taxonomy.taxonomy_loader import TaxonomyBundle
         (
                 "Financial Reporting, Tax Accounting, Auditing, Microsoft Excel",
                 {
-                    "Financial Reporting",
-                    "Tax Accounting",
+                    "Lập báo cáo tài chính",
+                    "Kế toán thuế",
                     "Auditing",
                     "Microsoft Excel",
                 },
@@ -43,7 +43,7 @@ from app.taxonomy.taxonomy_loader import TaxonomyBundle
         (
                 "Patient Care, Clinical Assessment, Infection Control, Medical Records",
                 {
-                    "Patient Care",
+                    "Chăm sóc bệnh nhân",
                     "Clinical Assessment",
                     "Infection Control",
                     "Medical Records",

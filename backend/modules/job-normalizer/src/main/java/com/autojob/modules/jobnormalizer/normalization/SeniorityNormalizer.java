@@ -1,49 +1,61 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.config.SharedSeniorityTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Component
 public class SeniorityNormalizer {
 
-    /**
-     * Rule regex được compile một lần khi Spring tạo bean,
-     * không compile lại mỗi lần normalize job.
-     */
     private final List<CompiledRule> rules;
 
-    /**
-     * Các threshold experience lấy từ seniority.yml.
-     */
-    private final NormalizationTaxonomyProperties.ExperienceThresholds
-            experienceThresholds;
+    private final ExperienceThresholds experienceThresholds;
 
     public SeniorityNormalizer(
-            NormalizationTaxonomyProperties taxonomyProperties
+            SharedSeniorityTaxonomyProperties taxonomyProperties
     ) {
-        NormalizationTaxonomyProperties.Seniority config =
-                taxonomyProperties.getSeniority();
+        validateSharedTaxonomy(
+                taxonomyProperties
+        );
 
-        this.rules = config
-                .getRules()
-                .stream()
-                .map(this::compileRule)
-                .toList();
+        this.rules =
+                taxonomyProperties
+                        .getLevels()
+                        .stream()
+                        .filter(
+                                definition ->
+                                        definition.getLevel()
+                                                != SeniorityLevel.UNKNOWN
+                        )
+                        .map(
+                                this::compileRule
+                        )
+                        .toList();
+
+        SharedSeniorityTaxonomyProperties.ExperienceThresholds
+                configured =
+                taxonomyProperties
+                        .getExperience();
 
         this.experienceThresholds =
-                config.getExperience();
+                new ExperienceThresholds(
+                        configured.getEntryLevelUnder(),
+                        configured.getJuniorUnder(),
+                        configured.getMidUnder()
+                );
     }
 
     /**
-     * Thứ tự ưu tiên:
+     * Priority:
      *
-     * 1. seniorityText
-     * 2. title
-     * 3. experience
+     * 1. explicit seniorityText
+     * 2. explicit title
+     * 3. experience fallback
      * 4. UNKNOWN
      */
     public SeniorityLevel normalize(
@@ -56,52 +68,61 @@ public class SeniorityNormalizer {
                         seniorityText
                 );
 
-        if (fromSeniorityText
-                != SeniorityLevel.UNKNOWN) {
+        if (
+                fromSeniorityText
+                        != SeniorityLevel.UNKNOWN
+        ) {
             return fromSeniorityText;
         }
 
         SeniorityLevel fromTitle =
-                detectExplicitLevel(title);
+                detectExplicitLevel(
+                        title
+                );
 
-        if (fromTitle
-                != SeniorityLevel.UNKNOWN) {
+        if (
+                fromTitle
+                        != SeniorityLevel.UNKNOWN
+        ) {
             return fromTitle;
         }
 
-        return inferFromExperience(experience);
+        return inferFromExperience(
+                experience
+        );
     }
 
     private SeniorityLevel detectExplicitLevel(
             String value
     ) {
         String folded =
-                NormalizationTextSupport.fold(value);
+                NormalizationTextSupport.fold(
+                        value
+                );
 
         if (folded.isBlank()) {
             return SeniorityLevel.UNKNOWN;
         }
 
         /*
-         * Priority nằm trong thứ tự rules của seniority.yml.
+         * Declaration order in shared/seniority.yml
+         * is explicit matching priority.
          *
-         * Ví dụ:
+         * Example:
          *
-         * DIRECTOR
-         * MANAGER
-         * LEAD
-         * SENIOR
-         * ...
+         * "Senior Sales Manager"
          *
-         * Vì vậy title "Senior Sales Manager"
-         * vẫn ra MANAGER nếu MANAGER đứng trước SENIOR.
+         * MANAGER appears before SENIOR,
+         * therefore result = MANAGER.
          */
         for (CompiledRule rule : rules) {
 
-            if (!matchesAny(
-                    rule.patterns(),
-                    folded
-            )) {
+            if (
+                    !matchesAny(
+                            rule.patterns(),
+                            folded
+                    )
+            ) {
                 continue;
             }
 
@@ -115,15 +136,6 @@ public class SeniorityNormalizer {
                 return rule.level();
             }
 
-            /*
-             * Nếu match exclude nhưng đồng thời match allow,
-             * rule vẫn được chấp nhận.
-             *
-             * Dùng cho trường hợp như LEAD:
-             *
-             * "Lead Generation"         -> không phải LEAD
-             * "Lead Generation Leader"  -> LEAD
-             */
             boolean explicitlyAllowed =
                     matchesAny(
                             rule.allowPatterns(),
@@ -141,101 +153,137 @@ public class SeniorityNormalizer {
     private SeniorityLevel inferFromExperience(
             ExperienceNormalizationResult experience
     ) {
-        if (experience == null
-                || !experience.known()) {
+        if (
+                experience == null
+                        || !experience.known()
+        ) {
             return SeniorityLevel.UNKNOWN;
         }
 
-        Double min = experience.min();
-        Double max = experience.max();
+        Double min =
+                experience.min();
 
-        /*
-         * Defensive handling nếu upstream đưa experience âm.
-         */
-        if (min != null && min < 0) {
+        Double max =
+                experience.max();
+
+        if (
+                min != null
+                        && min < 0
+        ) {
             min = null;
         }
 
-        if (max != null && max < 0) {
+        if (
+                max != null
+                        && max < 0
+        ) {
             max = null;
         }
 
-        if (min == null && max == null) {
+        if (
+                min == null
+                        && max == null
+        ) {
             return SeniorityLevel.UNKNOWN;
         }
 
         /*
-         * Giữ nguyên behavior cũ:
-         * ưu tiên min nếu có.
+         * Preserve the existing Job Normalizer
+         * policy for ranges:
+         *
+         * 2 - 4 years -> use 2 years.
          */
         double effectiveYears =
                 min != null
                         ? min
                         : max;
 
-        if (effectiveYears
-                < experienceThresholds.getFresherUnder()) {
-            return SeniorityLevel.FRESHER;
+        if (
+                effectiveYears
+                        < experienceThresholds
+                        .entryLevelUnder()
+        ) {
+            /*
+             * Generic low-experience fallback.
+             *
+             * INTERN / TRAINEE / FRESHER require
+             * an explicit textual signal.
+             */
+            return SeniorityLevel.ENTRY_LEVEL;
         }
 
-        if (effectiveYears
-                < experienceThresholds.getJuniorUnder()) {
+        if (
+                effectiveYears
+                        < experienceThresholds
+                        .juniorUnder()
+        ) {
             return SeniorityLevel.JUNIOR;
         }
 
-        if (effectiveYears
-                < experienceThresholds.getMidUnder()) {
+        if (
+                effectiveYears
+                        < experienceThresholds
+                        .midUnder()
+        ) {
             return SeniorityLevel.MID;
         }
 
         /*
-         * Experience fallback tuyệt đối không suy ra
-         * LEAD / MANAGER / DIRECTOR.
+         * Experience alone never infers
+         * organizational leadership.
          */
         return SeniorityLevel.SENIOR;
     }
 
     private CompiledRule compileRule(
-            NormalizationTaxonomyProperties.SeniorityRule rule
+            SharedSeniorityTaxonomyProperties.LevelDefinition
+                    definition
     ) {
         return new CompiledRule(
-                rule.getLevel(),
+                definition.getLevel(),
                 compilePatterns(
-                        rule.getPatterns()
+                        definition.getPatterns()
                 ),
                 compilePatterns(
-                        rule.getExcludePatterns()
+                        definition.getExcludePatterns()
                 ),
                 compilePatterns(
-                        rule.getAllowPatterns()
+                        definition.getAllowPatterns()
                 )
         );
     }
 
-    private List<Pattern> compilePatterns(
+    private static List<Pattern> compilePatterns(
             List<String> configuredPatterns
     ) {
-        if (configuredPatterns == null
-                || configuredPatterns.isEmpty()) {
+        if (
+                configuredPatterns == null
+                        || configuredPatterns.isEmpty()
+        ) {
             return List.of();
         }
 
         return configuredPatterns
                 .stream()
-                .filter(pattern ->
-                        pattern != null
-                                && !pattern.isBlank()
+                .filter(
+                        value ->
+                                value != null
+                                        && !value.isBlank()
                 )
-                .map(Pattern::compile)
+                .map(
+                        Pattern::compile
+                )
                 .toList();
     }
 
-    private boolean matchesAny(
+    private static boolean matchesAny(
             List<Pattern> patterns,
             String value
     ) {
-        if (patterns == null
-                || patterns.isEmpty()) {
+        if (
+                patterns == null
+                        || patterns.isEmpty()
+        ) {
             return false;
         }
 
@@ -244,9 +292,211 @@ public class SeniorityNormalizer {
                 .anyMatch(
                         pattern ->
                                 pattern
-                                        .matcher(value)
+                                        .matcher(
+                                                value
+                                        )
                                         .find()
                 );
+    }
+
+    private static void validateSharedTaxonomy(
+            SharedSeniorityTaxonomyProperties taxonomy
+    ) {
+        if (
+                taxonomy == null
+                        || taxonomy.getExperience() == null
+        ) {
+            throw new IllegalStateException(
+                    "Shared seniority taxonomy "
+                            + "experience configuration is missing"
+            );
+        }
+
+        List<SharedSeniorityTaxonomyProperties.LevelDefinition>
+                levels =
+                taxonomy.getLevels();
+
+        if (
+                levels == null
+                        || levels.isEmpty()
+        ) {
+            throw new IllegalStateException(
+                    "Shared seniority taxonomy "
+                            + "levels are missing"
+            );
+        }
+
+        SharedSeniorityTaxonomyProperties.ExperienceThresholds
+                thresholds =
+                taxonomy.getExperience();
+
+        if (
+                thresholds.getEntryLevelUnder() < 0
+                        || thresholds.getJuniorUnder() < 0
+                        || thresholds.getMidUnder() < 0
+                        || !(
+                        thresholds.getEntryLevelUnder()
+                                < thresholds.getJuniorUnder()
+                                && thresholds.getJuniorUnder()
+                                < thresholds.getMidUnder()
+                )
+        ) {
+            throw new IllegalStateException(
+                    "Shared seniority experience thresholds "
+                            + "must satisfy "
+                            + "0 <= entryLevelUnder "
+                            + "< juniorUnder < midUnder"
+            );
+        }
+
+        Set<SeniorityLevel> seenLevels =
+                new HashSet<>();
+
+        Set<Integer> seenRanks =
+                new HashSet<>();
+
+        Integer previousRank =
+                null;
+
+        for (
+                int index = 0;
+                index < levels.size();
+                index++
+        ) {
+            SharedSeniorityTaxonomyProperties.LevelDefinition
+                    definition =
+                    levels.get(
+                            index
+                    );
+
+            if (
+                    definition == null
+                            || definition.getLevel() == null
+                            || definition.getRank() == null
+            ) {
+                throw new IllegalStateException(
+                        "Invalid shared seniority "
+                                + "definition at index "
+                                + index
+                );
+            }
+
+            if (
+                    !seenLevels.add(
+                            definition.getLevel()
+                    )
+            ) {
+                throw new IllegalStateException(
+                        "Duplicate shared seniority level: "
+                                + definition.getLevel()
+                );
+            }
+
+            if (
+                    !seenRanks.add(
+                            definition.getRank()
+                    )
+            ) {
+                throw new IllegalStateException(
+                        "Duplicate shared seniority rank: "
+                                + definition.getRank()
+                );
+            }
+
+            if (
+                    previousRank != null
+                            && definition.getRank()
+                            >= previousRank
+            ) {
+                throw new IllegalStateException(
+                        "Shared seniority ranks must "
+                                + "strictly descend in "
+                                + "declaration order"
+                );
+            }
+
+            previousRank =
+                    definition.getRank();
+
+            if (
+                    definition.getLevel()
+                            != SeniorityLevel.UNKNOWN
+                            && (
+                            definition.getPatterns() == null
+                                    || definition.getPatterns().isEmpty()
+                    )
+            ) {
+                throw new IllegalStateException(
+                        "Shared seniority level requires "
+                                + "patterns: "
+                                + definition.getLevel()
+                );
+            }
+        }
+
+        SharedSeniorityTaxonomyProperties.LevelDefinition
+                last =
+                levels.get(
+                        levels.size() - 1
+                );
+
+        if (
+                last.getLevel()
+                        != SeniorityLevel.UNKNOWN
+        ) {
+            throw new IllegalStateException(
+                    "UNKNOWN must be the final "
+                            + "shared seniority rule"
+            );
+        }
+
+        if (
+                last.getPatterns() != null
+                        && !last.getPatterns().isEmpty()
+        ) {
+            throw new IllegalStateException(
+                    "UNKNOWN must not contain patterns"
+            );
+        }
+
+        Set<SeniorityLevel> expected =
+                Set.of(
+                        SeniorityLevel.EXECUTIVE,
+                        SeniorityLevel.DIRECTOR,
+                        SeniorityLevel.HEAD,
+                        SeniorityLevel.MANAGER,
+                        SeniorityLevel.SUPERVISOR,
+                        SeniorityLevel.LEAD,
+                        SeniorityLevel.SENIOR,
+                        SeniorityLevel.MID,
+                        SeniorityLevel.JUNIOR,
+                        SeniorityLevel.ENTRY_LEVEL,
+                        SeniorityLevel.FRESHER,
+                        SeniorityLevel.TRAINEE,
+                        SeniorityLevel.INTERN,
+                        SeniorityLevel.UNKNOWN
+                );
+
+        if (
+                !seenLevels.equals(
+                        expected
+                )
+        ) {
+            throw new IllegalStateException(
+                    "Shared seniority vocabulary mismatch. "
+                            + "Expected="
+                            + expected
+                            + ", actual="
+                            + seenLevels
+            );
+        }
+    }
+
+    private record ExperienceThresholds(
+            double entryLevelUnder,
+            double juniorUnder,
+            double midUnder
+    ) {
     }
 
     private record CompiledRule(

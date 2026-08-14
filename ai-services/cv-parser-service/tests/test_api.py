@@ -306,7 +306,7 @@ def test_parse_api_returns_structured_candidate_profile(
     )
 
     assert profile["preferredLocations"] == [
-        "Ho Chi Minh City",
+        "Hồ Chí Minh",
     ]
 
     assert profile["preferredWorkModes"] == [

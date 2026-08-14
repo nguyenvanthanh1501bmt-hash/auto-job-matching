@@ -675,7 +675,7 @@ def test_parses_training_separately_from_certification(
     )
 
     assert (
-            "Financial Reporting"
+            "Lập báo cáo tài chính"
             in course.related_skills
     )
 
@@ -769,8 +769,8 @@ def test_parses_career_preferences_only_from_preference_context(
     )
 
     assert result.preferred_locations == (
-        "Ho Chi Minh City",
-        "Hanoi",
+        "Hồ Chí Minh",
+        "Hà Nội",
     )
 
     assert set(

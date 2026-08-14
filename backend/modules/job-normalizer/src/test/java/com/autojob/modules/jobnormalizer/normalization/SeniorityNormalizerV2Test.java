@@ -1,6 +1,6 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.config.SharedSeniorityTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.domain.SeniorityLevel;
 import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,11 +14,14 @@ class SeniorityNormalizerV2Test {
 
     @BeforeEach
     void setUp() {
-        NormalizationTaxonomyProperties taxonomy =
-                TaxonomyTestLoader.load();
+        SharedSeniorityTaxonomyProperties taxonomy =
+                TaxonomyTestLoader
+                        .loadSharedSeniority();
 
         normalizer =
-                new SeniorityNormalizer(taxonomy);
+                new SeniorityNormalizer(
+                        taxonomy
+                );
     }
 
     @Test
@@ -29,7 +32,9 @@ class SeniorityNormalizerV2Test {
                         "Senior Accountant",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.SENIOR);
+        ).isEqualTo(
+                SeniorityLevel.SENIOR
+        );
 
         assertThat(
                 normalizer.normalize(
@@ -37,7 +42,9 @@ class SeniorityNormalizerV2Test {
                         "Junior Auditor",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.JUNIOR);
+        ).isEqualTo(
+                SeniorityLevel.JUNIOR
+        );
 
         assertThat(
                 normalizer.normalize(
@@ -45,7 +52,9 @@ class SeniorityNormalizerV2Test {
                         "Sales Manager",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.MANAGER);
+        ).isEqualTo(
+                SeniorityLevel.MANAGER
+        );
 
         assertThat(
                 normalizer.normalize(
@@ -53,7 +62,9 @@ class SeniorityNormalizerV2Test {
                         "Trưởng phòng Kinh doanh",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.MANAGER);
+        ).isEqualTo(
+                SeniorityLevel.MANAGER
+        );
 
         assertThat(
                 normalizer.normalize(
@@ -61,7 +72,9 @@ class SeniorityNormalizerV2Test {
                         "Trưởng nhóm tuyển dụng",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.LEAD);
+        ).isEqualTo(
+                SeniorityLevel.LEAD
+        );
 
         assertThat(
                 normalizer.normalize(
@@ -69,18 +82,22 @@ class SeniorityNormalizerV2Test {
                         "Marketing Director",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.DIRECTOR);
+        ).isEqualTo(
+                SeniorityLevel.DIRECTOR
+        );
     }
 
     @Test
-    void shouldTreatEntryLevelAsFresher() {
+    void shouldKeepEntryLevelDistinctFromFresher() {
         assertThat(
                 normalizer.normalize(
                         "Entry Level",
                         null,
                         null
                 )
-        ).isEqualTo(SeniorityLevel.FRESHER);
+        ).isEqualTo(
+                SeniorityLevel.ENTRY_LEVEL
+        );
 
         assertThat(
                 normalizer.normalize(
@@ -88,55 +105,112 @@ class SeniorityNormalizerV2Test {
                         "Mới tốt nghiệp - Kế toán",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.FRESHER);
+        ).isEqualTo(
+                SeniorityLevel.ENTRY_LEVEL
+        );
+
+        assertThat(
+                normalizer.normalize(
+                        null,
+                        "Fresher Java Developer",
+                        null
+                )
+        ).isEqualTo(
+                SeniorityLevel.FRESHER
+        );
     }
 
     @Test
-    void shouldTreatNoExperiencePhraseAsFresherWhenExplicit() {
+    void shouldTreatNoExperiencePhraseAsEntryLevelWhenExplicit() {
         assertThat(
                 normalizer.normalize(
                         "Không yêu cầu kinh nghiệm",
                         "Nhân viên bán hàng",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.FRESHER);
+        ).isEqualTo(
+                SeniorityLevel.ENTRY_LEVEL
+        );
     }
 
     @Test
     void shouldNeverInferManagerFromExperienceOnly() {
-        SeniorityLevel result = normalizer.normalize(
-                null,
-                "Chuyên viên vận hành",
-                new ExperienceNormalizationResult(
-                        10.0,
-                        null
+        assertThat(
+                normalizer.normalize(
+                        null,
+                        "Chuyên viên vận hành",
+                        new ExperienceNormalizationResult(
+                                10.0,
+                                null
+                        )
                 )
+        ).isEqualTo(
+                SeniorityLevel.SENIOR
         );
-
-        assertThat(result)
-                .isEqualTo(SeniorityLevel.SENIOR);
     }
 
     @Test
     void shouldNotMisclassifyLeadGenerationAsLeadership() {
-        SeniorityLevel result = normalizer.normalize(
-                null,
-                "Lead Generation Specialist",
-                null
+        assertThat(
+                normalizer.normalize(
+                        null,
+                        "Lead Generation Specialist",
+                        null
+                )
+        ).isEqualTo(
+                SeniorityLevel.UNKNOWN
         );
-
-        assertThat(result)
-                .isEqualTo(SeniorityLevel.UNKNOWN);
     }
 
     @Test
-    void shouldMapChiefAccountantToManagerNotDirector() {
+    void shouldMapChiefAccountantToHead() {
         assertThat(
                 normalizer.normalize(
                         null,
                         "Chief Accountant",
                         null
                 )
-        ).isEqualTo(SeniorityLevel.MANAGER);
+        ).isEqualTo(
+                SeniorityLevel.HEAD
+        );
+    }
+
+    @Test
+    void shouldSupportSupervisor() {
+        assertThat(
+                normalizer.normalize(
+                        null,
+                        "Giám sát bán hàng",
+                        null
+                )
+        ).isEqualTo(
+                SeniorityLevel.SUPERVISOR
+        );
+    }
+
+    @Test
+    void shouldSupportTrainee() {
+        assertThat(
+                normalizer.normalize(
+                        null,
+                        "Graduate Trainee",
+                        null
+                )
+        ).isEqualTo(
+                SeniorityLevel.TRAINEE
+        );
+    }
+
+    @Test
+    void shouldSupportExecutive() {
+        assertThat(
+                normalizer.normalize(
+                        null,
+                        "CEO",
+                        null
+                )
+        ).isEqualTo(
+                SeniorityLevel.EXECUTIVE
+        );
     }
 }

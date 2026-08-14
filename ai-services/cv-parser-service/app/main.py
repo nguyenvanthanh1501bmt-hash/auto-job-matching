@@ -28,15 +28,19 @@ from app.taxonomy.taxonomy_loader import (
 )
 
 
-LOGGER = logging.getLogger("autojob.cv_parser")
+LOGGER = logging.getLogger(
+    "autojob.cv_parser"
+)
 
-#  Cấu hình log của service
+
 def configure_logging(
         level: str,
 ) -> None:
-    # Cấu hình log level và format cho CV parser service.
     logging.basicConfig(
-        level=getattr(logging, level),
+        level=getattr(
+            logging,
+            level,
+        ),
         format=(
             "%(asctime)s %(levelname)s "
             "%(name)s %(message)s"
@@ -47,63 +51,105 @@ def configure_logging(
 def resolve_taxonomy_directory(
         configured_path: str,
 ) -> Path:
-    path = Path(configured_path)
+    path = Path(
+        configured_path
+    )
 
-    # Nếu đã là absolute path thì sử dụng trực tiếp.
     if path.is_absolute():
         return path
 
-    # Với relative path, resolve từ thư mục gốc của project.
-    project_root = Path(__file__).resolve().parent.parent
-    return project_root / path
+    project_root = (
+        Path(__file__)
+        .resolve()
+        .parent
+        .parent
+    )
+
+    return (
+            project_root
+            / path
+    )
 
 
 @asynccontextmanager
 async def lifespan(
         app: FastAPI,
 ) -> AsyncIterator[None]:
-    # Load settings và cấu hình logging khi service khởi động.
     settings = get_settings()
-    configure_logging(settings.log_level)
 
-    # Load taxonomy và kiểm tra đúng version mà parser yêu cầu.
-    taxonomy_directory = resolve_taxonomy_directory(
-        settings.taxonomy_directory
+    configure_logging(
+        settings.log_level
     )
+
+    taxonomy_directory = (
+        resolve_taxonomy_directory(
+            settings.taxonomy_directory
+        )
+    )
+
+    # TaxonomyLoader chính tự resolve shared skill taxonomy:
+    #
+    # /app/config/taxonomy/cv-parser
+    #              -> parent
+    # /app/config/taxonomy/shared/skills.yml
+    #
+    # Không còn SharedTaxonomyBundleLoader tạm.
     taxonomy = TaxonomyLoader(
         directory=taxonomy_directory,
-        expected_version=settings.parser_version,
+        expected_version=(
+            settings.parser_version
+        ),
     ).load()
 
-    # Khởi tạo các dependency dùng chung và lưu vào app.state.
     app.state.settings = settings
     app.state.taxonomy = taxonomy
-    app.state.storage = MinioStorage(settings)
-    app.state.extractor_factory = ExtractorFactory(settings)
-    app.state.text_normalizer = TextNormalizer(settings)
 
-    # Import tại đây để tránh circular import khi app khởi tạo.
-    from app.parsing.profile_parser import ProfileParser
+    app.state.storage = (
+        MinioStorage(
+            settings
+        )
+    )
 
-    app.state.profile_parser = ProfileParser(
-        settings=settings,
-        taxonomy=taxonomy,
+    app.state.extractor_factory = (
+        ExtractorFactory(
+            settings
+        )
+    )
+
+    app.state.text_normalizer = (
+        TextNormalizer(
+            settings
+        )
+    )
+
+    from app.parsing.profile_parser import (
+        ProfileParser,
+    )
+
+    app.state.profile_parser = (
+        ProfileParser(
+            settings=settings,
+            taxonomy=taxonomy,
+        )
     )
 
     LOGGER.info(
-        "CV parser service started parserVersion=%s taxonomyVersion=%s",
+        "CV parser service started "
+        "parserVersion=%s "
+        "taxonomyVersion=%s "
+        "skillTaxonomyVersion=%s",
         settings.parser_version,
         taxonomy.version,
+        "skill-v1",
     )
 
-    # Service bắt đầu nhận request sau khi toàn bộ dependency đã sẵn sàng.
     yield
 
-    LOGGER.info("CV parser service stopped")
+    LOGGER.info(
+        "CV parser service stopped"
+    )
 
 
-# Khởi tạo FastAPI application.
-# Tắt Swagger/OpenAPI để service không expose các endpoint documentation.
 app = FastAPI(
     title="AutoJob CV Parser Service",
     version=__version__,
@@ -113,18 +159,23 @@ app = FastAPI(
     openapi_url=None,
 )
 
-# Đăng ký các API endpoint xử lý CV.
-app.include_router(cv_router)
+app.include_router(
+    cv_router
+)
 
 
-@app.exception_handler(CvParserError)
+@app.exception_handler(
+    CvParserError
+)
 async def handle_cv_parser_error(
         request: Request,
         exception: CvParserError,
 ) -> JSONResponse:
-    # Xử lý các lỗi nghiệp vụ đã được định nghĩa của CV parser.
     LOGGER.warning(
-        "CV parser request failed code=%s rawCvId=%s path=%s",
+        "CV parser request failed "
+        "code=%s "
+        "rawCvId=%s "
+        "path=%s",
         exception.code,
         exception.raw_cv_id,
         request.url.path,
@@ -137,7 +188,9 @@ async def handle_cv_parser_error(
     )
 
     return JSONResponse(
-        status_code=exception.http_status,
+        status_code=(
+            exception.http_status
+        ),
         content=body.model_dump(
             by_alias=True,
             exclude_none=True,
@@ -145,34 +198,48 @@ async def handle_cv_parser_error(
     )
 
 
-@app.exception_handler(RequestValidationError)
+@app.exception_handler(
+    RequestValidationError
+)
 async def handle_request_validation_error(
         request: Request,
         exception: RequestValidationError,
 ) -> JSONResponse:
-    # Cố gắng lấy rawCvId từ request body để đưa vào log/error response.
+    del exception
+
     raw_cv_id = None
 
     try:
         body = await request.json()
-        candidate = body.get("rawCvId")
 
-        if isinstance(candidate, str):
-            # Giới hạn độ dài để tránh log dữ liệu quá lớn.
-            raw_cv_id = candidate[:100]
+        candidate = body.get(
+            "rawCvId"
+        )
+
+        if isinstance(
+                candidate,
+                str,
+        ):
+            raw_cv_id = (
+                candidate[:100]
+            )
 
     except Exception:
         raw_cv_id = None
 
     LOGGER.warning(
-        "CV parser request validation failed rawCvId=%s path=%s",
+        "CV parser request validation "
+        "failed rawCvId=%s path=%s",
         raw_cv_id,
         request.url.path,
     )
 
     response = CvErrorResponse(
         code="CV_INVALID_REQUEST",
-        message="The CV parse request is invalid",
+        message=(
+            "The CV parse request "
+            "is invalid"
+        ),
         rawCvId=raw_cv_id,
     )
 
@@ -190,10 +257,11 @@ async def handle_unexpected_error(
         request: Request,
         exception: Exception,
 ) -> JSONResponse:
-    # Catch-all cho các lỗi không được xử lý ở các handler phía trên.
     LOGGER.exception(
-        "Unexpected CV parser error path=%s",
+        "Unexpected CV parser error "
+        "path=%s",
         request.url.path,
+        exc_info=exception,
     )
 
     error = CvInternalError()
@@ -205,7 +273,9 @@ async def handle_unexpected_error(
     )
 
     return JSONResponse(
-        status_code=error.http_status,
+        status_code=(
+            error.http_status
+        ),
         content=body.model_dump(
             by_alias=True,
             exclude_none=True,
@@ -218,8 +288,9 @@ async def handle_unexpected_error(
     response_model=HealthResponse,
 )
 def health() -> HealthResponse:
-    # Health chỉ xác nhận service process đang hoạt động.
-    return HealthResponse(status="UP")
+    return HealthResponse(
+        status="UP"
+    )
 
 
 @app.get(
@@ -230,16 +301,27 @@ def health() -> HealthResponse:
 def ready(
         request: Request,
 ) -> ReadyResponse:
-    # Lấy các dependency đã được khởi tạo trong lifespan.
-    settings: Settings = request.app.state.settings
-    taxonomy: TaxonomyBundle = request.app.state.taxonomy
-    storage: MinioStorage = request.app.state.storage
+    settings: Settings = (
+        request.app.state.settings
+    )
+
+    taxonomy: TaxonomyBundle = (
+        request.app.state.taxonomy
+    )
+
+    storage: MinioStorage = (
+        request.app.state.storage
+    )
 
     details: list[str] = []
 
-    # Kiểm tra các dependency quan trọng của CV parser.
-    minio_ready = storage.check_readiness()
-    doc_ready = DocExtractor.is_ready()
+    minio_ready = (
+        storage.check_readiness()
+    )
+
+    doc_ready = (
+        DocExtractor.is_ready()
+    )
 
     if not minio_ready:
         details.append(
@@ -251,18 +333,37 @@ def ready(
             "antiword is unavailable"
         )
 
-    # Service chỉ READY khi cả MinIO và document extractor đều hoạt động.
     ready_status = (
         "UP"
-        if minio_ready and doc_ready
+        if (
+                minio_ready
+                and doc_ready
+        )
         else "DOWN"
     )
 
     return ReadyResponse(
         status=ready_status,
-        parser_version=settings.parser_version,
-        taxonomy_version=taxonomy.version,
-        minio="UP" if minio_ready else "DOWN",
-        doc_extractor="UP" if doc_ready else "DOWN",
+
+        parser_version=(
+            settings.parser_version
+        ),
+
+        taxonomy_version=(
+            taxonomy.version
+        ),
+
+        minio=(
+            "UP"
+            if minio_ready
+            else "DOWN"
+        ),
+
+        doc_extractor=(
+            "UP"
+            if doc_ready
+            else "DOWN"
+        ),
+
         details=details,
     )

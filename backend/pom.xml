@@ -13,12 +13,18 @@
         <module>common/common-dtos</module>
         <module>common/common-events</module>
         <module>common/embedding-client</module>
+
         <module>modules/job-crawler</module>
         <module>modules/job-normalizer</module>
         <module>modules/job-embedding</module>
+
         <module>modules/auth</module>
+
         <module>modules/cv</module>
         <module>modules/candidate-embedding</module>
+
+        <module>modules/matching</module>
+
         <module>autojob-app</module>
     </modules>
 

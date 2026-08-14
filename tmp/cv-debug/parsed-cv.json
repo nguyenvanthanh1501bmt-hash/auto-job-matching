@@ -1,0 +1,627 @@
+﻿{
+    "rawCvId":  "fea14214-12f9-4495-8eff-24abcc7454f2",
+    "fullName":  "NGUYEN VAN THANH",
+    "headline":  null,
+    "professionalSummary":  "Aspiring Full-stack Developer with hands-on experience building web applications using React, Next.js, Node.js, Express, MongoDB, and Supabase. Experienced in developing RESTful APIs, integrating frontend workflows with backend services, and implementing admin/user-facing features through academic and personal projects. Seeking an internship opportunity to contribute to real-world full-stack product development.",
+    "careerObjective":  null,
+    "contact":  {
+                    "email":  "nguyenvanthanh1501bmt@gmail.com",
+                    "phone":  "0769480948",
+                    "addressText":  "Thu Duc, Ho Chi Minh City",
+                    "city":  "Há» ChÃ­ Minh",
+                    "provinceOrState":  null,
+                    "country":  null,
+                    "postalCode":  null
+                },
+    "links":  [
+                  {
+                      "type":  "GITHUB",
+                      "url":  "https://github.com/nguyenvanthanh1501bmt-hash",
+                      "label":  "GitHub"
+                  },
+                  {
+                      "type":  "GITHUB",
+                      "url":  "https://github.com/cogramer/Ky-thuat-phat-trien-he-thong-Web-IE213.Q21-Nhom-6.git",
+                      "label":  "GitHub"
+                  },
+                  {
+                      "type":  "PERSONAL_WEBSITE",
+                      "url":  "https://blockchain-vehicle-marketplace.netlify.app",
+                      "label":  null
+                  },
+                  {
+                      "type":  "GITHUB",
+                      "url":  "https://github.com/23520904/deepreader.git",
+                      "label":  "GitHub"
+                  },
+                  {
+                      "type":  "PERSONAL_WEBSITE",
+                      "url":  "https://deepreader.nniisworking1606.id.vn",
+                      "label":  null
+                  },
+                  {
+                      "type":  "GITHUB",
+                      "url":  "https://github.com/nguyenvanthanh1501bmt-hash/ORDER.git",
+                      "label":  "GitHub"
+                  }
+              ],
+    "targetJobTitles":  [
+
+                        ],
+    "targetIndustries":  [
+
+                         ],
+    "preferredLocations":  [
+
+                           ],
+    "preferredWorkModes":  [
+
+                           ],
+    "preferredEmploymentTypes":  [
+
+                                 ],
+    "expectedSalaryText":  null,
+    "availabilityText":  null,
+    "skills":  [
+                   {
+                       "name":  "JavaScript",
+                       "normalizedName":  "JavaScript",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "TypeScript",
+                       "normalizedName":  "TypeScript",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "Java",
+                       "normalizedName":  "Java",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "HTML",
+                       "normalizedName":  "HTML",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "CSS",
+                       "normalizedName":  "CSS",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "React",
+                       "normalizedName":  "React",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "Next.js",
+                       "normalizedName":  "Next.js",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "Express",
+                       "normalizedName":  "Express",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "Tailwind CSS",
+                       "normalizedName":  "Tailwind CSS",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "MongoDB",
+                       "normalizedName":  "MongoDB",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "SQL Server",
+                       "normalizedName":  "SQL Server",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "PostgreSQL",
+                       "normalizedName":  "PostgreSQL",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Supabase",
+                       "normalizedName":  "Supabase",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "Git",
+                       "normalizedName":  "Git",
+                       "category":  "TOOL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "GitHub",
+                       "normalizedName":  "GitHub",
+                       "category":  "TOOL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION",
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "Postman",
+                       "normalizedName":  "Postman",
+                       "category":  "TOOL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Notion",
+                       "normalizedName":  "Notion",
+                       "category":  "TOOL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Draw.io",
+                       "normalizedName":  "Draw.io",
+                       "category":  "TOOL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Figma",
+                       "normalizedName":  "Figma",
+                       "category":  "SOFTWARE",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Problem Solving",
+                       "normalizedName":  "Problem Solving",
+                       "category":  "BUSINESS",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Critical Thinking",
+                       "normalizedName":  "Critical Thinking",
+                       "category":  "BUSINESS",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Communication",
+                       "normalizedName":  "Communication",
+                       "category":  "COMMUNICATION",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Teamwork",
+                       "normalizedName":  "Teamwork",
+                       "category":  "COMMUNICATION",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "SKILLS_SECTION"
+                                           ]
+                   },
+                   {
+                       "name":  "Node.js",
+                       "normalizedName":  "Node.js",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "Artificial Intelligence",
+                       "normalizedName":  "Artificial Intelligence",
+                       "category":  "TECHNICAL",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "PROJECTS"
+                                           ]
+                   },
+                   {
+                       "name":  "Restaurant Operations",
+                       "normalizedName":  "Restaurant Operations",
+                       "category":  "DOMAIN_KNOWLEDGE",
+                       "proficiencyText":  null,
+                       "normalizedProficiency":  null,
+                       "yearsOfExperience":  null,
+                       "lastUsedDate":  null,
+                       "evidenceSources":  [
+                                               "PROJECTS"
+                                           ]
+                   }
+               ],
+    "workExperiences":  [
+
+                        ],
+    "projects":  [
+                     {
+                         "name":  "Blockchain-Integrated Car Marketplace Platform",
+                         "role":  "Full-stack Developer",
+                         "domain":  null,
+                         "startDate":  null,
+                         "endDate":  null,
+                         "current":  null,
+                         "description":  null,
+                         "responsibilities":  [
+                                                  "Developed frontend and backend features for a car marketplace platform with blockchain integration support, focusing on admin management and user-facing workflows.",
+                                                  "Built RESTful APIs for dashboard, product, review, and contact management to support CRUD operations and admin data workflows.",
+                                                  "Implemented and improved blockchain web modules, including About, Wishlist, Forgot Password, Wallet management, responsive layouts, product browsing, and admin management screens."
+                                              ],
+                         "achievements":  [
+
+                                          ],
+                         "skills":  [
+                                        "React",
+                                        "Node.js",
+                                        "Express",
+                                        "MongoDB",
+                                        "JavaScript"
+                                    ],
+                         "tools":  [
+                                       "GitHub",
+                                       "Git"
+                                   ],
+                         "equipment":  [
+
+                                       ],
+                         "teamSizeText":  "3 members",
+                         "projectUrl":  "https://blockchain-vehicle-marketplace.netlify.app",
+                         "repositoryUrl":  "https://github.com/cogramer/Ky-thuat-phat-trien-he-thong-Web-IE213.Q21-Nhom-6.git"
+                     },
+                     {
+                         "name":  "DeepReader - AI-Powered Reading Platform",
+                         "role":  "Front-end Developer",
+                         "domain":  null,
+                         "startDate":  null,
+                         "endDate":  null,
+                         "current":  null,
+                         "description":  null,
+                         "responsibilities":  [
+                                                  "Built frontend modules for authentication, document library management, PDF reading workspace, AI learning panel, flashcards, user profile, and admin interfaces.",
+                                                  "Integrated REST APIs for RAG-based document chat, summarization, flashcard generation, semantic search, authentication, and reading progress tracking.",
+                                                  "Developed reusable UI components and connected frontend workflows with backend services to support AI-assisted reading and study features."
+                                              ],
+                         "achievements":  [
+
+                                          ],
+                         "skills":  [
+                                        "Artificial Intelligence",
+                                        "Next.js",
+                                        "TypeScript",
+                                        "Tailwind CSS"
+                                    ],
+                         "tools":  [
+                                       "GitHub",
+                                       "Git"
+                                   ],
+                         "equipment":  [
+
+                                       ],
+                         "teamSizeText":  "4 members",
+                         "projectUrl":  "https://deepreader.nniisworking1606.id.vn",
+                         "repositoryUrl":  "https://github.com/23520904/deepreader.git"
+                     },
+                     {
+                         "name":  "Restaurant Order Management System",
+                         "role":  "Full-stack Developer",
+                         "domain":  null,
+                         "startDate":  null,
+                         "endDate":  null,
+                         "current":  null,
+                         "description":  null,
+                         "responsibilities":  [
+                                                  "Built a role-based restaurant order management system with admin and staff interfaces for managing tables, bills, menu items, users, and dashboard metrics.",
+                                                  "Implemented authentication, CRUD operations, and server-side APIs using Supabase to support secure restaurant management workflows.",
+                                                  "Designed responsive UI pages and reusable components for order summaries, table status tracking, menu management, and performance monitoring."
+                                              ],
+                         "achievements":  [
+
+                                          ],
+                         "skills":  [
+                                        "Next.js",
+                                        "JavaScript",
+                                        "React",
+                                        "Tailwind CSS",
+                                        "Supabase",
+                                        "Restaurant Operations"
+                                    ],
+                         "tools":  [
+                                       "GitHub",
+                                       "Git"
+                                   ],
+                         "equipment":  [
+
+                                       ],
+                         "teamSizeText":  null,
+                         "projectUrl":  null,
+                         "repositoryUrl":  "https://github.com/nguyenvanthanh1501bmt-hash/ORDER.git"
+                     }
+                 ],
+    "educations":  [
+                       {
+                           "institutionName":  "VNUHCM - University of Information Technology",
+                           "degree":  null,
+                           "normalizedDegreeLevel":  null,
+                           "fieldOfStudy":  "Information Technology",
+                           "specialization":  null,
+                           "startDate":  "2023-09",
+                           "endDate":  null,
+                           "current":  true,
+                           "grade":  "8.03 / 10",
+                           "achievements":  [
+
+                                            ],
+                           "description":  "Expected Graduation: 2027"
+                       }
+                   ],
+    "certifications":  [
+                           {
+                               "name":  "TOEIC L\u0026R 635, S\u0026W 270",
+                               "issuer":  "IIG Vietnam",
+                               "issuedDate":  "2025-09",
+                               "expirationDate":  null,
+                               "expired":  null,
+                               "credentialId":  null,
+                               "credentialUrl":  null,
+                               "relatedSkills":  [
+
+                                                 ]
+                           }
+                       ],
+    "licenses":  [
+
+                 ],
+    "languages":  [
+
+                  ],
+    "awards":  [
+
+               ],
+    "publications":  [
+
+                     ],
+    "volunteerExperiences":  [
+
+                             ],
+    "activities":  [
+
+                   ],
+    "trainingCourses":  [
+
+                        ],
+    "interests":  [
+
+                  ],
+    "experienceYears":  null,
+    "seniority":  "UNKNOWN",
+    "highestEducationLevel":  null,
+    "recentJobTitles":  [
+
+                        ],
+    "recentCompanies":  [
+
+                        ],
+    "detectedLanguage":  "EN",
+    "sections":  [
+                     {
+                         "sectionType":  "HEADER",
+                         "heading":  null,
+                         "startOffset":  0,
+                         "endOffset":  163,
+                         "text":  null
+                     },
+                     {
+                         "sectionType":  "SUMMARY",
+                         "heading":  "S U M M A R Y",
+                         "startOffset":  163,
+                         "endOffset":  594,
+                         "text":  null
+                     },
+                     {
+                         "sectionType":  "EDUCATION",
+                         "heading":  "E D U C A T I O N",
+                         "startOffset":  594,
+                         "endOffset":  742,
+                         "text":  null
+                     },
+                     {
+                         "sectionType":  "PROJECTS",
+                         "heading":  "P R O J E C T S",
+                         "startOffset":  742,
+                         "endOffset":  2887,
+                         "text":  null
+                     },
+                     {
+                         "sectionType":  "CERTIFICATIONS",
+                         "heading":  "C E R T I F I C A T I O N S",
+                         "startOffset":  2887,
+                         "endOffset":  2968,
+                         "text":  null
+                     },
+                     {
+                         "sectionType":  "SKILLS",
+                         "heading":  "S K I L L S",
+                         "startOffset":  2968,
+                         "endOffset":  3259,
+                         "text":  null
+                     }
+                 ],
+    "parserVersion":  "rule-v1",
+    "parserWarnings":  [
+                           "HEADLINE_NOT_DETECTED",
+                           "OBJECTIVE_NOT_DETECTED",
+                           "WORK_EXPERIENCE_SECTION_NOT_DETECTED",
+                           "PREFERRED_LOCATION_NOT_DETECTED"
+                       ],
+    "parseQuality":  {
+                         "overallScore":  0.5917,
+                         "textExtractionScore":  0.9,
+                         "sectionDetectionScore":  0.7167,
+                         "workExperienceScore":  0.0,
+                         "missingImportantFields":  [
+                                                        "headline",
+                                                        "workExperiences"
+                                                    ],
+                         "ambiguousFields":  [
+
+                                             ]
+                     },
+    "createdAt":  "2026-08-14T05:44:42.869663477Z",
+    "updatedAt":  "2026-08-14T05:44:42.869663477Z"
+}

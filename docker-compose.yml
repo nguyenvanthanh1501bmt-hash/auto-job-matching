@@ -116,11 +116,20 @@ services:
         condition: service_completed_successfully
     ports:
       - "${CV_PARSER_SERVICE_PORT:-8003}:8003"
+
     environment:
       CV_PARSER_APP_NAME: ${CV_PARSER_APP_NAME:-autojob-cv-parser-service}
       CV_PARSER_VERSION: ${CV_PARSER_VERSION:-rule-v1}
       LOG_LEVEL: ${CV_PARSER_LOG_LEVEL:-INFO}
-      CV_TAXONOMY_DIRECTORY: /app/config/taxonomy
+
+      # CV-specific taxonomy vẫn nằm đây.
+      #
+      # Shared skill loader sẽ resolve:
+      #
+      # /app/config/taxonomy/cv-parser
+      #                ↓ parent
+      # /app/config/taxonomy/shared/skills.yml
+      CV_TAXONOMY_DIRECTORY: /app/config/taxonomy/cv-parser
 
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
@@ -150,8 +159,17 @@ services:
       CV_MAX_PDF_PAGES: ${CV_MAX_PDF_PAGES:-100}
       CV_ALLOWED_OBJECT_PREFIXES: '${CV_ALLOWED_OBJECT_PREFIXES:-["raw/","cvs/"]}'
 
+    # Mount config root thay vì chỉ cv-parser taxonomy.
+    #
+    # Nhờ vậy container đọc được:
+    #
+    # /app/config/taxonomy/cv-parser
+    # /app/config/taxonomy/shared
+    #
+    # Sau này shared location/seniority cũng không cần
+    # thêm volume mới.
     volumes:
-      - ./configs/taxonomy/cv-parser:/app/config/taxonomy:ro
+      - ./configs:/app/config:ro
 
     healthcheck:
       test:
@@ -224,7 +242,15 @@ services:
 
     environment:
       SERVER_PORT: "8080"
-      AUTOJOB_TAXONOMY_DIR: /app/config/taxonomy
+
+      # Job-specific taxonomy còn lại.
+      AUTOJOB_TAXONOMY_DIR: /app/config/taxonomy/job-normalizer
+
+      # Shared taxonomy mới.
+      AUTOJOB_SHARED_TAXONOMY_DIR: /app/config/taxonomy/shared
+
+      # Matching configuration từ Batch 1.
+      AUTOJOB_MATCHING_CONFIG: /app/config/matching/ranking.yml
 
       SPRING_DATA_MONGODB_URI: >-
         mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-password}@mongo:27017/${MONGO_DATABASE:-autojob}?authSource=admin
@@ -289,8 +315,15 @@ services:
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_TRUST_FORWARDED_HEADERS: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:-false}
 
+    # Java cũng mount config root.
+    #
+    # Nó cần:
+    #
+    # /app/config/taxonomy/job-normalizer
+    # /app/config/taxonomy/shared
+    # /app/config/matching/ranking.yml
     volumes:
-      - ./configs/taxonomy/job-normalizer:/app/config/taxonomy:ro
+      - ./configs:/app/config:ro
 
     healthcheck:
       test:

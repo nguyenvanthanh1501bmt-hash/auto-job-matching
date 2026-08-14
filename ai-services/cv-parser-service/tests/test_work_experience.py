@@ -64,7 +64,7 @@ def test_parses_multiple_work_experiences(
     assert first.job_title == "Senior Accountant"
     assert first.normalized_job_title == "SENIOR_ACCOUNTANT"
     assert first.company_name == "ABC Manufacturing"
-    assert first.location == "Ho Chi Minh City"
+    assert first.location == "Hồ Chí Minh"
     assert first.start_date == "2021-01"
     assert first.end_date is None
     assert first.current is True

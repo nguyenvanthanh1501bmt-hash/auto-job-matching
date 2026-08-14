@@ -158,7 +158,7 @@ def test_extracts_vietnamese_contact_and_location(
         "12 Nguyễn Huệ, Thành phố Hồ Chí Minh, Việt Nam"
     )
 
-    assert result.contact.city == "Ho Chi Minh City"
+    assert result.contact.city == "Hồ Chí Minh"
     assert result.contact.country == "Vietnam"
     assert result.contact.postal_code == "700000"
 
@@ -336,7 +336,7 @@ def test_extracts_address_from_single_line_contact_fields(
         "Thu Duc, Ho Chi Minh City"
     )
     assert result.contact.city == (
-        "Ho Chi Minh City"
+        "Hồ Chí Minh"
     )
 
 
@@ -396,7 +396,7 @@ def test_extracts_unaccented_vietnamese_address_label(
         "Quan 1, TP.HCM"
     )
     assert result.contact.city == (
-        "Ho Chi Minh City"
+        "Hồ Chí Minh"
     )
 
 
@@ -509,7 +509,7 @@ def test_prefers_labelled_address_for_location_normalization(
     assert result.contact.address_text == (
         "Da Nang, Vietnam"
     )
-    assert result.contact.city == "Da Nang"
+    assert result.contact.city == "Đà Nẵng"
     assert result.contact.country == "Vietnam"
 
 def test_location_kind_metadata_classifies_region_without_hardcoded_name(

@@ -1,1 +1,35 @@
-# Placeholder ranking configuration for matching.
+autojob:
+  matching:
+    # Version của ranking strategy.
+    # Sau này nếu thay đổi công thức scoring lớn thì bump version.
+    version: ${MATCHING_VERSION:hybrid-v1}
+
+    retrieval:
+      # Semantic search lấy nhiều hơn số result cuối cùng
+      # để structured scoring có không gian rerank.
+      candidate-pool-size: ${MATCHING_CANDIDATE_POOL_SIZE:100}
+
+      # Số match cuối cùng mặc định.
+      result-limit: ${MATCHING_RESULT_LIMIT:20}
+
+    compatibility:
+      # Matching chỉ dùng normalized jobs đúng version.
+      normalization-version: ${MATCHING_NORMALIZATION_VERSION:rule-v2}
+
+      # Candidate embedding hiện tại đã có textVersion.
+      candidate-text-version: ${MATCHING_CANDIDATE_TEXT_VERSION:candidate-text-v1}
+
+      # Batch sau sẽ đưa JobEmbedding về cùng cơ chế textVersion.
+      job-text-version: ${MATCHING_JOB_TEXT_VERSION:job-text-v2}
+
+    weights:
+      # Tổng phải bằng 1.0.
+      semantic: ${MATCHING_WEIGHT_SEMANTIC:0.50}
+      skill: ${MATCHING_WEIGHT_SKILL:0.30}
+      seniority: ${MATCHING_WEIGHT_SENIORITY:0.10}
+      location: ${MATCHING_WEIGHT_LOCATION:0.05}
+      freshness: ${MATCHING_WEIGHT_FRESHNESS:0.05}
+
+    freshness:
+      fresh-days: ${MATCHING_FRESH_DAYS:7}
+      max-age-days: ${MATCHING_MAX_AGE_DAYS:30}

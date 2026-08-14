@@ -1,275 +1,45 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
-from app.normalization.text_normalizer import normalize_for_matching
 from app.schemas import WorkExperience
-
-
-SENIORITY_ORDER = {
-    "INTERN": 0,
-    "TRAINEE": 1,
-    "FRESHER": 2,
-    "ENTRY_LEVEL": 3,
-    "JUNIOR": 4,
-    "MID": 5,
-    "SENIOR": 6,
-    "LEAD": 7,
-    "SUPERVISOR": 8,
-    "MANAGER": 9,
-    "HEAD": 10,
-    "DIRECTOR": 11,
-    "EXECUTIVE": 12,
-    "UNKNOWN": -1,
-}
-
-TITLE_PATTERNS: tuple[
-    tuple[
-        str,
-        tuple[re.Pattern[str], ...],
-    ],
-    ...,
-] = (
-    (
-        "EXECUTIVE",
-        (
-            re.compile(
-                r"\bchief\s+executive\s+officer\b"
-            ),
-            re.compile(
-                r"\bchief\s+operating\s+officer\b"
-            ),
-            re.compile(
-                r"\bchief\s+financial\s+officer\b"
-            ),
-            re.compile(
-                r"\bchief\s+technology\s+officer\b"
-            ),
-            re.compile(
-                r"\bchief\s+information\s+officer\b"
-            ),
-            re.compile(
-                r"\bchief\s+marketing\s+officer\b"
-            ),
-            re.compile(
-                r"\bmanaging\s+director\b"
-            ),
-            re.compile(
-                r"\bgeneral\s+director\b"
-            ),
-            re.compile(r"\bpresident\b"),
-            re.compile(r"\bceo\b"),
-            re.compile(r"\bcoo\b"),
-            re.compile(r"\bcfo\b"),
-            re.compile(r"\bcto\b"),
-            re.compile(r"\bcio\b"),
-            re.compile(r"\bcmo\b"),
-            re.compile(
-                r"\btổng\s+giám\s+đốc\b"
-            ),
-            re.compile(
-                r"\bphó\s+tổng\s+giám\s+đốc\b"
-            ),
-        ),
-    ),
-    (
-        "DIRECTOR",
-        (
-            re.compile(r"\bdirector\b"),
-            re.compile(r"\bgiám\s+đốc\b"),
-            re.compile(
-                r"\bphó\s+giám\s+đốc\b"
-            ),
-        ),
-    ),
-    (
-        "HEAD",
-        (
-            re.compile(r"\bhead\s+of\b"),
-            re.compile(
-                r"\bdepartment\s+head\b"
-            ),
-            re.compile(
-                r"\bchief\s+accountant\b"
-            ),
-            re.compile(r"\bhead\s+chef\b"),
-            re.compile(
-                r"\bexecutive\s+chef\b"
-            ),
-            re.compile(r"\bhead\s+nurse\b"),
-            re.compile(
-                r"\btrưởng\s+bộ\s+phận\b"
-            ),
-            re.compile(
-                r"\btrưởng\s+khoa\b"
-            ),
-            re.compile(
-                r"\bkế\s+toán\s+trưởng\b"
-            ),
-            re.compile(
-                r"\bbếp\s+trưởng\b"
-            ),
-        ),
-    ),
-    (
-        "MANAGER",
-        (
-            re.compile(r"\bmanager\b"),
-            re.compile(
-                r"\bbranch\s+manager\b"
-            ),
-            re.compile(
-                r"\bstore\s+manager\b"
-            ),
-            re.compile(
-                r"\boperations\s+manager\b"
-            ),
-            re.compile(
-                r"\bwarehouse\s+manager\b"
-            ),
-            re.compile(r"\bquản\s+lý\b"),
-            re.compile(
-                r"\btrưởng\s+phòng\b"
-            ),
-            re.compile(
-                r"\btrưởng\s+ban\b"
-            ),
-        ),
-    ),
-    (
-        "SUPERVISOR",
-        (
-            re.compile(r"\bsupervisor\b"),
-            re.compile(r"\bforeman\b"),
-            re.compile(
-                r"\bshift\s+supervisor\b"
-            ),
-            re.compile(
-                r"\bgiám\s+sát\b"
-            ),
-            re.compile(
-                r"\bca\s+trưởng\b"
-            ),
-            re.compile(
-                r"\btổ\s+trưởng\b"
-            ),
-        ),
-    ),
-    (
-        "LEAD",
-        (
-            re.compile(
-                r"\bteam\s+lead(?:er)?\b"
-            ),
-            re.compile(r"\blead\b"),
-            re.compile(
-                r"\btrưởng\s+nhóm\b"
-            ),
-            re.compile(
-                r"\bnhóm\s+trưởng\b"
-            ),
-        ),
-    ),
-    (
-        "SENIOR",
-        (
-            re.compile(r"\bsenior\b"),
-            re.compile(r"\bprincipal\b"),
-            re.compile(
-                r"\bstaff\s+"
-                r"(?:engineer|nurse|accountant|specialist)\b"
-            ),
-            re.compile(r"\bexperienced\b"),
-            re.compile(
-                r"\bcao\s+cấp\b"
-            ),
-            re.compile(
-                r"\bchuyên\s+viên\s+chính\b"
-            ),
-        ),
-    ),
-    (
-        "MID",
-        (
-            re.compile(
-                r"\bmid(?:dle)?[-\s]?level\b"
-            ),
-            re.compile(
-                r"\bintermediate\s+level\b"
-            ),
-        ),
-    ),
-    (
-        "JUNIOR",
-        (
-            re.compile(r"\bjunior\b"),
-            re.compile(r"\bassociate\b"),
-            re.compile(
-                r"\bsơ\s+cấp\b"
-            ),
-        ),
-    ),
-    (
-        "ENTRY_LEVEL",
-        (
-            re.compile(
-                r"\bentry[-\s]?level\b"
-            ),
-            re.compile(
-                r"\bnew\s+graduate\b"
-            ),
-            re.compile(
-                r"\bgraduate\s+"
-                r"(?:role|position|program)\b"
-            ),
-            re.compile(
-                r"\bmới\s+tốt\s+nghiệp\b"
-            ),
-        ),
-    ),
-    (
-        "FRESHER",
-        (
-            re.compile(r"\bfresher\b"),
-            re.compile(
-                r"\bfresh\s+graduate\b"
-            ),
-        ),
-    ),
-    (
-        "TRAINEE",
-        (
-            re.compile(r"\btrainee\b"),
-            re.compile(
-                r"\bmanagement\s+trainee\b"
-            ),
-            re.compile(
-                r"\bhọc\s+việc\b"
-            ),
-        ),
-    ),
-    (
-        "INTERN",
-        (
-            re.compile(
-                r"\bintern(?:ship)?\b"
-            ),
-            re.compile(
-                r"\bthực\s+tập\s+sinh\b"
-            ),
-        ),
-    ),
+from app.taxonomy.shared_taxonomy_loader import (
+    SharedSeniorityLevel,
+    SharedSeniorityTaxonomy,
 )
 
 
-@dataclass(frozen=True, slots=True)
+WHITESPACE_PATTERN = re.compile(
+    r"\s+"
+)
+
+
+EXPERIENCE_BANDS = {
+    "INTERN": 0,
+    "TRAINEE": 0,
+    "FRESHER": 0,
+    "ENTRY_LEVEL": 0,
+    "JUNIOR": 1,
+    "MID": 2,
+    "SENIOR": 3,
+}
+
+
+@dataclass(
+    frozen=True,
+    slots=True,
+)
 class SeniorityParseResult:
     seniority: str
     warnings: tuple[str, ...]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(
+    frozen=True,
+    slots=True,
+)
 class _Signal:
     seniority: str
     source_priority: int
@@ -277,7 +47,47 @@ class _Signal:
     title: str
 
 
+@dataclass(
+    frozen=True,
+    slots=True,
+)
+class _CompiledRule:
+    level: str
+    patterns: tuple[
+        re.Pattern[str],
+        ...
+    ]
+    exclude_patterns: tuple[
+        re.Pattern[str],
+        ...
+    ]
+    allow_patterns: tuple[
+        re.Pattern[str],
+        ...
+    ]
+
+
 class SeniorityParser:
+
+    def __init__(
+            self,
+            taxonomy: SharedSeniorityTaxonomy,
+    ) -> None:
+        self._taxonomy = taxonomy
+
+        self._rank_by_level = {
+            item.level: item.rank
+            for item in taxonomy.levels
+        }
+
+        self._rules = tuple(
+            self._compile_rule(
+                item
+            )
+            for item in taxonomy.levels
+            if item.level != "UNKNOWN"
+        )
+
     def parse(
             self,
             *,
@@ -295,8 +105,10 @@ class SeniorityParser:
         signals: list[_Signal] = []
 
         if headline is not None:
-            explicit = self._classify_title(
-                headline
+            explicit = (
+                self._classify_title(
+                    headline
+                )
             )
 
             if explicit is not None:
@@ -326,8 +138,10 @@ class SeniorityParser:
             if title is None:
                 continue
 
-            explicit = self._classify_title(
-                title
+            explicit = (
+                self._classify_title(
+                    title
+                )
             )
 
             if explicit is None:
@@ -348,8 +162,10 @@ class SeniorityParser:
         for index, title in enumerate(
                 target_job_titles
         ):
-            explicit = self._classify_title(
-                title
+            explicit = (
+                self._classify_title(
+                    title
+                )
             )
 
             if explicit is None:
@@ -367,8 +183,10 @@ class SeniorityParser:
                 )
             )
 
-        fallback = self._from_experience_years(
-            experience_years
+        fallback = (
+            self._from_experience_years(
+                experience_years
+            )
         )
 
         if not signals:
@@ -377,9 +195,12 @@ class SeniorityParser:
                 warnings=(),
             )
 
-        selected = self._select_signal(
-            signals
+        selected = (
+            self._select_signal(
+                signals
+            )
         )
+
         warnings: list[str] = []
 
         relevant_signals = [
@@ -398,66 +219,281 @@ class SeniorityParser:
 
         if len(explicit_levels) > 1:
             min_rank = min(
-                SENIORITY_ORDER[level]
+                self._rank(
+                    level
+                )
                 for level in explicit_levels
             )
 
             max_rank = max(
-                SENIORITY_ORDER[level]
+                self._rank(
+                    level
+                )
                 for level in explicit_levels
             )
 
-            if max_rank - min_rank >= 2:
-                warnings.append(
-                    "SENIORITY_SIGNALS_CONFLICT"
-                )
-
-        if fallback != "UNKNOWN":
-            selected_rank = SENIORITY_ORDER[
-                selected.seniority
-            ]
-            fallback_rank = SENIORITY_ORDER[
-                fallback
-            ]
-
             if (
-                    abs(
-                        selected_rank
-                        - fallback_rank
-                    )
-                    >= 3
+                    max_rank
+                    - min_rank
+                    >= 2
             ):
                 warnings.append(
                     "SENIORITY_SIGNALS_CONFLICT"
                 )
+
+        if (
+                fallback != "UNKNOWN"
+                and self._experience_signals_conflict(
+            selected.seniority,
+            fallback,
+        )
+        ):
+            warnings.append(
+                "SENIORITY_SIGNALS_CONFLICT"
+            )
 
         return SeniorityParseResult(
             seniority=selected.seniority,
             warnings=tuple(
-                dict.fromkeys(warnings)
+                dict.fromkeys(
+                    warnings
+                )
+            ),
+        )
+
+    def _classify_title(
+            self,
+            value: str,
+    ) -> str | None:
+        folded = (
+            self._fold(
+                value.replace(
+                    "_",
+                    " ",
+                )
+            )
+        )
+
+        if not folded:
+            return None
+
+        for rule in self._rules:
+            if not self._matches_any(
+                    rule.patterns,
+                    folded,
+            ):
+                continue
+
+            excluded = (
+                self._matches_any(
+                    rule.exclude_patterns,
+                    folded,
+                )
+            )
+
+            if not excluded:
+                return rule.level
+
+            explicitly_allowed = (
+                self._matches_any(
+                    rule.allow_patterns,
+                    folded,
+                )
+            )
+
+            if explicitly_allowed:
+                return rule.level
+
+        return None
+
+    def _select_signal(
+            self,
+            signals: list[_Signal],
+    ) -> _Signal:
+        return max(
+            signals,
+            key=lambda signal: (
+                signal.source_priority,
+                signal.recency_priority,
+                self._rank(
+                    signal.seniority
+                ),
+            ),
+        )
+
+    def _from_experience_years(
+            self,
+            experience_years: float | None,
+    ) -> str:
+        if experience_years is None:
+            return "UNKNOWN"
+
+        if experience_years < 0:
+            return "UNKNOWN"
+
+        thresholds = (
+            self._taxonomy.experience
+        )
+
+        if (
+                experience_years
+                < thresholds.entry_level_under
+        ):
+            return "ENTRY_LEVEL"
+
+        if (
+                experience_years
+                < thresholds.junior_under
+        ):
+            return "JUNIOR"
+
+        if (
+                experience_years
+                < thresholds.mid_under
+        ):
+            return "MID"
+
+        return "SENIOR"
+
+    @staticmethod
+    def _experience_signals_conflict(
+            explicit_level: str,
+            experience_level: str,
+    ) -> bool:
+        """
+        Compare only levels that have a meaningful
+        experience-band interpretation.
+
+        Leadership hierarchy such as LEAD, MANAGER,
+        HEAD or DIRECTOR must not be compared to
+        years-of-experience fallback using raw rank.
+        """
+
+        explicit_band = (
+            EXPERIENCE_BANDS.get(
+                explicit_level
+            )
+        )
+
+        experience_band = (
+            EXPERIENCE_BANDS.get(
+                experience_level
+            )
+        )
+
+        if (
+                explicit_band is None
+                or experience_band is None
+        ):
+            return False
+
+        return (
+                abs(
+                    explicit_band
+                    - experience_band
+                )
+                >= 2
+        )
+
+    def _rank(
+            self,
+            level: str,
+    ) -> int:
+        try:
+            return self._rank_by_level[
+                level
+            ]
+        except KeyError as exception:
+            raise RuntimeError(
+                "Unknown shared seniority level: "
+                f"{level}"
+            ) from exception
+
+    @staticmethod
+    def _compile_rule(
+            item: SharedSeniorityLevel,
+    ) -> _CompiledRule:
+        return _CompiledRule(
+            level=item.level,
+            patterns=tuple(
+                re.compile(
+                    value
+                )
+                for value in item.patterns
+            ),
+            exclude_patterns=tuple(
+                re.compile(
+                    value
+                )
+                for value
+                in item.exclude_patterns
+            ),
+            allow_patterns=tuple(
+                re.compile(
+                    value
+                )
+                for value
+                in item.allow_patterns
             ),
         )
 
     @staticmethod
-    def _classify_title(
+    def _matches_any(
+            patterns: tuple[
+                re.Pattern[str],
+                ...
+            ],
             value: str,
-    ) -> str | None:
-        normalized = normalize_for_matching(
-            value.replace("_", " ")
+    ) -> bool:
+        return any(
+            pattern.search(
+                value
+            )
+            is not None
+            for pattern in patterns
         )
 
-        if not normalized:
-            return None
+    @staticmethod
+    def _fold(
+            value: str,
+    ) -> str:
+        if not value.strip():
+            return ""
 
-        for seniority, patterns in TITLE_PATTERNS:
-            if any(
-                    pattern.search(normalized)
-                    is not None
-                    for pattern in patterns
-            ):
-                return seniority
+        decomposed = (
+            unicodedata.normalize(
+                "NFD",
+                value,
+            )
+        )
 
-        return None
+        without_diacritics = "".join(
+            character
+            for character in decomposed
+            if unicodedata.category(
+                character
+            )
+            != "Mn"
+        )
+
+        without_diacritics = (
+            without_diacritics
+            .replace(
+                "đ",
+                "d",
+            )
+            .replace(
+                "Đ",
+                "D",
+            )
+        )
+
+        return WHITESPACE_PATTERN.sub(
+            " ",
+            without_diacritics
+            .casefold()
+            .strip(),
+            )
 
     @staticmethod
     def _ordered_work_experiences(
@@ -467,12 +503,22 @@ class SeniorityParser:
             ),
     ) -> list[WorkExperience]:
         indexed = list(
-            enumerate(work_experiences)
+            enumerate(
+                work_experiences
+            )
         )
 
         def sort_key(
-                item: tuple[int, WorkExperience],
-        ) -> tuple[int, str, str, int]:
+                item: tuple[
+                    int,
+                    WorkExperience,
+                ],
+        ) -> tuple[
+            int,
+            str,
+            str,
+            int,
+        ]:
             index, experience = item
 
             current_rank = (
@@ -511,38 +557,6 @@ class SeniorityParser:
 
         return [
             experience
-            for _, experience in indexed
+            for _, experience
+            in indexed
         ]
-
-    @staticmethod
-    def _select_signal(
-            signals: list[_Signal],
-    ) -> _Signal:
-        return max(
-            signals,
-            key=lambda signal: (
-                signal.source_priority,
-                signal.recency_priority,
-                SENIORITY_ORDER[
-                    signal.seniority
-                ],
-            ),
-        )
-
-    @staticmethod
-    def _from_experience_years(
-            experience_years: float | None,
-    ) -> str:
-        if experience_years is None:
-            return "UNKNOWN"
-
-        if experience_years < 0.5:
-            return "ENTRY_LEVEL"
-
-        if experience_years < 2.0:
-            return "JUNIOR"
-
-        if experience_years < 5.0:
-            return "MID"
-
-        return "SENIOR"

@@ -15,7 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-@Component
+@Component("normalizedJobEmbeddingTextBuilder")
 @RequiredArgsConstructor
 public class JobEmbeddingTextBuilder {
 

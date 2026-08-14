@@ -21,7 +21,7 @@ import java.time.Instant;
 @CompoundIndexes({
         @CompoundIndex(
                 name = "uk_job_embedding_job_version",
-                def = "{'normalizedJobId': 1, 'embeddingVersion': 1}",
+                def = "{'normalizedJobId': 1, 'embeddingVersion': 1, 'textVersion': 1}",
                 unique = true
         ),
         @CompoundIndex(
@@ -40,6 +40,14 @@ public class JobEmbedding {
 
     private String normalizedJobId;
     private String normalizationVersion;
+
+    /**
+     * Version của cách compose text đầu vào.
+     *
+     * Ví dụ:
+     * job-text-v2
+     */
+    private String textVersion;
 
     private String modelName;
     private String modelRevision;

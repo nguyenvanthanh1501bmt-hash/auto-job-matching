@@ -1,6 +1,6 @@
 package com.autojob.modules.jobnormalizer.normalization;
 
-import com.autojob.modules.jobnormalizer.config.NormalizationTaxonomyProperties;
+import com.autojob.modules.jobnormalizer.config.SharedLocationTaxonomyProperties;
 import com.autojob.modules.jobnormalizer.support.TaxonomyTestLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,80 +15,152 @@ class LocationNormalizerTest {
 
     @BeforeEach
     void setUp() {
-        NormalizationTaxonomyProperties taxonomy =
-                TaxonomyTestLoader.load();
+        SharedLocationTaxonomyProperties taxonomy =
+                TaxonomyTestLoader
+                        .loadSharedLocations();
 
-        locationNormalizer = new LocationNormalizer(
-                new TextNormalizer(),
-                taxonomy
-        );
+        locationNormalizer =
+                new LocationNormalizer(
+                        new TextNormalizer(),
+                        taxonomy
+                );
     }
 
     @Test
     void shouldNormalizeHoChiMinhAliases() {
-        assertThat(locationNormalizer.normalize("TP.HCM"))
-                .containsExactly("Hồ Chí Minh");
+        assertThat(
+                locationNormalizer.normalize(
+                        "TP.HCM"
+                )
+        ).containsExactly(
+                "Hồ Chí Minh"
+        );
 
-        assertThat(locationNormalizer.normalize("HCM"))
-                .containsExactly("Hồ Chí Minh");
+        assertThat(
+                locationNormalizer.normalize(
+                        "HCM"
+                )
+        ).containsExactly(
+                "Hồ Chí Minh"
+        );
 
-        assertThat(locationNormalizer.normalize("HCMC"))
-                .containsExactly("Hồ Chí Minh");
+        assertThat(
+                locationNormalizer.normalize(
+                        "HCMC"
+                )
+        ).containsExactly(
+                "Hồ Chí Minh"
+        );
 
-        assertThat(locationNormalizer.normalize("Hồ Chí Minh"))
-                .containsExactly("Hồ Chí Minh");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Hồ Chí Minh"
+                )
+        ).containsExactly(
+                "Hồ Chí Minh"
+        );
 
-        assertThat(locationNormalizer.normalize("Ho Chi Minh City"))
-                .containsExactly("Hồ Chí Minh");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Ho Chi Minh City"
+                )
+        ).containsExactly(
+                "Hồ Chí Minh"
+        );
     }
 
     @Test
     void shouldNormalizeHaNoiAliases() {
-        assertThat(locationNormalizer.normalize("Hà Nội"))
-                .containsExactly("Hà Nội");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Hà Nội"
+                )
+        ).containsExactly(
+                "Hà Nội"
+        );
 
-        assertThat(locationNormalizer.normalize("HN"))
-                .containsExactly("Hà Nội");
+        assertThat(
+                locationNormalizer.normalize(
+                        "HN"
+                )
+        ).containsExactly(
+                "Hà Nội"
+        );
 
-        assertThat(locationNormalizer.normalize("Hanoi"))
-                .containsExactly("Hà Nội");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Hanoi"
+                )
+        ).containsExactly(
+                "Hà Nội"
+        );
     }
 
     @Test
     void shouldNormalizeDaNangAliases() {
-        assertThat(locationNormalizer.normalize("Đà Nẵng"))
-                .containsExactly("Đà Nẵng");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Đà Nẵng"
+                )
+        ).containsExactly(
+                "Đà Nẵng"
+        );
 
-        assertThat(locationNormalizer.normalize("Da Nang"))
-                .containsExactly("Đà Nẵng");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Da Nang"
+                )
+        ).containsExactly(
+                "Đà Nẵng"
+        );
 
-        assertThat(locationNormalizer.normalize("Danang"))
-                .containsExactly("Đà Nẵng");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Danang"
+                )
+        ).containsExactly(
+                "Đà Nẵng"
+        );
     }
 
     @Test
-    void shouldNormalizeRemoteAliases() {
-        assertThat(locationNormalizer.normalize("Remote"))
-                .containsExactly("Remote");
+    void shouldExcludeNonGeographicWorkModeAliases() {
+        assertThat(
+                locationNormalizer.normalize(
+                        "Remote"
+                )
+        ).isEmpty();
 
-        assertThat(locationNormalizer.normalize("WFH"))
-                .containsExactly("Remote");
+        assertThat(
+                locationNormalizer.normalize(
+                        "WFH"
+                )
+        ).isEmpty();
 
-        assertThat(locationNormalizer.normalize("Work from home"))
-                .containsExactly("Remote");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Work from home"
+                )
+        ).isEmpty();
 
-        assertThat(locationNormalizer.normalize("Làm việc từ xa"))
-                .containsExactly("Remote");
+        assertThat(
+                locationNormalizer.normalize(
+                        "Làm việc từ xa"
+                )
+        ).isEmpty();
     }
 
     @Test
     void shouldNormalizeMultipleLocationsSeparatedBySlash() {
         List<String> result =
-                locationNormalizer.normalize("TP.HCM / Remote");
+                locationNormalizer.normalize(
+                        "TP.HCM / Remote"
+                );
 
-        assertThat(result).containsExactly(
-                "Hồ Chí Minh",
-                "Remote"
+        assertThat(
+                result
+        ).containsExactly(
+                "Hồ Chí Minh"
         );
     }
 
@@ -99,7 +171,9 @@ class LocationNormalizerTest {
                         "Hà Nội, Hồ Chí Minh, Đà Nẵng"
                 );
 
-        assertThat(result).containsExactly(
+        assertThat(
+                result
+        ).containsExactly(
                 "Hà Nội",
                 "Hồ Chí Minh",
                 "Đà Nẵng"
@@ -113,10 +187,11 @@ class LocationNormalizerTest {
                         "HCM | Hà Nội\nRemote"
                 );
 
-        assertThat(result).containsExactly(
+        assertThat(
+                result
+        ).containsExactly(
                 "Hồ Chí Minh",
-                "Hà Nội",
-                "Remote"
+                "Hà Nội"
         );
     }
 
@@ -127,9 +202,10 @@ class LocationNormalizerTest {
                         "TP.HCM, HCM, Hồ Chí Minh, Remote, WFH"
                 );
 
-        assertThat(result).containsExactly(
-                "Hồ Chí Minh",
-                "Remote"
+        assertThat(
+                result
+        ).containsExactly(
+                "Hồ Chí Minh"
         );
     }
 
@@ -140,7 +216,9 @@ class LocationNormalizerTest {
                         "Bắc Giang, Ninh Bình"
                 );
 
-        assertThat(result).containsExactly(
+        assertThat(
+                result
+        ).containsExactly(
                 "Bắc Giang",
                 "Ninh Bình"
         );
@@ -159,6 +237,13 @@ class LocationNormalizerTest {
 
     @Test
     void shouldKeepRemoteVietnamAsSingleUnknownDisplayLocation() {
+        /*
+         * This compound phrase is not an exact
+         * work-mode alias.
+         *
+         * Do not guess or destroy the raw display
+         * location until work-mode extraction exists.
+         */
         assertThat(
                 locationNormalizer.normalize(
                         "Remote - Vietnam"
@@ -193,7 +278,9 @@ class LocationNormalizerTest {
                                 + "Binh Duong, BÌNH DƯƠNG"
                 );
 
-        assertThat(result).containsExactly(
+        assertThat(
+                result
+        ).containsExactly(
                 "Hà Nội",
                 "Bình Dương"
         );
@@ -206,10 +293,23 @@ class LocationNormalizerTest {
                         "TP.HCM, Quận 1, Đường Nguyễn Huệ"
                 );
 
-        assertThat(result).containsExactly(
+        assertThat(
+                result
+        ).containsExactly(
                 "Hồ Chí Minh",
                 "Quận 1",
                 "Đường Nguyễn Huệ"
+        );
+    }
+
+    @Test
+    void shouldNotGuessAmbiguousDnAlias() {
+        assertThat(
+                locationNormalizer.normalize(
+                        "DN"
+                )
+        ).containsExactly(
+                "DN"
         );
     }
 
@@ -220,21 +320,31 @@ class LocationNormalizerTest {
                         "  Hồ   Chí Minh  /   Remote "
                 );
 
-        assertThat(result).containsExactly(
-                "Hồ Chí Minh",
-                "Remote"
+        assertThat(
+                result
+        ).containsExactly(
+                "Hồ Chí Minh"
         );
     }
 
     @Test
     void shouldReturnEmptyListForNullOrBlankInput() {
-        assertThat(locationNormalizer.normalize(null))
-                .isEmpty();
+        assertThat(
+                locationNormalizer.normalize(
+                        null
+                )
+        ).isEmpty();
 
-        assertThat(locationNormalizer.normalize(""))
-                .isEmpty();
+        assertThat(
+                locationNormalizer.normalize(
+                        ""
+                )
+        ).isEmpty();
 
-        assertThat(locationNormalizer.normalize("   "))
-                .isEmpty();
+        assertThat(
+                locationNormalizer.normalize(
+                        "   "
+                )
+        ).isEmpty();
     }
 }
