@@ -16,10 +16,16 @@ import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
-public class ItviecJobListPageParser implements JobListPageParser {
+public class ItviecJobListPageParser
+        implements JobListPageParser {
 
     private static final Pattern JOB_DETAIL_PATH_PATTERN =
-            Pattern.compile("^/it-jobs/[^?#]+-\\d{4}$");
+            Pattern.compile(
+                    "^/it-jobs/[^?#]+-\\d{4}$"
+            );
+
+    private static final String JOB_URL_DATA_ATTRIBUTE =
+            "data-search--job-selection-job-url-value";
 
     private final ObjectMapper objectMapper;
 
@@ -29,13 +35,50 @@ public class ItviecJobListPageParser implements JobListPageParser {
     }
 
     @Override
-    public List<String> parseDetailUrls(String baseUrl, String html) {
-        Document doc = Jsoup.parse(html, baseUrl);
+    public List<String> parseDetailUrls(
+            String baseUrl,
+            String html
+    ) {
+        Document doc = Jsoup.parse(
+                html,
+                baseUrl
+        );
 
         List<String> urls = new ArrayList<>();
 
-        urls.addAll(parseFromItemListJsonLd(doc));
-        urls.addAll(parseFromLinks(doc));
+        /*
+         * Quan trọng:
+         *
+         * ITviec hiện để URL job thật trong:
+         *
+         * data-search--job-selection-job-url-value
+         *
+         * Ví dụ:
+         *
+         * /it-jobs/java-developer-1234/content
+         *      ?job_index=0&locale=en
+         *
+         * Ta canonicalize nó về:
+         *
+         * https://itviec.com/it-jobs/java-developer-1234
+         */
+        urls.addAll(
+                parseFromJobDataAttributes(
+                        doc,
+                        baseUrl
+                )
+        );
+
+        /*
+         * Giữ fallback cũ.
+         */
+        urls.addAll(
+                parseFromItemListJsonLd(doc)
+        );
+
+        urls.addAll(
+                parseFromLinks(doc)
+        );
 
         return urls.stream()
                 .map(this::removeQueryAndFragment)
@@ -44,38 +87,135 @@ public class ItviecJobListPageParser implements JobListPageParser {
                 .toList();
     }
 
-    private List<String> parseFromItemListJsonLd(Document doc) {
+    private List<String> parseFromJobDataAttributes(
+            Document doc,
+            String baseUrl
+    ) {
         List<String> urls = new ArrayList<>();
 
-        for (Element script : doc.select("script[type=application/ld+json]")) {
+        for (
+                Element element :
+                doc.select(
+                        "["
+                                + JOB_URL_DATA_ATTRIBUTE
+                                + "]"
+                )
+        ) {
+            String rawUrl = element.attr(
+                    JOB_URL_DATA_ATTRIBUTE
+            );
+
+            if (rawUrl == null
+                    || rawUrl.isBlank()) {
+                continue;
+            }
+
+            String canonical =
+                    canonicalizeDataJobUrl(
+                            baseUrl,
+                            rawUrl
+                    );
+
+            if (canonical != null
+                    && !canonical.isBlank()) {
+
+                urls.add(canonical);
+            }
+        }
+
+        return urls;
+    }
+
+    private String canonicalizeDataJobUrl(
+            String baseUrl,
+            String rawUrl
+    ) {
+        try {
+            String absolute = URI
+                    .create(baseUrl)
+                    .resolve(rawUrl)
+                    .toString();
+
+            String clean =
+                    removeQueryAndFragment(
+                            absolute
+                    );
+
+            if (clean.endsWith("/content")) {
+                clean = clean.substring(
+                        0,
+                        clean.length()
+                                - "/content".length()
+                );
+            }
+
+            return clean;
+
+        } catch (Exception exception) {
+            return rawUrl;
+        }
+    }
+
+    private List<String> parseFromItemListJsonLd(
+            Document doc
+    ) {
+        List<String> urls =
+                new ArrayList<>();
+
+        for (
+                Element script :
+                doc.select(
+                        "script[type=application/ld+json]"
+                )
+        ) {
             String json = script.data();
 
-            if (json == null || json.isBlank()) {
+            if (json == null
+                    || json.isBlank()) {
                 json = script.html();
             }
 
-            if (json == null || json.isBlank()) {
+            if (json == null
+                    || json.isBlank()) {
                 continue;
             }
 
             try {
-                JsonNode node = objectMapper.readTree(json);
+                JsonNode node =
+                        objectMapper.readTree(json);
 
-                if (!"ItemList".equalsIgnoreCase(text(node, "@type"))) {
+                if (!"ItemList"
+                        .equalsIgnoreCase(
+                                text(
+                                        node,
+                                        "@type"
+                                )
+                        )) {
                     continue;
                 }
 
-                JsonNode itemList = node.path("itemListElement");
+                JsonNode itemList =
+                        node.path(
+                                "itemListElement"
+                        );
+
                 if (!itemList.isArray()) {
                     continue;
                 }
 
                 for (JsonNode item : itemList) {
-                    String url = text(item, "url");
-                    if (url != null && !url.isBlank()) {
+                    String url = text(
+                            item,
+                            "url"
+                    );
+
+                    if (url != null
+                            && !url.isBlank()) {
+
                         urls.add(url);
                     }
                 }
+
             } catch (Exception ignored) {
                 // Ignore invalid JSON-LD.
             }
@@ -84,26 +224,51 @@ public class ItviecJobListPageParser implements JobListPageParser {
         return urls;
     }
 
-    private List<String> parseFromLinks(Document doc) {
+    private List<String> parseFromLinks(
+            Document doc
+    ) {
         return doc.select("a[href]")
                 .stream()
-                .map(element -> element.absUrl("href"))
-                .filter(value -> value != null && !value.isBlank())
+                .map(
+                        element ->
+                                element.absUrl(
+                                        "href"
+                                )
+                )
+                .filter(
+                        value ->
+                                value != null
+                                        && !value.isBlank()
+                )
                 .toList();
     }
 
-    private boolean isItviecJobDetailUrl(String url) {
+    private boolean isItviecJobDetailUrl(
+            String url
+    ) {
         try {
             URI uri = URI.create(url);
+
+            String host = uri.getHost();
             String path = uri.getPath();
 
-            return path != null && JOB_DETAIL_PATH_PATTERN.matcher(path).matches();
-        } catch (Exception e) {
+            return host != null
+                    && host.equalsIgnoreCase(
+                    "itviec.com"
+            )
+                    && path != null
+                    && JOB_DETAIL_PATH_PATTERN
+                    .matcher(path)
+                    .matches();
+
+        } catch (Exception exception) {
             return false;
         }
     }
 
-    private String removeQueryAndFragment(String url) {
+    private String removeQueryAndFragment(
+            String url
+    ) {
         try {
             URI uri = URI.create(url);
 
@@ -114,19 +279,29 @@ public class ItviecJobListPageParser implements JobListPageParser {
                     null,
                     null
             ).toString();
-        } catch (Exception e) {
+
+        } catch (Exception exception) {
             return url;
         }
     }
 
-    private String text(JsonNode node, String fieldName) {
-        if (node == null || node.isMissingNode() || node.isNull()) {
+    private String text(
+            JsonNode node,
+            String fieldName
+    ) {
+        if (node == null
+                || node.isMissingNode()
+                || node.isNull()) {
+
             return null;
         }
 
-        JsonNode value = node.path(fieldName);
+        JsonNode value =
+                node.path(fieldName);
 
-        if (value.isMissingNode() || value.isNull()) {
+        if (value.isMissingNode()
+                || value.isNull()) {
+
             return null;
         }
 
