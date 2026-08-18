@@ -1,1 +1,476 @@
-# Placeholder OpenAPI contract for the AutoJob API.
+openapi: 3.0.3
+
+info:
+  title: AutoJob API
+  version: 0.1.0
+  description: |
+    Public API contract for AutoJob.
+
+    This contract currently documents the hybrid job matching endpoints.
+
+servers:
+  - url: http://localhost:8080
+    description: Local backend
+
+tags:
+  - name: Matching
+    description: Candidate-to-job hybrid matching
+
+paths:
+
+  /api/matching/candidates/{candidateProfileId}:
+
+    post:
+      tags:
+        - Matching
+
+      summary: Run hybrid matching
+
+      description: |
+        Runs hybrid candidate-to-job matching.
+
+        Pipeline:
+
+        Candidate profile
+        -> READY candidate embedding
+        -> Qdrant semantic retrieval
+        -> normalized job hydration
+        -> hybrid reranking
+        -> persisted match results.
+
+        By default an existing result for the same
+        candidate embedding and ranking version may be reused.
+
+        Set force=true to rebuild the result.
+
+        When public API mode is disabled,
+        the endpoint requires JWT authentication and
+        the candidate profile must belong to the authenticated user.
+
+      operationId: runCandidateMatching
+
+      parameters:
+
+        - name: candidateProfileId
+          in: path
+          required: true
+          description: Candidate profile identifier
+          schema:
+            type: string
+            minLength: 1
+
+        - name: force
+          in: query
+          required: false
+          description: |
+            When true, rerun Qdrant retrieval and hybrid ranking
+            even if the exact matching run already exists.
+          schema:
+            type: boolean
+            default: false
+
+      security:
+        - {}
+        - bearerAuth: []
+
+      responses:
+
+        "200":
+          description: Matching completed or existing result reused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingResponse"
+
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingErrorResponse"
+
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingErrorResponse"
+
+        "404":
+          description: Candidate profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingErrorResponse"
+
+        "409":
+          description: |
+            Candidate embedding is missing, stale,
+            invalid or not ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingErrorResponse"
+
+        "503":
+          description: Job vector store is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingErrorResponse"
+
+    get:
+      tags:
+        - Matching
+
+      summary: Get current hybrid matching result
+
+      description: |
+        Returns persisted matching results for the candidate's
+        current READY embedding and the current ranking version.
+
+        This endpoint does not rerun Qdrant search.
+
+        When public API mode is disabled,
+        the endpoint requires JWT authentication and
+        ownership of the candidate profile.
+
+      operationId: getCurrentCandidateMatching
+
+      parameters:
+
+        - name: candidateProfileId
+          in: path
+          required: true
+          description: Candidate profile identifier
+          schema:
+            type: string
+            minLength: 1
+
+      security:
+        - {}
+        - bearerAuth: []
+
+      responses:
+
+        "200":
+          description: Current matching result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingResponse"
+
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingErrorResponse"
+
+        "404":
+          description: |
+            Candidate profile or current matching result not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingErrorResponse"
+
+        "409":
+          description: |
+            Current candidate embedding is missing,
+            stale, invalid or not ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingErrorResponse"
+
+
+components:
+
+  securitySchemes:
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+
+  schemas:
+
+    MatchingResponse:
+      type: object
+      required:
+        - candidateProfileId
+        - candidateEmbeddingId
+        - rankingVersion
+        - retrievedCount
+        - loadedJobCount
+        - matchedCount
+        - reusedExisting
+        - results
+
+      properties:
+
+        candidateProfileId:
+          type: string
+
+        candidateEmbeddingId:
+          type: string
+
+        rankingVersion:
+          type: string
+          example: hybrid-v1
+
+        retrievedCount:
+          type: integer
+          format: int32
+          minimum: 0
+          description: |
+            Number of Qdrant vector hits retrieved during
+            the current invocation.
+
+            Zero when an existing result is reused.
+
+        loadedJobCount:
+          type: integer
+          format: int32
+          minimum: 0
+          description: |
+            Number of Qdrant hits successfully hydrated
+            from normalized_jobs.
+
+        matchedCount:
+          type: integer
+          format: int32
+          minimum: 0
+
+        reusedExisting:
+          type: boolean
+
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchItem"
+
+
+    MatchItem:
+      type: object
+      required:
+        - normalizedJobId
+        - rank
+        - job
+        - score
+        - matchedSkills
+        - missingSkills
+        - versions
+
+      properties:
+
+        normalizedJobId:
+          type: string
+
+        qdrantPointId:
+          type: string
+          nullable: true
+
+        rank:
+          type: integer
+          format: int32
+          minimum: 1
+
+        job:
+          $ref: "#/components/schemas/MatchedJobSnapshot"
+
+        score:
+          $ref: "#/components/schemas/ScoreBreakdown"
+
+        matchedSkills:
+          type: array
+          items:
+            type: string
+
+        missingSkills:
+          type: array
+          items:
+            type: string
+
+        versions:
+          $ref: "#/components/schemas/MatchingVersionSnapshot"
+
+        generatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+
+    MatchedJobSnapshot:
+      type: object
+
+      properties:
+
+        sourceCode:
+          type: string
+          nullable: true
+
+        sourceJobId:
+          type: string
+          nullable: true
+
+        title:
+          type: string
+          nullable: true
+
+        companyName:
+          type: string
+          nullable: true
+
+        locations:
+          type: array
+          items:
+            type: string
+
+        locationText:
+          type: string
+          nullable: true
+
+        salaryText:
+          type: string
+          nullable: true
+
+        jobType:
+          type: string
+          nullable: true
+          example: FULL_TIME
+
+        applyType:
+          type: string
+          nullable: true
+          example: DETAIL_PAGE_APPLY_BUTTON
+
+        detailUrl:
+          type: string
+          nullable: true
+
+        applyUrl:
+          type: string
+          nullable: true
+
+        postedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+        deadlineAt:
+          type: string
+          format: date-time
+          nullable: true
+
+
+    ScoreBreakdown:
+      type: object
+      required:
+        - finalScore
+        - semanticScore
+        - skillScore
+        - seniorityScore
+        - locationScore
+        - freshnessScore
+
+      properties:
+
+        finalScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+
+        semanticScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+
+        skillScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+
+        seniorityScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+
+        locationScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+
+        freshnessScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+
+
+    MatchingVersionSnapshot:
+      type: object
+
+      properties:
+
+        parserVersion:
+          type: string
+          nullable: true
+
+        normalizationVersion:
+          type: string
+          nullable: true
+
+        embeddingVersion:
+          type: string
+          nullable: true
+
+        candidateTextVersion:
+          type: string
+          nullable: true
+
+        jobTextVersion:
+          type: string
+          nullable: true
+
+        rankingVersion:
+          type: string
+          nullable: true
+
+
+    MatchingErrorResponse:
+      type: object
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+        - path
+
+      properties:
+
+        timestamp:
+          type: string
+          format: date-time
+
+        status:
+          type: integer
+          format: int32
+
+        error:
+          type: string
+          example: MATCHING_CANDIDATE_EMBEDDING_NOT_READY
+
+        message:
+          type: string
+
+        path:
+          type: string
+          example: /api/matching/candidates/abc123

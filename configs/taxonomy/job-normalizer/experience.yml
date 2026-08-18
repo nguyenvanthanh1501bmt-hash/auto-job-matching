@@ -30,7 +30,7 @@ autojob:
           - fresher
           - fresh graduate
 
-        # Dấu -, –, — vẫn giữ trong parser Java.
+        # Dấu -, –, — vẫn được parser Java xử lý.
         range-words:
           - den
           - to
@@ -53,3 +53,39 @@ autojob:
           - more than
           - minimum
           - toi thieu
+
+        # -------------------------------------------------------
+        # Context fallback
+        # -------------------------------------------------------
+        #
+        # Chỉ khi rawJob.experienceText không dùng được,
+        # ExperienceNormalizer mới tìm những phrase này
+        # trong requirements / description.
+        #
+        # Text được fold lowercase + bỏ dấu trước khi match.
+        #
+        # Đây là rule chung cho mọi domain.
+        context-phrases:
+          - kinh nghiem
+          - so nam kinh nghiem
+          - tham nien
+          - experience
+          - work experience
+          - professional experience
+          - relevant experience
+          - years of experience
+          - year of experience
+          - yrs of experience
+          - months of experience
+          - month of experience
+
+        # Chỉ nhìn local context quanh experience phrase.
+        #
+        # Tránh:
+        #
+        # graduation year = 2025
+        # team size = 5
+        # salary = 20 triệu
+        #
+        # bị hiểu nhầm thành experience.
+        context-window-chars: 120

@@ -22,12 +22,26 @@ public interface CandidateEmbeddingRepository
             String candidateProfileId
     );
 
+    /**
+     * Matching chỉ lấy embedding:
+     * - đúng candidate
+     * - READY
+     * - đúng candidate text version hiện tại
+     */
+    Optional<CandidateEmbedding>
+    findFirstByCandidateProfileIdAndStatusAndTextVersionOrderByUpdatedAtDesc(
+            String candidateProfileId,
+            CandidateEmbeddingStatus status,
+            String textVersion
+    );
+
     List<CandidateEmbedding>
     findAllByCandidateProfileIdOrderByUpdatedAtDesc(
             String candidateProfileId
     );
 
-    List<CandidateEmbedding> findByStatusOrderByUpdatedAtAsc(
+    List<CandidateEmbedding>
+    findByStatusOrderByUpdatedAtAsc(
             CandidateEmbeddingStatus status
     );
 }

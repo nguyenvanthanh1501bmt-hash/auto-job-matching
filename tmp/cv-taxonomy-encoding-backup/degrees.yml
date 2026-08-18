@@ -1,4 +1,4 @@
-version: rule-v2
+﻿version: rule-v2
 
 items:
   - level: DOCTORATE
@@ -8,8 +8,8 @@ items:
       - doctor of philosophy
       - PhD
       - Ph.D.
-      - tiến sĩ
-      - bằng tiến sĩ
+      - tiáº¿n sÄ©
+      - báº±ng tiáº¿n sÄ©
 
   - level: PROFESSIONAL_DEGREE
     aliases:
@@ -22,10 +22,10 @@ items:
       - bachelor of medicine
       - bachelor of surgery
       - MBBS
-      - bác sĩ
-      - bác sĩ y khoa
-      - dược sĩ chuyên khoa
-      - cử nhân luật hành nghề
+      - bÃ¡c sÄ©
+      - bÃ¡c sÄ© y khoa
+      - dÆ°á»£c sÄ© chuyÃªn khoa
+      - cá»­ nhÃ¢n luáº­t hÃ nh nghá»
 
   - level: MASTER
     aliases:
@@ -39,8 +39,8 @@ items:
       - MS
       - master of arts
       - MA
-      - thạc sĩ
-      - bằng thạc sĩ
+      - tháº¡c sÄ©
+      - báº±ng tháº¡c sÄ©
 
   - level: BACHELOR
     aliases:
@@ -56,11 +56,11 @@ items:
       - BEng
       - bachelor of business administration
       - BBA
-      - cử nhân
-      - kỹ sư
-      - bằng đại học
-      - tốt nghiệp đại học
-      - đại học
+      - cá»­ nhÃ¢n
+      - ká»¹ sÆ°
+      - báº±ng Ä‘áº¡i há»c
+      - tá»‘t nghiá»‡p Ä‘áº¡i há»c
+      - Ä‘áº¡i há»c
 
   - level: ASSOCIATE
     aliases:
@@ -75,9 +75,9 @@ items:
       - diploma
       - advanced diploma
       - higher diploma
-      - văn bằng
-      - bằng cao đẳng
-      - cao đẳng
+      - vÄƒn báº±ng
+      - báº±ng cao Ä‘áº³ng
+      - cao Ä‘áº³ng
 
   - level: VOCATIONAL
     aliases:
@@ -86,10 +86,10 @@ items:
       - vocational training
       - trade school
       - technical school
-      - trung cấp nghề
-      - sơ cấp nghề
-      - trường nghề
-      - đào tạo nghề
+      - trung cáº¥p nghá»
+      - sÆ¡ cáº¥p nghá»
+      - trÆ°á»ng nghá»
+      - Ä‘Ã o táº¡o nghá»
 
   - level: CERTIFICATE
     aliases:
@@ -97,8 +97,8 @@ items:
       - graduate certificate
       - post graduate certificate
       - postgraduate certificate
-      - chứng chỉ đào tạo
-      - chứng nhận đào tạo
+      - chá»©ng chá»‰ Ä‘Ã o táº¡o
+      - chá»©ng nháº­n Ä‘Ã o táº¡o
 
   - level: HIGH_SCHOOL
     aliases:
@@ -106,18 +106,18 @@ items:
       - high school diploma
       - secondary school diploma
       - upper secondary school
-      - trung học phổ thông
+      - trung há»c phá»• thÃ´ng
       - THPT
-      - tốt nghiệp cấp 3
+      - tá»‘t nghiá»‡p cáº¥p 3
 
   - level: SECONDARY
     aliases:
       - secondary school
       - lower secondary school
       - middle school
-      - trung học cơ sở
+      - trung há»c cÆ¡ sá»Ÿ
       - THCS
-      - tốt nghiệp cấp 2
+      - tá»‘t nghiá»‡p cáº¥p 2
 
   - level: OTHER
     aliases:

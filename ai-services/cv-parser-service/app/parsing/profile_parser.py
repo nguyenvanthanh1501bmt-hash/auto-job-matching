@@ -67,7 +67,9 @@ class ProfileParser:
         )
 
         self._experience_calculator = ExperienceCalculator()
-        self._seniority_parser = SeniorityParser(taxonomy.seniority)
+        self._seniority_parser = SeniorityParser(
+            taxonomy.seniority
+        )
         self._quality_calculator = ParseQualityCalculator()
 
     def parse(
@@ -120,39 +122,58 @@ class ProfileParser:
         skills = list(
             skill_result.skills
         )
+
         work_experiences = list(
             work_result.work_experiences
         )
+
         educations = list(
             education_result.educations
         )
 
-        experience_result = self._experience_calculator.calculate(
-            work_experiences,
-            raw_text,
+        experience_result = (
+            self._experience_calculator.calculate(
+                work_experiences,
+                raw_text,
+            )
         )
 
-        seniority_result = self._seniority_parser.parse(
-            headline=identity_result.headline,
-            target_job_titles=(
-                identity_result.target_job_titles
-            ),
-            work_experiences=work_experiences,
-            experience_years=(
-                experience_result.experience_years
-            ),
+        seniority_result = (
+            self._seniority_parser.parse(
+                headline=(
+                    identity_result.headline
+                ),
+                career_objective=(
+                    identity_result.career_objective
+                ),
+                target_job_titles=(
+                    identity_result.target_job_titles
+                ),
+                work_experiences=(
+                    work_experiences
+                ),
+                experience_years=(
+                    experience_result.experience_years
+                ),
+            )
         )
 
         warnings = self._collect_warnings(
-            extraction_warnings=extraction_warnings,
+            extraction_warnings=(
+                extraction_warnings
+            ),
             section_warnings=(
                 detected_sections.warnings
             ),
             identity_warnings=(
                 identity_result.warnings
             ),
-            skill_warnings=skill_result.warnings,
-            work_warnings=work_result.warnings,
+            skill_warnings=(
+                skill_result.warnings
+            ),
+            work_warnings=(
+                work_result.warnings
+            ),
             education_warnings=(
                 education_result.warnings
             ),
@@ -174,16 +195,26 @@ class ProfileParser:
             detected_sections.sections
         )
 
-        parse_quality = self._quality_calculator.calculate(
-            raw_text=raw_text,
-            sections=sections,
-            full_name=identity_result.full_name,
-            headline=identity_result.headline,
-            contact=contact_result.contact,
-            skills=skills,
-            work_experiences=work_experiences,
-            educations=educations,
-            parser_warnings=warnings,
+        parse_quality = (
+            self._quality_calculator.calculate(
+                raw_text=raw_text,
+                sections=sections,
+                full_name=(
+                    identity_result.full_name
+                ),
+                headline=(
+                    identity_result.headline
+                ),
+                contact=(
+                    contact_result.contact
+                ),
+                skills=skills,
+                work_experiences=(
+                    work_experiences
+                ),
+                educations=educations,
+                parser_warnings=warnings,
+            )
         )
 
         (
@@ -194,15 +225,21 @@ class ProfileParser:
         )
 
         profile = CandidateProfilePayload(
-            full_name=identity_result.full_name,
-            headline=identity_result.headline,
+            full_name=(
+                identity_result.full_name
+            ),
+            headline=(
+                identity_result.headline
+            ),
             professional_summary=(
                 identity_result.professional_summary
             ),
             career_objective=(
                 identity_result.career_objective
             ),
-            contact=contact_result.contact,
+            contact=(
+                contact_result.contact
+            ),
             links=list(
                 contact_result.links
             ),
@@ -228,7 +265,9 @@ class ProfileParser:
                 secondary_result.availability_text
             ),
             skills=skills,
-            work_experiences=work_experiences,
+            work_experiences=(
+                work_experiences
+            ),
             projects=list(
                 secondary_result.projects
             ),
@@ -263,12 +302,18 @@ class ProfileParser:
             experience_years=(
                 experience_result.experience_years
             ),
-            seniority=seniority_result.seniority,
+            seniority=(
+                seniority_result.seniority
+            ),
             highest_education_level=(
                 education_result.highest_education_level
             ),
-            recent_job_titles=recent_job_titles,
-            recent_companies=recent_companies,
+            recent_job_titles=(
+                recent_job_titles
+            ),
+            recent_companies=(
+                recent_companies
+            ),
             raw_text=raw_text,
             sections=sections,
             parser_warnings=warnings,
@@ -280,7 +325,9 @@ class ProfileParser:
             parser_version=(
                 self._settings.parser_version
             ),
-            extracted_text_length=len(raw_text),
+            extracted_text_length=(
+                len(raw_text)
+            ),
             detected_language=(
                 language_result.language
             ),
@@ -321,15 +368,24 @@ class ProfileParser:
 
         return stable_unique(
             values,
-            maximum_items=MAX_PARSER_WARNINGS,
+            maximum_items=(
+                MAX_PARSER_WARNINGS
+            ),
         )
 
     @staticmethod
     def _recent_career_values(
-            work_experiences: list[WorkExperience],
-    ) -> tuple[list[str], list[str]]:
+            work_experiences: list[
+                WorkExperience
+            ],
+    ) -> tuple[
+        list[str],
+        list[str],
+    ]:
         ordered = sorted(
-            enumerate(work_experiences),
+            enumerate(
+                work_experiences
+            ),
             key=lambda item: (
                 ProfileParser._date_sort_key(
                     item[1]
@@ -342,7 +398,8 @@ class ProfileParser:
         recent_job_titles = stable_unique(
             (
                 experience.job_title
-                for _, experience in ordered
+                for _, experience
+                in ordered
                 if experience.job_title
             ),
             maximum_items=(
@@ -353,7 +410,8 @@ class ProfileParser:
         recent_companies = stable_unique(
             (
                 experience.company_name
-                for _, experience in ordered
+                for _, experience
+                in ordered
                 if experience.company_name
             ),
             maximum_items=(
@@ -369,7 +427,11 @@ class ProfileParser:
     @staticmethod
     def _date_sort_key(
             experience: WorkExperience,
-    ) -> tuple[int, str, str]:
+    ) -> tuple[
+        int,
+        str,
+        str,
+    ]:
         current_rank = (
             1
             if experience.current

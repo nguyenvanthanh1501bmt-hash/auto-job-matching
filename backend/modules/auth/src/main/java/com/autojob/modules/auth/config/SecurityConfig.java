@@ -51,99 +51,170 @@ import java.util.List;
 })
 public class SecurityConfig {
 
-    // Cấu hình auth được đọc từ application.yml/properties.
     private final AuthProperties authProperties;
 
-    // Service dùng để load thông tin user khi authentication.
     private final AuthUserDetailsService userDetailsService;
 
-    // Xử lý request chưa được authentication.
-    private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final RestAuthenticationEntryPoint
+            authenticationEntryPoint;
 
-    // Xử lý request đã đăng nhập nhưng không có quyền truy cập.
-    private final RestAccessDeniedHandler accessDeniedHandler;
+    private final RestAccessDeniedHandler
+            accessDeniedHandler;
 
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             RateLimitFilter rateLimitFilter
     ) throws Exception {
+
         http
-                // API dùng JWT nên không cần CSRF protection của session.
-                .csrf(csrf -> csrf.disable())
-
-                // Bật CORS với cấu hình bên dưới.
-                .cors(Customizer.withDefaults())
-
-                // JWT authentication là stateless, server không lưu session.
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
+                /*
+                 * API stateless bằng JWT nên không dùng
+                 * CSRF protection dựa trên session.
+                 */
+                .csrf(
+                        csrf ->
+                                csrf.disable()
                 )
 
-                // Cấu hình response khi authentication/authorization thất bại.
-                .exceptionHandling(exceptions ->
-                        exceptions
-                                .authenticationEntryPoint(
-                                        authenticationEntryPoint
-                                )
-                                .accessDeniedHandler(
-                                        accessDeniedHandler
+                .cors(
+                        Customizer.withDefaults()
+                )
+
+                .sessionManagement(
+                        session ->
+                                session.sessionCreationPolicy(
+                                        SessionCreationPolicy.STATELESS
                                 )
                 )
 
-                // Cấu hình Spring Security Resource Server để xác thực JWT.
-                .oauth2ResourceServer(resourceServer ->
-                        resourceServer
-                                .jwt(jwt ->
-                                        jwt.jwtAuthenticationConverter(
-                                                jwtAuthenticationConverter()
+                .exceptionHandling(
+                        exceptions ->
+                                exceptions
+                                        .authenticationEntryPoint(
+                                                authenticationEntryPoint
                                         )
-                                )
-                                .authenticationEntryPoint(
-                                        authenticationEntryPoint
-                                )
+                                        .accessDeniedHandler(
+                                                accessDeniedHandler
+                                        )
+                )
+
+                .oauth2ResourceServer(
+                        resourceServer ->
+                                resourceServer
+                                        .jwt(
+                                                jwt ->
+                                                        jwt.jwtAuthenticationConverter(
+                                                                jwtAuthenticationConverter()
+                                                        )
+                                        )
+                                        .authenticationEntryPoint(
+                                                authenticationEntryPoint
+                                        )
                 );
 
         /*
-         * publicApiMode = true:
-         * - Tất cả API đều được phép truy cập.
-         * - JWT hợp lệ vẫn được Spring Security parse và tạo Authentication.
+         * -----------------------------------------------------
+         * PUBLIC MODE
+         * -----------------------------------------------------
          *
-         * publicApiMode = false:
-         * - Áp dụng authorization rules bên dưới.
+         * Dùng cho local/demo:
+         *
+         * - tất cả API được permit
+         * - controller dùng public-local-user
+         *
+         * JWT nếu client gửi vẫn được Spring parse.
          */
         if (authProperties.isPublicApiMode()) {
-            http.authorizeHttpRequests(authorize ->
-                    authorize.anyRequest().permitAll()
+
+            http.authorizeHttpRequests(
+                    authorize ->
+                            authorize
+                                    .anyRequest()
+                                    .permitAll()
             );
+
         } else {
-            http.authorizeHttpRequests(authorize ->
-                    authorize
-                            .requestMatchers(
-                                    HttpMethod.OPTIONS,
-                                    "/**"
-                            )
-                            .permitAll()
-                            .requestMatchers(
-                                    "/api/auth/**",
-                                    "/actuator/health/**",
-                                    "/v3/api-docs/**",
-                                    "/swagger-ui/**"
-                            )
-                            .permitAll()
-                            .requestMatchers("/api/admin/**")
-                            .hasRole("ADMIN")
-                            .requestMatchers("/api/cvs/**")
-                            .authenticated()
-                            .anyRequest()
-                            .permitAll()
+
+            /*
+             * -------------------------------------------------
+             * PRIVATE MODE
+             * -------------------------------------------------
+             */
+            http.authorizeHttpRequests(
+                    authorize ->
+                            authorize
+
+                                    /*
+                                     * CORS preflight.
+                                     */
+                                    .requestMatchers(
+                                            HttpMethod.OPTIONS,
+                                            "/**"
+                                    )
+                                    .permitAll()
+
+                                    /*
+                                     * Public infrastructure/auth.
+                                     */
+                                    .requestMatchers(
+                                            "/api/auth/**",
+                                            "/actuator/health/**",
+                                            "/v3/api-docs/**",
+                                            "/swagger-ui/**"
+                                    )
+                                    .permitAll()
+
+                                    /*
+                                     * Admin routes.
+                                     */
+                                    .requestMatchers(
+                                            "/api/admin/**"
+                                    )
+                                    .hasRole(
+                                            "ADMIN"
+                                    )
+
+                                    /*
+                                     * CV ownership API.
+                                     */
+                                    .requestMatchers(
+                                            "/api/cvs/**"
+                                    )
+                                    .authenticated()
+
+                                    /*
+                                     * Hybrid matching API.
+                                     *
+                                     * Đây là phần mới của đợt 5.
+                                     *
+                                     * MatchingController còn kiểm tra
+                                     * candidate.ownerUserId ở service,
+                                     * nên ta có cả:
+                                     *
+                                     * Layer 1:
+                                     * JWT authentication.
+                                     *
+                                     * Layer 2:
+                                     * resource ownership.
+                                     */
+                                    .requestMatchers(
+                                            "/api/matching/**"
+                                    )
+                                    .authenticated()
+
+                                    /*
+                                     * Các API khác hiện giữ behavior cũ.
+                                     */
+                                    .anyRequest()
+                                    .permitAll()
             );
         }
 
-        // Rate limit chạy sau BearerTokenAuthenticationFilter,
-        // nên request có JWT hợp lệ đã có Authentication trong SecurityContext.
+        /*
+         * Rate limit chạy sau JWT Bearer filter,
+         * nên SecurityContext đã có principal nếu token hợp lệ.
+         */
         http.addFilterAfter(
                 rateLimitFilter,
                 BearerTokenAuthenticationFilter.class
@@ -154,21 +225,23 @@ public class SecurityConfig {
 
     @Bean
     PasswordEncoder passwordEncoder() {
-        // BCrypt dùng để hash và verify password.
-        return new BCryptPasswordEncoder(12);
+        return new BCryptPasswordEncoder(
+                12
+        );
     }
 
     @Bean
     DaoAuthenticationProvider daoAuthenticationProvider(
             PasswordEncoder passwordEncoder
     ) {
-        // Provider xác thực username/password thông qua UserDetailsService.
         DaoAuthenticationProvider provider =
                 new DaoAuthenticationProvider(
                         userDetailsService
                 );
 
-        provider.setPasswordEncoder(passwordEncoder);
+        provider.setPasswordEncoder(
+                passwordEncoder
+        );
 
         return provider;
     }
@@ -177,8 +250,9 @@ public class SecurityConfig {
     AuthenticationManager authenticationManager(
             DaoAuthenticationProvider provider
     ) {
-        // AuthenticationManager ủy quyền authentication cho provider.
-        return new ProviderManager(provider);
+        return new ProviderManager(
+                provider
+        );
     }
 
     @Bean
@@ -186,24 +260,30 @@ public class SecurityConfig {
         byte[] secretBytes;
 
         try {
-            // JWT secret được lưu dưới dạng Base64 nên cần decode trước khi sử dụng.
-            secretBytes = Base64
-                    .getDecoder()
-                    .decode(
-                            authProperties
-                                    .getJwtSecretBase64()
-                    );
+            secretBytes =
+                    Base64
+                            .getDecoder()
+                            .decode(
+                                    authProperties
+                                            .getJwtSecretBase64()
+                            );
+
         } catch (IllegalArgumentException exception) {
+
             throw new IllegalStateException(
-                    "autojob.auth.jwt-secret-base64 must be valid Base64",
+                    "autojob.auth.jwt-secret-base64 "
+                            + "must be valid Base64",
                     exception
             );
         }
 
-        // Đảm bảo secret có ít nhất 256 bit (32 bytes) cho HS256.
+        /*
+         * HS256 cần ít nhất 256 bit.
+         */
         if (secretBytes.length < 32) {
             throw new IllegalStateException(
-                    "JWT secret must contain at least 32 decoded bytes"
+                    "JWT secret must contain at least "
+                            + "32 decoded bytes"
             );
         }
 
@@ -217,29 +297,36 @@ public class SecurityConfig {
     JwtEncoder jwtEncoder(
             SecretKey jwtSecretKey
     ) {
-        // Dùng secret key để ký JWT.
         JWKSource<SecurityContext> jwkSource =
-                new ImmutableSecret<>(jwtSecretKey);
+                new ImmutableSecret<>(
+                        jwtSecretKey
+                );
 
-        return new NimbusJwtEncoder(jwkSource);
+        return new NimbusJwtEncoder(
+                jwkSource
+        );
     }
 
     @Bean
     JwtDecoder jwtDecoder(
             SecretKey jwtSecretKey
     ) {
-        // Decoder dùng cùng secret key để verify chữ ký JWT.
         NimbusJwtDecoder decoder =
                 NimbusJwtDecoder
-                        .withSecretKey(jwtSecretKey)
-                        .macAlgorithm(MacAlgorithm.HS256)
+                        .withSecretKey(
+                                jwtSecretKey
+                        )
+                        .macAlgorithm(
+                                MacAlgorithm.HS256
+                        )
                         .build();
 
-        // Ngoài chữ ký, JWT phải có issuer hợp lệ.
         decoder.setJwtValidator(
-                JwtValidators.createDefaultWithIssuer(
-                        authProperties.getIssuer()
-                )
+                JwtValidators
+                        .createDefaultWithIssuer(
+                                authProperties
+                                        .getIssuer()
+                        )
         );
 
         return decoder;
@@ -248,69 +335,99 @@ public class SecurityConfig {
     @Bean
     JwtAuthenticationConverter
     jwtAuthenticationConverter() {
+
         JwtGrantedAuthoritiesConverter authoritiesConverter =
                 new JwtGrantedAuthoritiesConverter();
 
-        // Lấy role từ claim "roles" trong JWT.
-        authoritiesConverter.setAuthoritiesClaimName(
-                "roles"
-        );
+        /*
+         * JWT:
+         *
+         * "roles": ["USER", "ADMIN"]
+         *
+         * =>
+         *
+         * ROLE_USER
+         * ROLE_ADMIN
+         */
+        authoritiesConverter
+                .setAuthoritiesClaimName(
+                        "roles"
+                );
 
-        // Thêm prefix ROLE_ để Spring Security nhận diện role.
-        authoritiesConverter.setAuthorityPrefix(
-                "ROLE_"
-        );
+        authoritiesConverter
+                .setAuthorityPrefix(
+                        "ROLE_"
+                );
 
         JwtAuthenticationConverter converter =
                 new JwtAuthenticationConverter();
 
-        converter.setJwtGrantedAuthoritiesConverter(
-                authoritiesConverter
-        );
+        converter
+                .setJwtGrantedAuthoritiesConverter(
+                        authoritiesConverter
+                );
 
-        // Dùng claim "sub" làm principal/username.
-        converter.setPrincipalClaimName("sub");
+        /*
+         * authentication.getName()
+         * sẽ lấy JWT subject.
+         *
+         * Matching dùng giá trị này làm ownerUserId
+         * khi public-api-mode=false.
+         */
+        converter.setPrincipalClaimName(
+                "sub"
+        );
 
         return converter;
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    CorsConfigurationSource
+    corsConfigurationSource() {
+
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        // Chỉ cho phép các origin được cấu hình trong auth properties.
         configuration.setAllowedOrigins(
-                authProperties.getAllowedOrigins()
+                authProperties
+                        .getAllowedOrigins()
         );
 
-        configuration.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-        ));
+        configuration.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"
+                )
+        );
 
-        configuration.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "Accept",
-                "X-Requested-With"
-        ));
+        configuration.setAllowedHeaders(
+                List.of(
+                        "Authorization",
+                        "Content-Type",
+                        "Accept",
+                        "X-Requested-With"
+                )
+        );
 
-        // Cho phép frontend đọc các header rate limit này.
-        configuration.setExposedHeaders(List.of(
-                "X-RateLimit-Limit",
-                "X-RateLimit-Remaining",
-                "Retry-After"
-        ));
+        configuration.setExposedHeaders(
+                List.of(
+                        "X-RateLimit-Limit",
+                        "X-RateLimit-Remaining",
+                        "Retry-After"
+                )
+        );
 
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(
+                true
+        );
 
-        // Browser có thể cache kết quả preflight trong 1 giờ.
-        configuration.setMaxAge(3600L);
+        configuration.setMaxAge(
+                3600L
+        );
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();

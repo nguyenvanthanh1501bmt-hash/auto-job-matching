@@ -27,6 +27,23 @@ EXPERIENCE_BANDS = {
 }
 
 
+EARLY_CAREER_LEVEL_PRIORITY = (
+    "INTERN",
+    "TRAINEE",
+    "FRESHER",
+    "ENTRY_LEVEL",
+)
+
+
+STUDENT_PATTERNS = (
+    re.compile(r"\bstudent\b"),
+    re.compile(r"\bundergraduate\b"),
+    re.compile(r"\bcollege student\b"),
+    re.compile(r"\buniversity student\b"),
+    re.compile(r"\bsinh vien\b"),
+)
+
+
 @dataclass(
     frozen=True,
     slots=True,
@@ -88,10 +105,16 @@ class SeniorityParser:
             if item.level != "UNKNOWN"
         )
 
+        self._rules_by_level = {
+            rule.level: rule
+            for rule in self._rules
+        }
+
     def parse(
             self,
             *,
             headline: str | None,
+            career_objective: str | None = None,
             target_job_titles: (
                     list[str]
                     | tuple[str, ...]
@@ -189,10 +212,41 @@ class SeniorityParser:
             )
         )
 
+        career_signal = (
+            self._from_career_objective(
+                career_objective
+            )
+        )
+
         if not signals:
+            resolved = (
+                self._resolve_without_explicit_title(
+                    fallback=fallback,
+                    career_signal=career_signal,
+                )
+            )
+
+            warnings: list[str] = []
+
+            if (
+                    career_signal is not None
+                    and fallback != "UNKNOWN"
+                    and self._experience_signals_conflict(
+                career_signal,
+                fallback,
+            )
+            ):
+                warnings.append(
+                    "SENIORITY_SIGNALS_CONFLICT"
+                )
+
             return SeniorityParseResult(
-                seniority=fallback,
-                warnings=(),
+                seniority=resolved,
+                warnings=tuple(
+                    dict.fromkeys(
+                        warnings
+                    )
+                ),
             )
 
         selected = (
@@ -305,6 +359,73 @@ class SeniorityParser:
                 return rule.level
 
         return None
+
+    def _from_career_objective(
+            self,
+            value: str | None,
+    ) -> str | None:
+        if value is None:
+            return None
+
+        folded = self._fold(
+            value
+        )
+
+        if not folded:
+            return None
+
+        for level in EARLY_CAREER_LEVEL_PRIORITY:
+            rule = self._rules_by_level.get(
+                level
+            )
+
+            if rule is None:
+                continue
+
+            if not self._matches_any(
+                    rule.patterns,
+                    folded,
+            ):
+                continue
+
+            excluded = (
+                self._matches_any(
+                    rule.exclude_patterns,
+                    folded,
+                )
+            )
+
+            if not excluded:
+                return level
+
+            if self._matches_any(
+                    rule.allow_patterns,
+                    folded,
+            ):
+                return level
+
+
+        if self._matches_any(
+                STUDENT_PATTERNS,
+                folded,
+        ):
+            return "ENTRY_LEVEL"
+
+        return None
+
+    @staticmethod
+    def _resolve_without_explicit_title(
+            *,
+            fallback: str,
+            career_signal: str | None,
+    ) -> str:
+        if career_signal is None:
+            return fallback
+
+        if fallback == "SENIOR":
+            return fallback
+
+        return career_signal
 
     def _select_signal(
             self,

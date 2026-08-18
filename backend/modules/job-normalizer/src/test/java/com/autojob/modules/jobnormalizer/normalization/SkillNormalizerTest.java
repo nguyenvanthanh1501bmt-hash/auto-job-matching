@@ -145,6 +145,44 @@ class SkillNormalizerTest {
     }
 
     @Test
+    void shouldResolveKnownAliasInsideCompositeLabel() {
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "Tư vấn/ Chăm sóc khách hàng",
+                                "CI/CD",
+                                "Import/Export"
+                        )
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        "Customer Service",
+                        "CI/CD",
+                        "Import/Export"
+                );
+    }
+
+    @Test
+    void shouldKeepUnknownRawSkillEvenWhenItContainsKnownProseAlias() {
+        List<String> result =
+                skillNormalizer.normalize(
+                        List.of(
+                                "Vận hành máy CNC",
+                                "Kỹ thuật hàn TIG",
+                                "Phần mềm MISA"
+                        )
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        "Vận hành máy CNC",
+                        "Kỹ thuật hàn TIG",
+                        "Phần mềm MISA"
+                );
+    }
+
+    @Test
     void shouldRemoveDuplicatesIgnoringCaseAndAliases() {
         List<String> result =
                 skillNormalizer.normalize(
@@ -177,13 +215,6 @@ class SkillNormalizerTest {
                         )
                 );
 
-        /*
-         * "Kỹ năng giao tiếp" hiện là alias của shared
-         * canonical skill "Communication".
-         *
-         * Đây là behavior mong muốn:
-         * Job và CV phải resolve về cùng canonical.
-         */
         assertThat(result)
                 .containsExactly(
                         "Vận hành máy CNC",

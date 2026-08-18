@@ -1,31 +1,20 @@
 autojob:
   matching:
-    # Version của ranking strategy.
-    # Sau này nếu thay đổi công thức scoring lớn thì bump version.
-    version: ${MATCHING_VERSION:hybrid-v1}
+
+    version: ${MATCHING_VERSION:hybrid-v6-balanced-r4}
 
     retrieval:
-      # Semantic search lấy nhiều hơn số result cuối cùng
-      # để structured scoring có không gian rerank.
       candidate-pool-size: ${MATCHING_CANDIDATE_POOL_SIZE:100}
-
-      # Số match cuối cùng mặc định.
       result-limit: ${MATCHING_RESULT_LIMIT:20}
 
     compatibility:
-      # Matching chỉ dùng normalized jobs đúng version.
-      normalization-version: ${MATCHING_NORMALIZATION_VERSION:rule-v2}
-
-      # Candidate embedding hiện tại đã có textVersion.
+      normalization-version: ${MATCHING_NORMALIZATION_VERSION:rule-v4}
       candidate-text-version: ${MATCHING_CANDIDATE_TEXT_VERSION:candidate-text-v1}
-
-      # Batch sau sẽ đưa JobEmbedding về cùng cơ chế textVersion.
       job-text-version: ${MATCHING_JOB_TEXT_VERSION:job-text-v2}
 
     weights:
-      # Tổng phải bằng 1.0.
-      semantic: ${MATCHING_WEIGHT_SEMANTIC:0.50}
-      skill: ${MATCHING_WEIGHT_SKILL:0.30}
+      semantic: ${MATCHING_WEIGHT_SEMANTIC:0.40}
+      skill: ${MATCHING_WEIGHT_SKILL:0.40}
       seniority: ${MATCHING_WEIGHT_SENIORITY:0.10}
       location: ${MATCHING_WEIGHT_LOCATION:0.05}
       freshness: ${MATCHING_WEIGHT_FRESHNESS:0.05}
@@ -33,3 +22,39 @@ autojob:
     freshness:
       fresh-days: ${MATCHING_FRESH_DAYS:7}
       max-age-days: ${MATCHING_MAX_AGE_DAYS:30}
+
+    semantic-calibration:
+      lower-percentile: ${MATCHING_SEMANTIC_LOWER_PERCENTILE:0.10}
+      upper-percentile: ${MATCHING_SEMANTIC_UPPER_PERCENTILE:0.90}
+      minimum-spread: ${MATCHING_SEMANTIC_MINIMUM_SPREAD:0.04}
+      raw-floor: ${MATCHING_SEMANTIC_RAW_FLOOR:0.75}
+      raw-ceiling: ${MATCHING_SEMANTIC_RAW_CEILING:0.95}
+      relative-weight: ${MATCHING_SEMANTIC_RELATIVE_WEIGHT:0.65}
+
+    skill-scoring:
+      core-weight: ${MATCHING_SKILL_CORE_WEIGHT:1.0}
+      generic-weight: ${MATCHING_SKILL_GENERIC_WEIGHT:0.20}
+      generic-only-cap: ${MATCHING_SKILL_GENERIC_ONLY_CAP:0.15}
+
+      generic-skill-ids:
+        - communication
+        - presentation
+        - problem-solving
+        - critical-thinking
+        - teamwork
+        - time-management
+
+      skills-section-confidence: ${MATCHING_SKILL_EVIDENCE_SKILLS_SECTION:1.0}
+      work-experience-confidence: ${MATCHING_SKILL_EVIDENCE_WORK_EXPERIENCE:1.0}
+      project-confidence: ${MATCHING_SKILL_EVIDENCE_PROJECTS:0.65}
+      profile-text-confidence: ${MATCHING_SKILL_EVIDENCE_PROFILE_TEXT:0.55}
+      scoped-text-confidence: ${MATCHING_SKILL_EVIDENCE_SCOPED_TEXT:0.50}
+      unknown-evidence-confidence: ${MATCHING_SKILL_EVIDENCE_UNKNOWN:0.50}
+
+    acceptance:
+      minimum-final-score: ${MATCHING_ACCEPT_MIN_FINAL:0.45}
+      minimum-semantic-score: ${MATCHING_ACCEPT_MIN_SEMANTIC:0.50}
+      minimum-skill-score: ${MATCHING_ACCEPT_MIN_SKILL:0.10}
+      strong-skill-score: ${MATCHING_ACCEPT_STRONG_SKILL:0.30}
+      strong-semantic-score: ${MATCHING_ACCEPT_STRONG_SEMANTIC:0.80}
+      minimum-non-contradictory-structured-score: ${MATCHING_ACCEPT_MIN_STRUCTURED:0.10}

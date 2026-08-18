@@ -39,7 +39,7 @@ public class NormalizationTaxonomyProperties {
      * Seniority:
      *   SharedSeniorityTaxonomyProperties
      *
-     * This class now contains only taxonomy that
+     * This class contains only taxonomy that
      * remains specific to Job Normalizer.
      */
 
@@ -169,6 +169,28 @@ public class NormalizationTaxonomyProperties {
 
         private Set<String> lowerBoundPhrases =
                 new LinkedHashSet<>();
+
+        /**
+         * Chỉ được dùng làm fallback khi experienceText
+         * explicit bị thiếu hoặc không parse được.
+         *
+         * Không parse số từ toàn bộ requirements.
+         */
+        private Set<String> contextPhrases =
+                new LinkedHashSet<>();
+
+        /**
+         * Số ký tự giữ lại mỗi bên quanh context phrase.
+         *
+         * Ví dụ:
+         *
+         * "Kinh nghiệm: từ 2 năm trở lên..."
+         *
+         * chỉ parse vùng gần "kinh nghiệm",
+         * không parse các con số ở cuối JD.
+         */
+        @Min(20)
+        private int contextWindowChars = 120;
     }
 
     @Getter

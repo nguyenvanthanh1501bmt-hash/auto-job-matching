@@ -17,6 +17,34 @@ public class SkillNormalizer {
     private static final Pattern SKILL_SEPARATOR =
             Pattern.compile("[,;|\\n]+");
 
+    /**
+     * Chỉ split composite label khi separator có whitespace ở ít nhất
+     * một phía.
+     *
+     * Ví dụ được split:
+     *
+     * - "Tư vấn/ Chăm sóc khách hàng"
+     * - "React / Node.js"
+     * - "Sales - Customer Service"
+     *
+     * Ví dụ KHÔNG split:
+     *
+     * - "CI/CD"
+     * - "UI/UX"
+     * - "Import/Export"
+     * - "B2B/B2C"
+     *
+     * Sau khi split, fragment cũng chỉ được lấy nếu nó exact-match
+     * một alias trong shared taxonomy.
+     */
+    private static final Pattern COMPOSITE_SKILL_SEPARATOR =
+            Pattern.compile(
+                    "\\s*/\\s+"
+                            + "|\\s+/\\s*"
+                            + "|\\s+[•·]\\s+"
+                            + "|\\s+[-&]\\s+"
+            );
+
     private final TextNormalizer textNormalizer;
 
     private final int richRawSkillCount;
@@ -29,12 +57,6 @@ public class SkillNormalizer {
 
     private final List<SkillMatcher> proseMatchers;
 
-    /**
-     * SkillNormalizer giờ chỉ dùng shared taxonomy.
-     *
-     * Không còn constructor legacy nhận
-     * NormalizationTaxonomyProperties.
-     */
     public SkillNormalizer(
             TextNormalizer textNormalizer,
             SharedSkillTaxonomyProperties taxonomyProperties
@@ -94,11 +116,23 @@ public class SkillNormalizer {
                         rawSkills
                 );
 
+        /*
+         * Nếu crawler đã cung cấp một danh sách skill đủ giàu,
+         * ưu tiên dữ liệu structured đó.
+         *
+         * Không cần tiếp tục quét prose để tránh sinh thêm noise.
+         */
         if (normalizedRawSkills.size()
                 >= richRawSkillCount) {
+
             return normalizedRawSkills;
         }
 
+        /*
+         * Với job có raw skill ít hoặc không có skill,
+         * bổ sung các known skill xuất hiện trong title,
+         * requirements và description.
+         */
         List<String> extractedSkills =
                 extractKnownSkills(
                         title,
@@ -117,6 +151,7 @@ public class SkillNormalizer {
     ) {
         if (rawSkills == null
                 || rawSkills.isEmpty()) {
+
             return List.of();
         }
 
@@ -127,42 +162,239 @@ public class SkillNormalizer {
                 new LinkedHashSet<>();
 
         for (String rawSkillGroup : rawSkills) {
+
             if (rawSkillGroup == null) {
                 continue;
             }
 
+            /*
+             * Chỉ split các separator an toàn ở level ngoài:
+             *
+             * comma
+             * semicolon
+             * pipe
+             * newline
+             *
+             * Không split "/" tại đây vì "/" có thể là một phần
+             * hợp lệ của tên skill như UI/UX hoặc CI/CD.
+             */
             String[] skillParts =
                     SKILL_SEPARATOR.split(
                             rawSkillGroup
                     );
 
             for (String skillPart : skillParts) {
-                String normalizedSkill =
-                        normalizeSingleSkill(
+
+                List<String> resolvedSkills =
+                        normalizeSkillPart(
                                 skillPart
                         );
 
-                if (normalizedSkill == null) {
-                    continue;
-                }
+                for (String normalizedSkill
+                        : resolvedSkills) {
 
-                String deduplicationKey =
-                        NormalizationTextSupport.fold(
+                    if (normalizedSkill == null
+                            || normalizedSkill.isBlank()) {
+
+                        continue;
+                    }
+
+                    String deduplicationKey =
+                            NormalizationTextSupport.fold(
+                                    normalizedSkill
+                            );
+
+                    if (seenSkills.add(
+                            deduplicationKey
+                    )) {
+
+                        normalizedSkills.add(
                                 normalizedSkill
                         );
-
-                if (seenSkills.add(
-                        deduplicationKey
-                )) {
-                    normalizedSkills.add(
-                            normalizedSkill
-                    );
+                    }
                 }
             }
         }
 
         return List.copyOf(
                 normalizedSkills
+        );
+    }
+
+    private List<String> normalizeSkillPart(
+            String rawSkill
+    ) {
+        String cleaned =
+                textNormalizer
+                        .normalizeInline(
+                                rawSkill
+                        );
+
+        if (cleaned == null) {
+            return List.of();
+        }
+
+        /*
+         * -----------------------------------------------------
+         * 1. Exact alias.
+         * -----------------------------------------------------
+         *
+         * Đây luôn là cách normalize đáng tin cậy nhất.
+         */
+        String exactCanonical =
+                resolveExactAlias(
+                        cleaned
+                );
+
+        if (exactCanonical != null) {
+
+            return List.of(
+                    exactCanonical
+            );
+        }
+
+        /*
+         * -----------------------------------------------------
+         * 2. Composite label.
+         * -----------------------------------------------------
+         *
+         * Một số website không trả atomic skill mà trả category
+         * ghép, ví dụ:
+         *
+         * "Tư vấn/ Chăm sóc khách hàng"
+         *
+         * Whole string không phải alias.
+         *
+         * Ta split an toàn rồi chỉ giữ fragment nào exact-match
+         * shared taxonomy.
+         *
+         * Không fuzzy match ở đây.
+         */
+        List<String> compositeMatches =
+                resolveCompositeAliases(
+                        cleaned
+                );
+
+        if (!compositeMatches.isEmpty()) {
+
+            return compositeMatches;
+        }
+
+        /*
+         * -----------------------------------------------------
+         * 3. Preserve unknown structured skill.
+         * -----------------------------------------------------
+         *
+         * Đây là contract quan trọng.
+         *
+         * Raw skill đã đến từ structured skill field của source.
+         * Nếu không exact-match taxonomy thì KHÔNG được lấy một
+         * alias nằm bên trong chuỗi rồi thay cả raw skill bằng alias.
+         *
+         * Ví dụ sai:
+         *
+         * "Vận hành máy CNC"
+         * -> "CNC"
+         *
+         * "Kỹ thuật hàn TIG"
+         * -> "Welding"
+         *
+         * "Phần mềm MISA"
+         * -> "MISA"
+         *
+         * Các phép biến đổi trên làm mất ý nghĩa của raw skill.
+         *
+         * Phrase/prose extraction chỉ được dùng với title,
+         * requirements, description.
+         */
+        return List.of(
+                cleaned
+        );
+    }
+
+    private String resolveExactAlias(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+
+            return null;
+        }
+
+        String aliasKey =
+                NormalizationTextSupport
+                        .compactKey(
+                                value
+                        );
+
+        if (aliasKey.isBlank()) {
+            return null;
+        }
+
+        return canonicalAliases.get(
+                aliasKey
+        );
+    }
+
+    private List<String> resolveCompositeAliases(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+
+            return List.of();
+        }
+
+        String[] fragments =
+                COMPOSITE_SKILL_SEPARATOR.split(
+                        value
+                );
+
+        if (fragments.length < 2) {
+
+            return List.of();
+        }
+
+        List<String> matches =
+                new ArrayList<>();
+
+        Set<String> seen =
+                new LinkedHashSet<>();
+
+        for (String fragment : fragments) {
+
+            String cleanedFragment =
+                    textNormalizer
+                            .normalizeInline(
+                                    fragment
+                            );
+
+            String canonical =
+                    resolveExactAlias(
+                            cleanedFragment
+                    );
+
+            if (canonical == null) {
+                continue;
+            }
+
+            String key =
+                    NormalizationTextSupport.fold(
+                            canonical
+                    );
+
+            if (seen.add(
+                    key
+            )) {
+
+                matches.add(
+                        canonical
+                );
+            }
+        }
+
+        return List.copyOf(
+                matches
         );
     }
 
@@ -194,7 +426,17 @@ public class SkillNormalizer {
                         prose.toString()
                 );
 
-        if (foldedProse.isBlank()) {
+        return extractKnownSkillsFromFoldedProse(
+                foldedProse
+        );
+    }
+
+    private List<String> extractKnownSkillsFromFoldedProse(
+            String foldedProse
+    ) {
+        if (foldedProse == null
+                || foldedProse.isBlank()) {
+
             return List.of();
         }
 
@@ -213,6 +455,7 @@ public class SkillNormalizer {
                             foldedProse
                     )
                     .find()) {
+
                 continue;
             }
 
@@ -224,6 +467,7 @@ public class SkillNormalizer {
             if (seen.add(
                     deduplicationKey
             )) {
+
                 extracted.add(
                         matcher.canonical()
                 );
@@ -262,7 +506,9 @@ public class SkillNormalizer {
             List<String> primary,
             List<String> supplemental
     ) {
-        if (supplemental.isEmpty()) {
+        if (supplemental == null
+                || supplemental.isEmpty()) {
+
             return primary;
         }
 
@@ -275,6 +521,7 @@ public class SkillNormalizer {
                 new LinkedHashSet<>();
 
         for (String skill : primary) {
+
             seen.add(
                     NormalizationTextSupport.fold(
                             skill
@@ -283,6 +530,7 @@ public class SkillNormalizer {
         }
 
         for (String skill : supplemental) {
+
             String deduplicationKey =
                     NormalizationTextSupport.fold(
                             skill
@@ -291,6 +539,7 @@ public class SkillNormalizer {
             if (seen.add(
                     deduplicationKey
             )) {
+
                 merged.add(
                         skill
                 );
@@ -302,37 +551,12 @@ public class SkillNormalizer {
         );
     }
 
-    private String normalizeSingleSkill(
-            String rawSkill
-    ) {
-        String cleaned =
-                textNormalizer
-                        .normalizeInline(
-                                rawSkill
-                        );
-
-        if (cleaned == null) {
-            return null;
-        }
-
-        String aliasKey =
-                NormalizationTextSupport
-                        .compactKey(
-                                cleaned
-                        );
-
-        return canonicalAliases
-                .getOrDefault(
-                        aliasKey,
-                        cleaned
-                );
-    }
-
     private Map<String, String> createCanonicalAliases(
             List<SkillDefinition> configuredAliases
     ) {
         if (configuredAliases == null
                 || configuredAliases.isEmpty()) {
+
             return Map.of();
         }
 
@@ -351,6 +575,7 @@ public class SkillNormalizer {
 
             if (canonical == null
                     || canonical.isBlank()) {
+
                 continue;
             }
 
@@ -368,6 +593,7 @@ public class SkillNormalizer {
             }
 
             for (String alias : values) {
+
                 registerAlias(
                         aliases,
                         canonical,
@@ -388,6 +614,7 @@ public class SkillNormalizer {
     ) {
         if (alias == null
                 || alias.isBlank()) {
+
             return;
         }
 
@@ -411,6 +638,7 @@ public class SkillNormalizer {
                 && !existing.equals(
                 canonical
         )) {
+
             throw new IllegalStateException(
                     "Shared skill alias collision: alias="
                             + alias
@@ -427,6 +655,7 @@ public class SkillNormalizer {
     ) {
         if (configuredAliases == null
                 || configuredAliases.isEmpty()) {
+
             return List.of();
         }
 
@@ -448,6 +677,7 @@ public class SkillNormalizer {
 
             if (canonical == null
                     || canonical.isBlank()) {
+
                 continue;
             }
 
@@ -459,14 +689,17 @@ public class SkillNormalizer {
             );
 
             if (definition.aliases() != null) {
+
                 candidates.addAll(
                         definition.aliases()
                 );
             }
 
             for (String alias : candidates) {
+
                 if (alias == null
                         || alias.isBlank()) {
+
                     continue;
                 }
 
@@ -479,6 +712,7 @@ public class SkillNormalizer {
                 if (!isSafeForProseExtraction(
                         foldedAlias
                 )) {
+
                     continue;
                 }
 
@@ -490,6 +724,7 @@ public class SkillNormalizer {
                 if (!registeredPatterns.add(
                         matcherKey
                 )) {
+
                     continue;
                 }
 
@@ -521,18 +756,21 @@ public class SkillNormalizer {
     ) {
         if (foldedAlias == null
                 || foldedAlias.isBlank()) {
+
             return false;
         }
 
         if (ambiguousProseAliases.contains(
                 foldedAlias
         )) {
+
             return false;
         }
 
         if (safeShortProseAliases.contains(
                 foldedAlias
         )) {
+
             return true;
         }
 
@@ -551,6 +789,7 @@ public class SkillNormalizer {
     ) {
         if (definitions == null
                 || definitions.isEmpty()) {
+
             return List.of();
         }
 
@@ -586,6 +825,7 @@ public class SkillNormalizer {
     ) {
         if (values == null
                 || values.isEmpty()) {
+
             return Set.of();
         }
 
@@ -593,6 +833,7 @@ public class SkillNormalizer {
                 new LinkedHashSet<>();
 
         for (String value : values) {
+
             if (value == null) {
                 continue;
             }
@@ -603,6 +844,7 @@ public class SkillNormalizer {
                     );
 
             if (!normalized.isBlank()) {
+
                 folded.add(
                         normalized
                 );

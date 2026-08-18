@@ -33,6 +33,23 @@ public class ExperienceNormalizer {
                     "\\d(?:[\\d.,]*)\\s*\\+"
             );
 
+    /**
+     * Chia requirements/description thành các segment
+     * tương đối độc lập trước khi scan experience.
+     *
+     * Không split bằng dấu phẩy vì:
+     *
+     * 1,5 năm
+     *
+     * là decimal hợp lệ.
+     */
+    private static final Pattern CONTEXT_SEGMENT_SPLIT =
+            Pattern.compile(
+                    "(?:\\r?\\n)+"
+                            + "|[;•●▪◦]+"
+                            + "|(?<=[.!?])\\s+"
+            );
+
     private final TextNormalizer textNormalizer;
 
     private final Map<
@@ -44,6 +61,9 @@ public class ExperienceNormalizer {
     private final Set<String> rangeWords;
     private final Set<String> upperBounds;
     private final Set<String> lowerBounds;
+    private final Set<String> contextPhrases;
+
+    private final int contextWindowChars;
 
     public ExperienceNormalizer(
             TextNormalizer textNormalizer,
@@ -79,8 +99,77 @@ public class ExperienceNormalizer {
                 foldSet(
                         config.getLowerBoundPhrases()
                 );
+
+        this.contextPhrases =
+                foldSet(
+                        config.getContextPhrases()
+                );
+
+        this.contextWindowChars =
+                config.getContextWindowChars();
     }
 
+    /**
+     * Multi-source normalization.
+     *
+     * Priority:
+     *
+     * 1. rawJob.experienceText
+     * 2. requirementsText
+     * 3. descriptionText
+     *
+     * Requirements / description chỉ được dùng
+     * thông qua contextual fallback.
+     */
+    public ExperienceNormalizationResult normalize(
+            String experienceText,
+            String requirementsText,
+            String descriptionText
+    ) {
+        /*
+         * Explicit crawler field luôn có priority cao nhất.
+         */
+        ExperienceNormalizationResult explicit =
+                normalize(
+                        experienceText
+                );
+
+        if (explicit.known()) {
+            return explicit;
+        }
+
+        /*
+         * Requirements thường chứa yêu cầu kinh nghiệm
+         * rõ hơn description.
+         */
+        ExperienceNormalizationResult requirements =
+                normalizeContextualText(
+                        requirementsText
+                );
+
+        if (requirements.known()) {
+            return requirements;
+        }
+
+        /*
+         * Description chỉ là fallback cuối.
+         */
+        return normalizeContextualText(
+                descriptionText
+        );
+    }
+
+    /**
+     * Normalize một expression tương đối sạch.
+     *
+     * Ví dụ:
+     *
+     * 2 - 4 years
+     * at least 3 years
+     * dưới 1 năm
+     * 18 months
+     * 1 year 6 months
+     */
     public ExperienceNormalizationResult normalize(
             String experienceText
     ) {
@@ -98,6 +187,9 @@ public class ExperienceNormalizer {
                         cleaned
                 );
 
+        /*
+         * Không yêu cầu kinh nghiệm.
+         */
         if (containsAny(
                 folded,
                 noExperience
@@ -108,6 +200,13 @@ public class ExperienceNormalizer {
             );
         }
 
+        /*
+         * Range:
+         *
+         * 2 - 4 years
+         * 2 đến 4 năm
+         * 6 months - 1 year
+         */
         ExperienceNormalizationResult range =
                 parseRange(
                         folded
@@ -117,6 +216,13 @@ public class ExperienceNormalizer {
             return range;
         }
 
+        /*
+         * Single duration hoặc compound duration:
+         *
+         * 3 years
+         * 18 months
+         * 1 year 6 months
+         */
         ParsedDuration duration =
                 parseDuration(
                         folded,
@@ -130,6 +236,13 @@ public class ExperienceNormalizer {
         double value =
                 duration.value();
 
+        /*
+         * Upper bound:
+         *
+         * under 1 year
+         * dưới 1 năm
+         * up to 2 years
+         */
         if (containsAny(
                 folded,
                 upperBounds
@@ -140,10 +253,20 @@ public class ExperienceNormalizer {
             );
         }
 
+        /*
+         * Lower bound:
+         *
+         * at least 3 years
+         * từ 2 năm
+         * 3+ years
+         */
         if (containsAny(
                 folded,
                 lowerBounds
-        ) || PLUS.matcher(folded).find()) {
+        )
+                || PLUS
+                .matcher(folded)
+                .find()) {
 
             return new ExperienceNormalizationResult(
                     value,
@@ -151,6 +274,14 @@ public class ExperienceNormalizer {
             );
         }
 
+        /*
+         * Giữ behavior hiện tại của repo:
+         *
+         * "18 months"
+         *
+         * thường được xem là minimum requirement
+         * chứ không phải exact professional duration.
+         */
         if (duration.componentCount() == 1
                 && duration.singleUnit()
                 == NormalizationTaxonomyProperties
@@ -162,10 +293,157 @@ public class ExperienceNormalizer {
             );
         }
 
+        /*
+         * Exact duration.
+         *
+         * "1 year"
+         * => 1..1
+         */
         return new ExperienceNormalizationResult(
                 value,
                 value
         );
+    }
+
+    /**
+     * Extract experience từ long-form text.
+     *
+     * Quan trọng:
+     *
+     * KHÔNG:
+     *
+     * normalize(requirementsText)
+     *
+     * vì requirements có thể chứa:
+     *
+     * 2025
+     * 20 triệu
+     * 5 người
+     * 3 project
+     *
+     * Ta chỉ parse segment có context experience.
+     */
+    private ExperienceNormalizationResult
+    normalizeContextualText(
+            String sourceText
+    ) {
+        String cleaned =
+                textNormalizer.normalizeMultiline(
+                        sourceText
+                );
+
+        if (cleaned == null
+                || contextPhrases.isEmpty()) {
+
+            return unknown();
+        }
+
+        String[] segments =
+                CONTEXT_SEGMENT_SPLIT.split(
+                        cleaned
+                );
+
+        for (String segment : segments) {
+
+            String foldedSegment =
+                    fold(
+                            segment
+                    );
+
+            if (foldedSegment.isBlank()) {
+                continue;
+            }
+
+            /*
+             * "Không yêu cầu kinh nghiệm"
+             * tự bản thân đã là tín hiệu mạnh.
+             */
+            if (containsAny(
+                    foldedSegment,
+                    noExperience
+            )) {
+
+                ExperienceNormalizationResult
+                        noExperienceResult =
+                        normalize(
+                                foldedSegment
+                        );
+
+                if (noExperienceResult.known()) {
+                    return noExperienceResult;
+                }
+            }
+
+            /*
+             * Có thể một segment chứa nhiều context phrase.
+             *
+             * Ví dụ:
+             *
+             * "At least 3 years of relevant experience..."
+             */
+            for (String contextPhrase
+                    : contextPhrases) {
+
+                int from = 0;
+
+                while (
+                        from
+                                <= foldedSegment.length()
+                                - contextPhrase.length()
+                ) {
+
+                    int index =
+                            findPhraseFrom(
+                                    foldedSegment,
+                                    contextPhrase,
+                                    from
+                            );
+
+                    if (index < 0) {
+                        break;
+                    }
+
+                    /*
+                     * Chỉ lấy local window.
+                     */
+                    int start =
+                            Math.max(
+                                    0,
+                                    index
+                                            - contextWindowChars
+                            );
+
+                    int end =
+                            Math.min(
+                                    foldedSegment.length(),
+                                    index
+                                            + contextPhrase.length()
+                                            + contextWindowChars
+                            );
+
+                    String fragment =
+                            foldedSegment.substring(
+                                    start,
+                                    end
+                            );
+
+                    ExperienceNormalizationResult result =
+                            normalize(
+                                    fragment
+                            );
+
+                    if (result.known()) {
+                        return result;
+                    }
+
+                    from =
+                            index
+                                    + contextPhrase.length();
+                }
+            }
+        }
+
+        return unknown();
     }
 
     private ExperienceNormalizationResult parseRange(
@@ -202,11 +480,25 @@ public class ExperienceNormalizer {
                             null
                     );
 
+            /*
+             * 2 - 4 years
+             *
+             * left không có unit.
+             * right có YEAR.
+             *
+             * => dùng YEAR cho left.
+             */
             var leftDefault =
                     leftExplicit == null
                             ? singleUnit(right)
                             : null;
 
+            /*
+             * 2 years - 4
+             *
+             * right không có unit.
+             * => dùng unit của left.
+             */
             var rightDefault =
                     rightExplicit == null
                             ? singleUnit(left)
@@ -258,9 +550,14 @@ public class ExperienceNormalizer {
         List<RangeSeparator> result =
                 new ArrayList<>();
 
-        for (int index = 0;
-             index < value.length();
-             index++) {
+        /*
+         * Symbol separators.
+         */
+        for (
+                int index = 0;
+                index < value.length();
+                index++
+        ) {
 
             char character =
                     value.charAt(index);
@@ -278,20 +575,44 @@ public class ExperienceNormalizer {
             }
         }
 
+        /*
+         * Word separators:
+         *
+         * to
+         * den
+         */
         for (String word : rangeWords) {
-            int index =
-                    findPhrase(
-                            value,
-                            word
-                    );
 
-            if (index >= 0) {
+            int from = 0;
+
+            while (
+                    from
+                            <= value.length()
+                            - word.length()
+            ) {
+
+                int index =
+                        findPhraseFrom(
+                                value,
+                                word,
+                                from
+                        );
+
+                if (index < 0) {
+                    break;
+                }
+
                 result.add(
                         new RangeSeparator(
                                 index,
-                                index + word.length()
+                                index
+                                        + word.length()
                         )
                 );
+
+                from =
+                        index
+                                + word.length();
             }
         }
 
@@ -306,6 +627,13 @@ public class ExperienceNormalizer {
         return result;
     }
 
+    /**
+     * Parse:
+     *
+     * 3 years
+     * 18 months
+     * 1 year 6 months
+     */
     private ParsedDuration parseDuration(
             String value,
             NormalizationTaxonomyProperties.ExperienceUnit
@@ -320,6 +648,7 @@ public class ExperienceNormalizer {
                 new ArrayList<>();
 
         while (matcher.find()) {
+
             Double number =
                     parseNumber(
                             matcher.group(1)
@@ -334,6 +663,7 @@ public class ExperienceNormalizer {
 
             if (number == null
                     || unit == null) {
+
                 return null;
             }
 
@@ -350,9 +680,27 @@ public class ExperienceNormalizer {
                         value
                 );
 
+        /*
+         * Có duration explicit.
+         */
         if (!components.isEmpty()) {
+
+            /*
+             * Nếu fragment có thêm numeric token
+             * không gắn với experience unit thì không đoán.
+             *
+             * Ví dụ:
+             *
+             * "2 years, salary 20 million"
+             *
+             * => reject fragment.
+             *
+             * Context scanner sẽ tránh trường hợp này
+             * bằng local window.
+             */
             if (numberCount
                     != components.size()) {
+
                 return null;
             }
 
@@ -384,8 +732,15 @@ public class ExperienceNormalizer {
             );
         }
 
+        /*
+         * Không có unit explicit.
+         *
+         * Chỉ cho phép nếu caller đã infer được
+         * default unit từ phía bên kia của range.
+         */
         if (defaultUnit == null
                 || numberCount != 1) {
+
             return null;
         }
 
@@ -403,9 +758,11 @@ public class ExperienceNormalizer {
                         numberMatcher.group(1)
                 );
 
-        return number == null
-                ? null
-                : new ParsedDuration(
+        if (number == null) {
+            return null;
+        }
+
+        return new ParsedDuration(
                 round(
                         toYears(
                                 new DurationComponent(
@@ -434,6 +791,7 @@ public class ExperienceNormalizer {
         int count = 0;
 
         while (matcher.find()) {
+
             var current =
                     units.get(
                             fold(
@@ -446,6 +804,7 @@ public class ExperienceNormalizer {
                     unit != null
                             && unit != current
             )) {
+
                 return null;
             }
 
@@ -467,7 +826,8 @@ public class ExperienceNormalizer {
         return component.unit()
                 == NormalizationTaxonomyProperties
                 .ExperienceUnit.MONTH
-                ? component.value() / 12.0
+                ? component.value()
+                / 12.0d
                 : component.value();
     }
 
@@ -475,13 +835,16 @@ public class ExperienceNormalizer {
             String value
     ) {
         try {
+
             return Double.parseDouble(
                     value.replace(
                             ',',
                             '.'
                     )
             );
+
         } catch (NumberFormatException exception) {
+
             return null;
         }
     }
@@ -514,9 +877,12 @@ public class ExperienceNormalizer {
     private Map<
             String,
             NormalizationTaxonomyProperties.ExperienceUnit
-            > buildUnits(
-            List<NormalizationTaxonomyProperties.ExperienceUnitRule>
-                    rules
+            >
+    buildUnits(
+            List<
+                    NormalizationTaxonomyProperties
+                            .ExperienceUnitRule
+                    > rules
     ) {
         Map<
                 String,
@@ -525,6 +891,7 @@ public class ExperienceNormalizer {
                 new LinkedHashMap<>();
 
         for (var rule : rules) {
+
             for (String alias
                     : rule.getAliases()) {
 
@@ -535,7 +902,9 @@ public class ExperienceNormalizer {
             }
         }
 
-        return Map.copyOf(result);
+        return Map.copyOf(
+                result
+        );
     }
 
     private Set<String> foldSet(
@@ -545,17 +914,26 @@ public class ExperienceNormalizer {
                 new LinkedHashSet<>();
 
         if (values != null) {
+
             for (String value : values) {
+
                 String folded =
-                        fold(value);
+                        fold(
+                                value
+                        );
 
                 if (!folded.isBlank()) {
-                    result.add(folded);
+
+                    result.add(
+                            folded
+                    );
                 }
             }
         }
 
-        return Set.copyOf(result);
+        return Set.copyOf(
+                result
+        );
     }
 
     private String fold(
@@ -572,26 +950,47 @@ public class ExperienceNormalizer {
             String value,
             Set<String> phrases
     ) {
-        return phrases
-                .stream()
-                .anyMatch(
-                        phrase ->
-                                findPhrase(
-                                        value,
-                                        phrase
-                                ) >= 0
-                );
+        for (String phrase : phrases) {
+
+            if (findPhrase(
+                    value,
+                    phrase
+            ) >= 0) {
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private int findPhrase(
             String value,
             String phrase
     ) {
-        int from = 0;
+        return findPhraseFrom(
+                value,
+                phrase,
+                0
+        );
+    }
 
-        while (from
-                <= value.length()
-                - phrase.length()) {
+    private int findPhraseFrom(
+            String value,
+            String phrase,
+            int fromIndex
+    ) {
+        int from =
+                Math.max(
+                        0,
+                        fromIndex
+                );
+
+        while (
+                from
+                        <= value.length()
+                        - phrase.length()
+        ) {
 
             int index =
                     value.indexOf(
@@ -609,17 +1008,21 @@ public class ExperienceNormalizer {
 
             boolean left =
                     index == 0
-                            || !Character.isLetterOrDigit(
-                            value.charAt(
-                                    index - 1
-                            )
-                    );
+                            || !Character
+                            .isLetterOrDigit(
+                                    value.charAt(
+                                            index - 1
+                                    )
+                            );
 
             boolean right =
                     end == value.length()
-                            || !Character.isLetterOrDigit(
-                            value.charAt(end)
-                    );
+                            || !Character
+                            .isLetterOrDigit(
+                                    value.charAt(
+                                            end
+                                    )
+                            );
 
             if (left && right) {
                 return index;

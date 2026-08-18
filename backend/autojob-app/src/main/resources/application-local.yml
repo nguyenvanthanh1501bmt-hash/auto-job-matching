@@ -1,4 +1,4 @@
-spring:
+﻿spring:
   data:
     mongodb:
       host: 127.0.0.1
@@ -33,7 +33,7 @@ autojob:
       base-url: ${CV_PARSER_BASE_URL:http://localhost:8003}
       connect-timeout: ${CV_PARSER_CONNECT_TIMEOUT:3s}
       response-timeout: ${CV_PARSER_RESPONSE_TIMEOUT:60s}
-      expected-version: ${CV_PARSER_EXPECTED_VERSION:rule-v1}
+      expected-version: ${CV_PARSER_EXPECTED_VERSION:rule-v2}
       max-error-length: ${CV_PARSER_MAX_ERROR_LENGTH:1000}
       max-response-size-bytes: ${CV_PARSER_MAX_RESPONSE_SIZE_BYTES:16777216}
 

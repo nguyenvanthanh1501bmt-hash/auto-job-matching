@@ -7,10 +7,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NormalizationPropertiesV2Test {
 
     @Test
-    void shouldDefaultToRuleV2() {
+    void shouldDefaultToRuleV4() {
         NormalizationProperties properties =
                 new NormalizationProperties();
 
-        assertThat(properties.getVersion()).isEqualTo("rule-v2");
+        assertThat(
+                properties.getVersion()
+        ).isEqualTo(
+                "rule-v4"
+        );
     }
 }

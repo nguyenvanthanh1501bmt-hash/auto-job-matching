@@ -1,4 +1,4 @@
-version: rule-v2
+﻿version: rule-v2
 
 employmentTypes:
   FULL_TIME:
@@ -6,58 +6,58 @@ employmentTypes:
     - full-time
     - permanent
     - permanent position
-    - toàn thời gian
-    - chính thức
-    - nhân viên chính thức
+    - toÃ n thá»i gian
+    - chÃ­nh thá»©c
+    - nhÃ¢n viÃªn chÃ­nh thá»©c
 
   PART_TIME:
     - part time
     - part-time
-    - bán thời gian
+    - bÃ¡n thá»i gian
 
   CONTRACT:
     - contract
     - contractual
     - fixed term
     - fixed-term
-    - hợp đồng
-    - có thời hạn
+    - há»£p Ä‘á»“ng
+    - cÃ³ thá»i háº¡n
 
   TEMPORARY:
     - temporary
     - temp
-    - tạm thời
-    - thời vụ ngắn hạn
+    - táº¡m thá»i
+    - thá»i vá»¥ ngáº¯n háº¡n
 
   INTERNSHIP:
     - internship
     - intern position
-    - thực tập
-    - thực tập sinh
+    - thá»±c táº­p
+    - thá»±c táº­p sinh
 
   FREELANCE:
     - freelance
     - freelancer
     - self-employed
     - independent contractor
-    - tự do
-    - cộng tác viên
+    - tá»± do
+    - cá»™ng tÃ¡c viÃªn
 
   SEASONAL:
     - seasonal
     - seasonal work
-    - thời vụ
-    - theo mùa
+    - thá»i vá»¥
+    - theo mÃ¹a
 
   SHIFT_WORK:
     - shift work
     - rotating shift
     - night shift
     - day shift
-    - làm việc theo ca
+    - lÃ m viá»‡c theo ca
     - xoay ca
-    - ca đêm
-    - ca ngày
+    - ca Ä‘Ãªm
+    - ca ngÃ y
 
 workModes:
   ONSITE:
@@ -66,22 +66,22 @@ workModes:
     - office based
     - office-based
     - work at office
-    - tại văn phòng
-    - làm việc tại chỗ
-    - làm việc trực tiếp
+    - táº¡i vÄƒn phÃ²ng
+    - lÃ m viá»‡c táº¡i chá»—
+    - lÃ m viá»‡c trá»±c tiáº¿p
 
   REMOTE:
     - remote
     - remote work
     - work from home
     - wfh
-    - từ xa
-    - làm việc từ xa
-    - làm việc tại nhà
+    - tá»« xa
+    - lÃ m viá»‡c tá»« xa
+    - lÃ m viá»‡c táº¡i nhÃ 
 
   HYBRID:
     - hybrid
     - hybrid work
     - flexible workplace
-    - kết hợp
-    - làm việc kết hợp
+    - káº¿t há»£p
+    - lÃ m viá»‡c káº¿t há»£p

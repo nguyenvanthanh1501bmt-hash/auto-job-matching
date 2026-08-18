@@ -1,4 +1,4 @@
-version: rule-v2
+﻿version: rule-v2
 
 items:
   - canonical: SOFTWARE_ENGINEER
@@ -6,8 +6,8 @@ items:
       - Software Engineer
       - Software Developer
       - Application Developer
-      - Kỹ sư phần mềm
-      - Lập trình viên phần mềm
+      - Ká»¹ sÆ° pháº§n má»m
+      - Láº­p trÃ¬nh viÃªn pháº§n má»m
 
   - canonical: BACKEND_DEVELOPER
     aliases:
@@ -15,14 +15,14 @@ items:
       - Back-end Developer
       - Backend Engineer
       - Server-side Developer
-      - Lập trình viên backend
+      - Láº­p trÃ¬nh viÃªn backend
 
   - canonical: FRONTEND_DEVELOPER
     aliases:
       - Frontend Developer
       - Front-end Developer
       - Frontend Engineer
-      - Lập trình viên frontend
+      - Láº­p trÃ¬nh viÃªn frontend
 
   - canonical: FULL_STACK_DEVELOPER
     aliases:
@@ -35,472 +35,472 @@ items:
     aliases:
       - Data Analyst
       - Business Data Analyst
-      - Chuyên viên phân tích dữ liệu
+      - ChuyÃªn viÃªn phÃ¢n tÃ­ch dá»¯ liá»‡u
 
   - canonical: DATA_ENGINEER
     aliases:
       - Data Engineer
-      - Kỹ sư dữ liệu
+      - Ká»¹ sÆ° dá»¯ liá»‡u
 
   - canonical: DATA_SCIENTIST
     aliases:
       - Data Scientist
-      - Nhà khoa học dữ liệu
+      - NhÃ  khoa há»c dá»¯ liá»‡u
 
   - canonical: SYSTEM_ADMINISTRATOR
     aliases:
       - System Administrator
       - Systems Administrator
       - IT Administrator
-      - Quản trị hệ thống
+      - Quáº£n trá»‹ há»‡ thá»‘ng
 
   - canonical: CYBERSECURITY_SPECIALIST
     aliases:
       - Cybersecurity Specialist
       - Information Security Specialist
       - Security Analyst
-      - Chuyên viên an toàn thông tin
+      - ChuyÃªn viÃªn an toÃ n thÃ´ng tin
 
   - canonical: ACCOUNTANT
     aliases:
       - Accountant
       - General Accountant
       - Staff Accountant
-      - Kế toán viên
-      - Kế toán tổng hợp
+      - Káº¿ toÃ¡n viÃªn
+      - Káº¿ toÃ¡n tá»•ng há»£p
 
   - canonical: SENIOR_ACCOUNTANT
     aliases:
       - Senior Accountant
-      - Kế toán viên cao cấp
-      - Kế toán tổng hợp cao cấp
+      - Káº¿ toÃ¡n viÃªn cao cáº¥p
+      - Káº¿ toÃ¡n tá»•ng há»£p cao cáº¥p
 
   - canonical: CHIEF_ACCOUNTANT
     aliases:
       - Chief Accountant
       - Head Accountant
-      - Kế toán trưởng
+      - Káº¿ toÃ¡n trÆ°á»Ÿng
 
   - canonical: COST_ACCOUNTANT
     aliases:
       - Cost Accountant
       - Management Accountant
-      - Kế toán giá thành
-      - Kế toán quản trị
+      - Káº¿ toÃ¡n giÃ¡ thÃ nh
+      - Káº¿ toÃ¡n quáº£n trá»‹
 
   - canonical: ACCOUNTS_PAYABLE_ACCOUNTANT
     aliases:
       - Accounts Payable Accountant
       - AP Accountant
-      - Kế toán công nợ phải trả
+      - Káº¿ toÃ¡n cÃ´ng ná»£ pháº£i tráº£
 
   - canonical: ACCOUNTS_RECEIVABLE_ACCOUNTANT
     aliases:
       - Accounts Receivable Accountant
       - AR Accountant
-      - Kế toán công nợ phải thu
+      - Káº¿ toÃ¡n cÃ´ng ná»£ pháº£i thu
 
   - canonical: FINANCIAL_ANALYST
     aliases:
       - Financial Analyst
       - Finance Analyst
-      - Chuyên viên phân tích tài chính
+      - ChuyÃªn viÃªn phÃ¢n tÃ­ch tÃ i chÃ­nh
 
   - canonical: AUDITOR
     aliases:
       - Auditor
       - Internal Auditor
       - External Auditor
-      - Kiểm toán viên
+      - Kiá»ƒm toÃ¡n viÃªn
 
   - canonical: BANK_TELLER
     aliases:
       - Bank Teller
       - Teller
-      - Giao dịch viên ngân hàng
+      - Giao dá»‹ch viÃªn ngÃ¢n hÃ ng
 
   - canonical: CREDIT_ANALYST
     aliases:
       - Credit Analyst
       - Credit Officer
-      - Chuyên viên tín dụng
+      - ChuyÃªn viÃªn tÃ­n dá»¥ng
 
   - canonical: INSURANCE_ADVISOR
     aliases:
       - Insurance Advisor
       - Insurance Consultant
-      - Tư vấn bảo hiểm
+      - TÆ° váº¥n báº£o hiá»ƒm
 
   - canonical: SALES_REPRESENTATIVE
     aliases:
       - Sales Representative
       - Sales Executive
       - Salesperson
-      - Nhân viên kinh doanh
-      - Chuyên viên bán hàng
+      - NhÃ¢n viÃªn kinh doanh
+      - ChuyÃªn viÃªn bÃ¡n hÃ ng
 
   - canonical: ACCOUNT_EXECUTIVE
     aliases:
       - Account Executive
       - Client Account Executive
-      - Chuyên viên quản lý khách hàng
+      - ChuyÃªn viÃªn quáº£n lÃ½ khÃ¡ch hÃ ng
 
   - canonical: BUSINESS_DEVELOPMENT_EXECUTIVE
     aliases:
       - Business Development Executive
       - Business Development Representative
       - Business Development Specialist
-      - Chuyên viên phát triển kinh doanh
+      - ChuyÃªn viÃªn phÃ¡t triá»ƒn kinh doanh
 
   - canonical: SALES_MANAGER
     aliases:
       - Sales Manager
       - Regional Sales Manager
       - Area Sales Manager
-      - Trưởng phòng kinh doanh
-      - Quản lý bán hàng
+      - TrÆ°á»Ÿng phÃ²ng kinh doanh
+      - Quáº£n lÃ½ bÃ¡n hÃ ng
 
   - canonical: MARKETING_SPECIALIST
     aliases:
       - Marketing Specialist
       - Marketing Executive
-      - Chuyên viên marketing
-      - Chuyên viên tiếp thị
+      - ChuyÃªn viÃªn marketing
+      - ChuyÃªn viÃªn tiáº¿p thá»‹
 
   - canonical: DIGITAL_MARKETING_SPECIALIST
     aliases:
       - Digital Marketing Specialist
       - Digital Marketing Executive
-      - Chuyên viên digital marketing
-      - Chuyên viên tiếp thị số
+      - ChuyÃªn viÃªn digital marketing
+      - ChuyÃªn viÃªn tiáº¿p thá»‹ sá»‘
 
   - canonical: CONTENT_MARKETING_SPECIALIST
     aliases:
       - Content Marketing Specialist
       - Content Marketer
-      - Chuyên viên content marketing
+      - ChuyÃªn viÃªn content marketing
 
   - canonical: BRAND_MANAGER
     aliases:
       - Brand Manager
       - Brand Lead
-      - Quản lý thương hiệu
+      - Quáº£n lÃ½ thÆ°Æ¡ng hiá»‡u
 
   - canonical: HUMAN_RESOURCES_SPECIALIST
     aliases:
       - Human Resources Specialist
       - HR Specialist
       - HR Executive
-      - Chuyên viên nhân sự
+      - ChuyÃªn viÃªn nhÃ¢n sá»±
 
   - canonical: RECRUITER
     aliases:
       - Recruiter
       - Recruitment Specialist
       - Talent Acquisition Specialist
-      - Chuyên viên tuyển dụng
+      - ChuyÃªn viÃªn tuyá»ƒn dá»¥ng
 
   - canonical: HUMAN_RESOURCES_MANAGER
     aliases:
       - Human Resources Manager
       - HR Manager
-      - Trưởng phòng nhân sự
+      - TrÆ°á»Ÿng phÃ²ng nhÃ¢n sá»±
 
   - canonical: ADMINISTRATIVE_ASSISTANT
     aliases:
       - Administrative Assistant
       - Admin Assistant
-      - Trợ lý hành chính
-      - Nhân viên hành chính
+      - Trá»£ lÃ½ hÃ nh chÃ­nh
+      - NhÃ¢n viÃªn hÃ nh chÃ­nh
 
   - canonical: OFFICE_MANAGER
     aliases:
       - Office Manager
       - Administration Manager
-      - Quản lý văn phòng
-      - Trưởng phòng hành chính
+      - Quáº£n lÃ½ vÄƒn phÃ²ng
+      - TrÆ°á»Ÿng phÃ²ng hÃ nh chÃ­nh
 
   - canonical: OPERATIONS_SPECIALIST
     aliases:
       - Operations Specialist
       - Operations Executive
-      - Chuyên viên vận hành
+      - ChuyÃªn viÃªn váº­n hÃ nh
 
   - canonical: OPERATIONS_MANAGER
     aliases:
       - Operations Manager
       - Head of Operations
-      - Quản lý vận hành
-      - Trưởng phòng vận hành
+      - Quáº£n lÃ½ váº­n hÃ nh
+      - TrÆ°á»Ÿng phÃ²ng váº­n hÃ nh
 
   - canonical: CUSTOMER_SERVICE_REPRESENTATIVE
     aliases:
       - Customer Service Representative
       - Customer Support Representative
       - Customer Care Representative
-      - Nhân viên chăm sóc khách hàng
+      - NhÃ¢n viÃªn chÄƒm sÃ³c khÃ¡ch hÃ ng
 
   - canonical: CUSTOMER_SERVICE_MANAGER
     aliases:
       - Customer Service Manager
       - Customer Care Manager
-      - Quản lý chăm sóc khách hàng
+      - Quáº£n lÃ½ chÄƒm sÃ³c khÃ¡ch hÃ ng
 
   - canonical: STORE_MANAGER
     aliases:
       - Store Manager
       - Retail Store Manager
       - Shop Manager
-      - Quản lý cửa hàng
+      - Quáº£n lÃ½ cá»­a hÃ ng
 
   - canonical: CASHIER
     aliases:
       - Cashier
-      - Thu ngân
+      - Thu ngÃ¢n
 
   - canonical: RETAIL_SALES_ASSOCIATE
     aliases:
       - Retail Sales Associate
       - Shop Assistant
       - Store Associate
-      - Nhân viên bán hàng
+      - NhÃ¢n viÃªn bÃ¡n hÃ ng
 
   - canonical: WAREHOUSE_WORKER
     aliases:
       - Warehouse Worker
       - Warehouse Associate
       - Warehouse Operator
-      - Nhân viên kho
+      - NhÃ¢n viÃªn kho
 
   - canonical: WAREHOUSE_SUPERVISOR
     aliases:
       - Warehouse Supervisor
       - Warehouse Team Leader
-      - Giám sát kho
-      - Trưởng nhóm kho
+      - GiÃ¡m sÃ¡t kho
+      - TrÆ°á»Ÿng nhÃ³m kho
 
   - canonical: WAREHOUSE_MANAGER
     aliases:
       - Warehouse Manager
       - Distribution Center Manager
-      - Quản lý kho
-      - Trưởng kho
+      - Quáº£n lÃ½ kho
+      - TrÆ°á»Ÿng kho
 
   - canonical: LOGISTICS_COORDINATOR
     aliases:
       - Logistics Coordinator
       - Logistics Executive
       - Logistics Specialist
-      - Chuyên viên logistics
+      - ChuyÃªn viÃªn logistics
 
   - canonical: SUPPLY_CHAIN_SPECIALIST
     aliases:
       - Supply Chain Specialist
       - Supply Chain Executive
-      - Chuyên viên chuỗi cung ứng
+      - ChuyÃªn viÃªn chuá»—i cung á»©ng
 
   - canonical: PROCUREMENT_OFFICER
     aliases:
       - Procurement Officer
       - Procurement Specialist
       - Purchasing Officer
-      - Nhân viên thu mua
-      - Chuyên viên mua hàng
+      - NhÃ¢n viÃªn thu mua
+      - ChuyÃªn viÃªn mua hÃ ng
 
   - canonical: PRODUCTION_OPERATOR
     aliases:
       - Production Operator
       - Machine Operator
       - Manufacturing Operator
-      - Công nhân sản xuất
-      - Nhân viên vận hành máy
+      - CÃ´ng nhÃ¢n sáº£n xuáº¥t
+      - NhÃ¢n viÃªn váº­n hÃ nh mÃ¡y
 
   - canonical: PRODUCTION_SUPERVISOR
     aliases:
       - Production Supervisor
       - Manufacturing Supervisor
-      - Giám sát sản xuất
-      - Quản đốc sản xuất
+      - GiÃ¡m sÃ¡t sáº£n xuáº¥t
+      - Quáº£n Ä‘á»‘c sáº£n xuáº¥t
 
   - canonical: QUALITY_CONTROL_INSPECTOR
     aliases:
       - Quality Control Inspector
       - QC Inspector
       - Quality Inspector
-      - Nhân viên kiểm soát chất lượng
+      - NhÃ¢n viÃªn kiá»ƒm soÃ¡t cháº¥t lÆ°á»£ng
 
   - canonical: QUALITY_ASSURANCE_SPECIALIST
     aliases:
       - Quality Assurance Specialist
       - QA Specialist
-      - Chuyên viên đảm bảo chất lượng
+      - ChuyÃªn viÃªn Ä‘áº£m báº£o cháº¥t lÆ°á»£ng
 
   - canonical: MECHANICAL_ENGINEER
     aliases:
       - Mechanical Engineer
-      - Kỹ sư cơ khí
+      - Ká»¹ sÆ° cÆ¡ khÃ­
 
   - canonical: MECHANICAL_TECHNICIAN
     aliases:
       - Mechanical Technician
       - Mechanical Maintenance Technician
       - Maintenance Mechanic
-      - Kỹ thuật viên cơ khí
-      - Kỹ thuật viên bảo trì cơ khí
+      - Ká»¹ thuáº­t viÃªn cÆ¡ khÃ­
+      - Ká»¹ thuáº­t viÃªn báº£o trÃ¬ cÆ¡ khÃ­
 
   - canonical: ELECTRICAL_ENGINEER
     aliases:
       - Electrical Engineer
-      - Kỹ sư điện
+      - Ká»¹ sÆ° Ä‘iá»‡n
 
   - canonical: ELECTRICAL_TECHNICIAN
     aliases:
       - Electrical Technician
       - Electrical Maintenance Technician
-      - Kỹ thuật viên điện
-      - Kỹ thuật viên bảo trì điện
+      - Ká»¹ thuáº­t viÃªn Ä‘iá»‡n
+      - Ká»¹ thuáº­t viÃªn báº£o trÃ¬ Ä‘iá»‡n
 
   - canonical: CIVIL_ENGINEER
     aliases:
       - Civil Engineer
       - Construction Engineer
-      - Kỹ sư xây dựng
-      - Kỹ sư công trình
+      - Ká»¹ sÆ° xÃ¢y dá»±ng
+      - Ká»¹ sÆ° cÃ´ng trÃ¬nh
 
   - canonical: SITE_ENGINEER
     aliases:
       - Site Engineer
       - Construction Site Engineer
-      - Kỹ sư hiện trường
+      - Ká»¹ sÆ° hiá»‡n trÆ°á»ng
 
   - canonical: CONSTRUCTION_SUPERVISOR
     aliases:
       - Construction Supervisor
       - Site Supervisor
-      - Giám sát xây dựng
-      - Giám sát công trình
+      - GiÃ¡m sÃ¡t xÃ¢y dá»±ng
+      - GiÃ¡m sÃ¡t cÃ´ng trÃ¬nh
 
   - canonical: ARCHITECT
     aliases:
       - Architect
       - Building Architect
-      - Kiến trúc sư
+      - Kiáº¿n trÃºc sÆ°
 
   - canonical: QUANTITY_SURVEYOR
     aliases:
       - Quantity Surveyor
       - Cost Estimator
-      - Kỹ sư dự toán
-      - Kỹ sư khối lượng
+      - Ká»¹ sÆ° dá»± toÃ¡n
+      - Ká»¹ sÆ° khá»‘i lÆ°á»£ng
 
   - canonical: REGISTERED_NURSE
     aliases:
       - Registered Nurse
       - Staff Nurse
       - Clinical Nurse
-      - Điều dưỡng viên
-      - Điều dưỡng
+      - Äiá»u dÆ°á»¡ng viÃªn
+      - Äiá»u dÆ°á»¡ng
 
   - canonical: NURSING_SUPERVISOR
     aliases:
       - Nursing Supervisor
       - Head Nurse
       - Charge Nurse
-      - Điều dưỡng trưởng
+      - Äiá»u dÆ°á»¡ng trÆ°á»Ÿng
 
   - canonical: PHARMACIST
     aliases:
       - Pharmacist
       - Community Pharmacist
       - Hospital Pharmacist
-      - Dược sĩ
+      - DÆ°á»£c sÄ©
 
   - canonical: PHARMACY_TECHNICIAN
     aliases:
       - Pharmacy Technician
       - Pharmacy Assistant
-      - Kỹ thuật viên dược
-      - Phụ tá dược
+      - Ká»¹ thuáº­t viÃªn dÆ°á»£c
+      - Phá»¥ tÃ¡ dÆ°á»£c
 
   - canonical: MEDICAL_LABORATORY_TECHNICIAN
     aliases:
       - Medical Laboratory Technician
       - Laboratory Technician
-      - Kỹ thuật viên xét nghiệm
+      - Ká»¹ thuáº­t viÃªn xÃ©t nghiá»‡m
 
   - canonical: DOCTOR
     aliases:
       - Medical Doctor
       - Physician
       - General Practitioner
-      - Bác sĩ
+      - BÃ¡c sÄ©
 
   - canonical: TEACHER
     aliases:
       - Teacher
       - School Teacher
-      - Giáo viên
+      - GiÃ¡o viÃªn
 
   - canonical: PRIMARY_SCHOOL_TEACHER
     aliases:
       - Primary School Teacher
       - Elementary School Teacher
       - Primary Teacher
-      - Giáo viên tiểu học
+      - GiÃ¡o viÃªn tiá»ƒu há»c
 
   - canonical: ENGLISH_TEACHER
     aliases:
       - English Teacher
       - ESL Teacher
       - EFL Teacher
-      - Giáo viên tiếng Anh
+      - GiÃ¡o viÃªn tiáº¿ng Anh
 
   - canonical: TEACHING_ASSISTANT
     aliases:
       - Teaching Assistant
       - Teacher Assistant
-      - Trợ giảng
+      - Trá»£ giáº£ng
 
   - canonical: LECTURER
     aliases:
       - Lecturer
       - University Lecturer
-      - Giảng viên
+      - Giáº£ng viÃªn
 
   - canonical: TRAINER
     aliases:
       - Trainer
       - Corporate Trainer
       - Training Specialist
-      - Chuyên viên đào tạo
+      - ChuyÃªn viÃªn Ä‘Ã o táº¡o
 
   - canonical: LAWYER
     aliases:
       - Lawyer
       - Attorney
       - Legal Counsel
-      - Luật sư
+      - Luáº­t sÆ°
 
   - canonical: LEGAL_SPECIALIST
     aliases:
       - Legal Specialist
       - Legal Executive
       - Legal Officer
-      - Chuyên viên pháp lý
+      - ChuyÃªn viÃªn phÃ¡p lÃ½
 
   - canonical: REAL_ESTATE_AGENT
     aliases:
       - Real Estate Agent
       - Property Consultant
       - Real Estate Broker
-      - Nhân viên môi giới bất động sản
+      - NhÃ¢n viÃªn mÃ´i giá»›i báº¥t Ä‘á»™ng sáº£n
 
   - canonical: GRAPHIC_DESIGNER
     aliases:
       - Graphic Designer
       - Visual Designer
-      - Thiết kế đồ họa
-      - Chuyên viên thiết kế đồ họa
+      - Thiáº¿t káº¿ Ä‘á»“ há»a
+      - ChuyÃªn viÃªn thiáº¿t káº¿ Ä‘á»“ há»a
 
   - canonical: UX_UI_DESIGNER
     aliases:
@@ -514,145 +514,145 @@ items:
       - Content Writer
       - Copywriter
       - Web Content Writer
-      - Nhân viên viết nội dung
+      - NhÃ¢n viÃªn viáº¿t ná»™i dung
 
   - canonical: VIDEO_EDITOR
     aliases:
       - Video Editor
       - Film Editor
-      - Biên tập video
+      - BiÃªn táº­p video
 
   - canonical: PHOTOGRAPHER
     aliases:
       - Photographer
-      - Nhiếp ảnh gia
+      - Nhiáº¿p áº£nh gia
 
   - canonical: CHEF
     aliases:
       - Chef
       - Cook
-      - Đầu bếp
+      - Äáº§u báº¿p
 
   - canonical: EXECUTIVE_CHEF
     aliases:
       - Executive Chef
       - Head Chef
-      - Bếp trưởng
+      - Báº¿p trÆ°á»Ÿng
 
   - canonical: WAITER
     aliases:
       - Waiter
       - Waitress
       - Server
-      - Nhân viên phục vụ
+      - NhÃ¢n viÃªn phá»¥c vá»¥
 
   - canonical: FRONT_OFFICE_RECEPTIONIST
     aliases:
       - Receptionist
       - Front Desk Receptionist
       - Front Office Receptionist
-      - Nhân viên lễ tân
+      - NhÃ¢n viÃªn lá»… tÃ¢n
 
   - canonical: HOUSEKEEPING_ATTENDANT
     aliases:
       - Housekeeping Attendant
       - Room Attendant
-      - Nhân viên buồng phòng
+      - NhÃ¢n viÃªn buá»“ng phÃ²ng
 
   - canonical: HOTEL_MANAGER
     aliases:
       - Hotel Manager
       - Hospitality Manager
-      - Quản lý khách sạn
+      - Quáº£n lÃ½ khÃ¡ch sáº¡n
 
   - canonical: DRIVER
     aliases:
       - Driver
       - Delivery Driver
       - Truck Driver
-      - Tài xế
-      - Lái xe
+      - TÃ i xáº¿
+      - LÃ¡i xe
 
   - canonical: ELECTRICIAN
     aliases:
       - Electrician
       - Electrical Worker
-      - Thợ điện
+      - Thá»£ Ä‘iá»‡n
 
   - canonical: WELDER
     aliases:
       - Welder
       - Welding Technician
-      - Thợ hàn
+      - Thá»£ hÃ n
 
   - canonical: PLUMBER
     aliases:
       - Plumber
       - Plumbing Technician
-      - Thợ sửa ống nước
+      - Thá»£ sá»­a á»‘ng nÆ°á»›c
 
   - canonical: CARPENTER
     aliases:
       - Carpenter
       - Woodworker
-      - Thợ mộc
+      - Thá»£ má»™c
 
   - canonical: MACHINIST
     aliases:
       - Machinist
       - CNC Machinist
-      - Thợ gia công cơ khí
-      - Thợ máy CNC
+      - Thá»£ gia cÃ´ng cÆ¡ khÃ­
+      - Thá»£ mÃ¡y CNC
 
   - canonical: FARM_WORKER
     aliases:
       - Farm Worker
       - Agricultural Worker
-      - Công nhân nông nghiệp
+      - CÃ´ng nhÃ¢n nÃ´ng nghiá»‡p
 
   - canonical: AGRICULTURAL_ENGINEER
     aliases:
       - Agricultural Engineer
       - Agronomist
-      - Kỹ sư nông nghiệp
+      - Ká»¹ sÆ° nÃ´ng nghiá»‡p
 
   - canonical: SECURITY_GUARD
     aliases:
       - Security Guard
       - Security Officer
-      - Nhân viên bảo vệ
+      - NhÃ¢n viÃªn báº£o vá»‡
 
   - canonical: GENERAL_LABORER
     aliases:
       - General Laborer
       - General Worker
       - Manual Laborer
-      - Lao động phổ thông
-      - Công nhân phổ thông
+      - Lao Ä‘á»™ng phá»• thÃ´ng
+      - CÃ´ng nhÃ¢n phá»• thÃ´ng
 
   - canonical: PROJECT_MANAGER
     aliases:
       - Project Manager
       - Program Manager
-      - Quản lý dự án
+      - Quáº£n lÃ½ dá»± Ã¡n
 
   - canonical: GENERAL_MANAGER
     aliases:
       - General Manager
-      - Tổng quản lý
-      - Giám đốc điều hành đơn vị
+      - Tá»•ng quáº£n lÃ½
+      - GiÃ¡m Ä‘á»‘c Ä‘iá»u hÃ nh Ä‘Æ¡n vá»‹
 
   - canonical: DIRECTOR
     aliases:
       - Director
       - Department Director
-      - Giám đốc
+      - GiÃ¡m Ä‘á»‘c
 
   - canonical: CHIEF_EXECUTIVE_OFFICER
     aliases:
       - Chief Executive Officer
       - CEO
-      - Tổng giám đốc
+      - Tá»•ng giÃ¡m Ä‘á»‘c
 
   # Executive support and leadership
   - canonical: EXECUTIVE_ASSISTANT
@@ -661,111 +661,111 @@ items:
       - Executive Administrative Assistant
       - Assistant to the Director
       - Assistant to the CEO
-      - Trợ lý giám đốc
-      - Trợ lí giám đốc
-      - Trợ lý tổng giám đốc
-      - Trợ lý điều hành
+      - Trá»£ lÃ½ giÃ¡m Ä‘á»‘c
+      - Trá»£ lÃ­ giÃ¡m Ä‘á»‘c
+      - Trá»£ lÃ½ tá»•ng giÃ¡m Ä‘á»‘c
+      - Trá»£ lÃ½ Ä‘iá»u hÃ nh
 
   - canonical: PERSONAL_ASSISTANT
     aliases:
       - Personal Assistant
       - Private Assistant
-      - Trợ lý cá nhân
-      - Thư ký riêng
+      - Trá»£ lÃ½ cÃ¡ nhÃ¢n
+      - ThÆ° kÃ½ riÃªng
 
   - canonical: SECRETARY
     aliases:
       - Secretary
       - Executive Secretary
       - Administrative Secretary
-      - Thư ký
-      - Thư ký hành chính
+      - ThÆ° kÃ½
+      - ThÆ° kÃ½ hÃ nh chÃ­nh
 
   - canonical: CHIEF_OF_STAFF
     aliases:
       - Chief of Staff
       - CEO Office Manager
-      - Chánh văn phòng CEO
-      - Trưởng ban trợ lý
+      - ChÃ¡nh vÄƒn phÃ²ng CEO
+      - TrÆ°á»Ÿng ban trá»£ lÃ½
 
   - canonical: DEPUTY_DIRECTOR
     aliases:
       - Deputy Director
       - Assistant Director
-      - Phó giám đốc
+      - PhÃ³ giÃ¡m Ä‘á»‘c
 
   - canonical: MANAGING_DIRECTOR
     aliases:
       - Managing Director
       - Executive Director
-      - Giám đốc điều hành
-      - Giám đốc điều hành doanh nghiệp
+      - GiÃ¡m Ä‘á»‘c Ä‘iá»u hÃ nh
+      - GiÃ¡m Ä‘á»‘c Ä‘iá»u hÃ nh doanh nghiá»‡p
 
   - canonical: CHIEF_OPERATING_OFFICER
     aliases:
       - Chief Operating Officer
       - COO
-      - Giám đốc vận hành
+      - GiÃ¡m Ä‘á»‘c váº­n hÃ nh
 
   - canonical: CHIEF_TECHNOLOGY_OFFICER
     aliases:
       - Chief Technology Officer
       - CTO
-      - Giám đốc công nghệ
+      - GiÃ¡m Ä‘á»‘c cÃ´ng nghá»‡
 
   - canonical: CHIEF_INFORMATION_OFFICER
     aliases:
       - Chief Information Officer
       - CIO
-      - Giám đốc thông tin
+      - GiÃ¡m Ä‘á»‘c thÃ´ng tin
 
   - canonical: CHIEF_FINANCIAL_OFFICER
     aliases:
       - Chief Financial Officer
       - CFO
-      - Giám đốc tài chính
+      - GiÃ¡m Ä‘á»‘c tÃ i chÃ­nh
 
   - canonical: CHIEF_MARKETING_OFFICER
     aliases:
       - Chief Marketing Officer
       - CMO
-      - Giám đốc marketing
-      - Giám đốc tiếp thị
+      - GiÃ¡m Ä‘á»‘c marketing
+      - GiÃ¡m Ä‘á»‘c tiáº¿p thá»‹
 
   - canonical: CHIEF_HUMAN_RESOURCES_OFFICER
     aliases:
       - Chief Human Resources Officer
       - CHRO
       - Chief People Officer
-      - Giám đốc nhân sự
+      - GiÃ¡m Ä‘á»‘c nhÃ¢n sá»±
 
   - canonical: TEAM_LEADER
     aliases:
       - Team Leader
       - Team Lead
       - Group Leader
-      - Trưởng nhóm
-      - Tổ trưởng
+      - TrÆ°á»Ÿng nhÃ³m
+      - Tá»• trÆ°á»Ÿng
 
   - canonical: BRANCH_MANAGER
     aliases:
       - Branch Manager
       - Branch Director
-      - Giám đốc chi nhánh
-      - Quản lý chi nhánh
+      - GiÃ¡m Ä‘á»‘c chi nhÃ¡nh
+      - Quáº£n lÃ½ chi nhÃ¡nh
 
   - canonical: REGIONAL_MANAGER
     aliases:
       - Regional Manager
       - Regional Director
-      - Giám đốc khu vực
-      - Quản lý vùng
+      - GiÃ¡m Ä‘á»‘c khu vá»±c
+      - Quáº£n lÃ½ vÃ¹ng
 
   - canonical: COUNTRY_MANAGER
     aliases:
       - Country Manager
       - Country Director
-      - Giám đốc quốc gia
+      - GiÃ¡m Ä‘á»‘c quá»‘c gia
 
   # Technology leadership and engineering
   - canonical: TECHNICAL_LEAD
@@ -774,352 +774,352 @@ items:
       - Tech Lead
       - Software Technical Lead
       - Engineering Lead
-      - Trưởng nhóm kỹ thuật
-      - Trưởng nhóm công nghệ
+      - TrÆ°á»Ÿng nhÃ³m ká»¹ thuáº­t
+      - TrÆ°á»Ÿng nhÃ³m cÃ´ng nghá»‡
 
   - canonical: HEAD_OF_ENGINEERING
     aliases:
       - Head of Engineering
       - Engineering Department Head
-      - Trưởng bộ phận kỹ thuật phần mềm
+      - TrÆ°á»Ÿng bá»™ pháº­n ká»¹ thuáº­t pháº§n má»m
 
   - canonical: VICE_PRESIDENT_ENGINEERING
     aliases:
       - Vice President of Engineering
       - VP of Engineering
-      - Phó chủ tịch kỹ thuật
+      - PhÃ³ chá»§ tá»‹ch ká»¹ thuáº­t
 
   - canonical: ENGINEERING_MANAGER
     aliases:
       - Engineering Manager
       - Software Engineering Manager
       - Development Manager
-      - Quản lý kỹ thuật phần mềm
-      - Trưởng phòng phát triển phần mềm
+      - Quáº£n lÃ½ ká»¹ thuáº­t pháº§n má»m
+      - TrÆ°á»Ÿng phÃ²ng phÃ¡t triá»ƒn pháº§n má»m
 
   - canonical: SOFTWARE_ARCHITECT
     aliases:
       - Software Architect
       - Application Architect
-      - Kiến trúc sư phần mềm
+      - Kiáº¿n trÃºc sÆ° pháº§n má»m
 
   - canonical: SOLUTION_ARCHITECT
     aliases:
       - Solution Architect
       - Solutions Architect
-      - Kiến trúc sư giải pháp
+      - Kiáº¿n trÃºc sÆ° giáº£i phÃ¡p
 
   - canonical: DEVOPS_ENGINEER
     aliases:
       - DevOps Engineer
       - DevOps Specialist
-      - Kỹ sư DevOps
+      - Ká»¹ sÆ° DevOps
 
   - canonical: SITE_RELIABILITY_ENGINEER
     aliases:
       - Site Reliability Engineer
       - SRE Engineer
       - SRE
-      - Kỹ sư độ tin cậy hệ thống
+      - Ká»¹ sÆ° Ä‘á»™ tin cáº­y há»‡ thá»‘ng
 
   - canonical: CLOUD_ENGINEER
     aliases:
       - Cloud Engineer
       - Cloud Infrastructure Engineer
-      - Kỹ sư điện toán đám mây
+      - Ká»¹ sÆ° Ä‘iá»‡n toÃ¡n Ä‘Ã¡m mÃ¢y
 
   - canonical: CLOUD_ARCHITECT
     aliases:
       - Cloud Architect
       - Cloud Solutions Architect
-      - Kiến trúc sư điện toán đám mây
+      - Kiáº¿n trÃºc sÆ° Ä‘iá»‡n toÃ¡n Ä‘Ã¡m mÃ¢y
 
   - canonical: MOBILE_DEVELOPER
     aliases:
       - Mobile Developer
       - Mobile Application Developer
-      - Lập trình viên di động
+      - Láº­p trÃ¬nh viÃªn di Ä‘á»™ng
 
   - canonical: ANDROID_DEVELOPER
     aliases:
       - Android Developer
       - Android Engineer
-      - Lập trình viên Android
+      - Láº­p trÃ¬nh viÃªn Android
 
   - canonical: IOS_DEVELOPER
     aliases:
       - iOS Developer
       - iOS Engineer
-      - Lập trình viên iOS
+      - Láº­p trÃ¬nh viÃªn iOS
 
   - canonical: EMBEDDED_SOFTWARE_ENGINEER
     aliases:
       - Embedded Software Engineer
       - Embedded Systems Engineer
       - Embedded Developer
-      - Kỹ sư phần mềm nhúng
+      - Ká»¹ sÆ° pháº§n má»m nhÃºng
 
   - canonical: QA_ENGINEER
     aliases:
       - QA Engineer
       - Software Quality Assurance Engineer
       - Quality Assurance Engineer
-      - Kỹ sư kiểm thử chất lượng phần mềm
+      - Ká»¹ sÆ° kiá»ƒm thá»­ cháº¥t lÆ°á»£ng pháº§n má»m
 
   - canonical: SOFTWARE_TESTER
     aliases:
       - Software Tester
       - Manual Tester
       - QA Tester
-      - Nhân viên kiểm thử phần mềm
-      - Kiểm thử viên phần mềm
+      - NhÃ¢n viÃªn kiá»ƒm thá»­ pháº§n má»m
+      - Kiá»ƒm thá»­ viÃªn pháº§n má»m
 
   - canonical: AUTOMATION_TEST_ENGINEER
     aliases:
       - Automation Test Engineer
       - Test Automation Engineer
       - Automation QA Engineer
-      - Kỹ sư kiểm thử tự động
+      - Ká»¹ sÆ° kiá»ƒm thá»­ tá»± Ä‘á»™ng
 
   - canonical: BUSINESS_ANALYST
     aliases:
       - Business Analyst
       - IT Business Analyst
       - Business Process Analyst
-      - Chuyên viên phân tích nghiệp vụ
-      - Chuyên viên BA
+      - ChuyÃªn viÃªn phÃ¢n tÃ­ch nghiá»‡p vá»¥
+      - ChuyÃªn viÃªn BA
 
   - canonical: SYSTEM_ANALYST
     aliases:
       - System Analyst
       - Systems Analyst
       - IT Systems Analyst
-      - Chuyên viên phân tích hệ thống
+      - ChuyÃªn viÃªn phÃ¢n tÃ­ch há»‡ thá»‘ng
 
   - canonical: PRODUCT_MANAGER
     aliases:
       - Product Manager
       - Digital Product Manager
-      - Quản lý sản phẩm
+      - Quáº£n lÃ½ sáº£n pháº©m
 
   - canonical: PRODUCT_OWNER
     aliases:
       - Product Owner
       - Agile Product Owner
-      - Chủ sở hữu sản phẩm
+      - Chá»§ sá»Ÿ há»¯u sáº£n pháº©m
 
   - canonical: SCRUM_MASTER
     aliases:
       - Scrum Master
       - Agile Scrum Master
-      - Điều phối Scrum
+      - Äiá»u phá»‘i Scrum
 
   - canonical: DATABASE_ADMINISTRATOR
     aliases:
       - Database Administrator
       - Database Admin
       - DBA
-      - Quản trị cơ sở dữ liệu
+      - Quáº£n trá»‹ cÆ¡ sá»Ÿ dá»¯ liá»‡u
 
   - canonical: NETWORK_ENGINEER
     aliases:
       - Network Engineer
       - Network Infrastructure Engineer
-      - Kỹ sư mạng
+      - Ká»¹ sÆ° máº¡ng
 
   - canonical: IT_SUPPORT_SPECIALIST
     aliases:
       - IT Support Specialist
       - IT Support Engineer
       - Desktop Support Specialist
-      - Chuyên viên hỗ trợ CNTT
+      - ChuyÃªn viÃªn há»— trá»£ CNTT
 
   - canonical: HELP_DESK_TECHNICIAN
     aliases:
       - Help Desk Technician
       - Helpdesk Technician
       - IT Help Desk Agent
-      - Nhân viên helpdesk
+      - NhÃ¢n viÃªn helpdesk
 
   - canonical: AI_ENGINEER
     aliases:
       - AI Engineer
       - Artificial Intelligence Engineer
-      - Kỹ sư trí tuệ nhân tạo
+      - Ká»¹ sÆ° trÃ­ tuá»‡ nhÃ¢n táº¡o
 
   - canonical: MACHINE_LEARNING_ENGINEER
     aliases:
       - Machine Learning Engineer
       - ML Engineer
-      - Kỹ sư học máy
+      - Ká»¹ sÆ° há»c mÃ¡y
 
   - canonical: BUSINESS_INTELLIGENCE_ANALYST
     aliases:
       - Business Intelligence Analyst
       - BI Analyst
-      - Chuyên viên phân tích BI
-      - Chuyên viên kinh doanh thông minh
+      - ChuyÃªn viÃªn phÃ¢n tÃ­ch BI
+      - ChuyÃªn viÃªn kinh doanh thÃ´ng minh
 
   - canonical: SECURITY_ENGINEER
     aliases:
       - Security Engineer
       - Cyber Security Engineer
       - Information Security Engineer
-      - Kỹ sư an ninh mạng
+      - Ká»¹ sÆ° an ninh máº¡ng
 
   - canonical: PENETRATION_TESTER
     aliases:
       - Penetration Tester
       - Ethical Hacker
       - Security Penetration Tester
-      - Chuyên viên kiểm thử xâm nhập
+      - ChuyÃªn viÃªn kiá»ƒm thá»­ xÃ¢m nháº­p
 
   # Customer service, customer success and sales
   - canonical: CUSTOMER_SERVICE_SPECIALIST
     aliases:
       - Customer Service Specialist
       - Customer Care Specialist
-      - Chuyên viên chăm sóc khách hàng
+      - ChuyÃªn viÃªn chÄƒm sÃ³c khÃ¡ch hÃ ng
 
   - canonical: CUSTOMER_SERVICE_SUPERVISOR
     aliases:
       - Customer Service Supervisor
       - Customer Care Supervisor
       - Customer Service Team Leader
-      - Giám sát chăm sóc khách hàng
-      - Trưởng nhóm chăm sóc khách hàng
+      - GiÃ¡m sÃ¡t chÄƒm sÃ³c khÃ¡ch hÃ ng
+      - TrÆ°á»Ÿng nhÃ³m chÄƒm sÃ³c khÃ¡ch hÃ ng
 
   - canonical: CUSTOMER_SERVICE_DIRECTOR
     aliases:
       - Customer Service Director
       - Director of Customer Service
       - Head of Customer Service
-      - Giám đốc dịch vụ khách hàng
+      - GiÃ¡m Ä‘á»‘c dá»‹ch vá»¥ khÃ¡ch hÃ ng
 
   - canonical: CUSTOMER_SUPPORT_SPECIALIST
     aliases:
       - Customer Support Specialist
       - Customer Support Agent
-      - Chuyên viên hỗ trợ khách hàng
-      - Nhân viên hỗ trợ khách hàng
+      - ChuyÃªn viÃªn há»— trá»£ khÃ¡ch hÃ ng
+      - NhÃ¢n viÃªn há»— trá»£ khÃ¡ch hÃ ng
 
   - canonical: CUSTOMER_SUCCESS_SPECIALIST
     aliases:
       - Customer Success Specialist
       - Customer Success Executive
-      - Chuyên viên thành công khách hàng
+      - ChuyÃªn viÃªn thÃ nh cÃ´ng khÃ¡ch hÃ ng
 
   - canonical: CUSTOMER_SUCCESS_MANAGER
     aliases:
       - Customer Success Manager
       - Client Success Manager
-      - Quản lý thành công khách hàng
+      - Quáº£n lÃ½ thÃ nh cÃ´ng khÃ¡ch hÃ ng
 
   - canonical: CALL_CENTER_AGENT
     aliases:
       - Call Center Agent
       - Contact Center Agent
       - Call Center Representative
-      - Tổng đài viên
-      - Nhân viên tổng đài
+      - Tá»•ng Ä‘Ã i viÃªn
+      - NhÃ¢n viÃªn tá»•ng Ä‘Ã i
 
   - canonical: CONTACT_CENTER_MANAGER
     aliases:
       - Contact Center Manager
       - Call Center Manager
-      - Quản lý trung tâm liên hệ
-      - Quản lý tổng đài
+      - Quáº£n lÃ½ trung tÃ¢m liÃªn há»‡
+      - Quáº£n lÃ½ tá»•ng Ä‘Ã i
 
   - canonical: CUSTOMER_EXPERIENCE_SPECIALIST
     aliases:
       - Customer Experience Specialist
       - CX Specialist
-      - Chuyên viên trải nghiệm khách hàng
+      - ChuyÃªn viÃªn tráº£i nghiá»‡m khÃ¡ch hÃ ng
 
   - canonical: CUSTOMER_EXPERIENCE_MANAGER
     aliases:
       - Customer Experience Manager
       - CX Manager
-      - Quản lý trải nghiệm khách hàng
+      - Quáº£n lÃ½ tráº£i nghiá»‡m khÃ¡ch hÃ ng
 
   - canonical: TECHNICAL_SUPPORT_ENGINEER
     aliases:
       - Technical Support Engineer
       - Technical Support Specialist
       - Product Support Engineer
-      - Kỹ sư hỗ trợ kỹ thuật
+      - Ká»¹ sÆ° há»— trá»£ ká»¹ thuáº­t
 
   - canonical: COMPLAINT_RESOLUTION_SPECIALIST
     aliases:
       - Complaint Resolution Specialist
       - Customer Complaint Specialist
-      - Chuyên viên giải quyết khiếu nại
+      - ChuyÃªn viÃªn giáº£i quyáº¿t khiáº¿u náº¡i
 
   - canonical: ACCOUNT_MANAGER
     aliases:
       - Account Manager
       - Client Account Manager
-      - Quản lý khách hàng doanh nghiệp
+      - Quáº£n lÃ½ khÃ¡ch hÃ ng doanh nghiá»‡p
 
   - canonical: KEY_ACCOUNT_MANAGER
     aliases:
       - Key Account Manager
       - KAM
       - Strategic Account Manager
-      - Quản lý khách hàng trọng điểm
+      - Quáº£n lÃ½ khÃ¡ch hÃ ng trá»ng Ä‘iá»ƒm
 
   - canonical: SALES_SUPPORT_SPECIALIST
     aliases:
       - Sales Support Specialist
       - Sales Coordinator
-      - Chuyên viên hỗ trợ kinh doanh
+      - ChuyÃªn viÃªn há»— trá»£ kinh doanh
 
   - canonical: PRESALES_CONSULTANT
     aliases:
       - Presales Consultant
       - Pre-sales Consultant
       - Presales Specialist
-      - Tư vấn giải pháp trước bán hàng
+      - TÆ° váº¥n giáº£i phÃ¡p trÆ°á»›c bÃ¡n hÃ ng
 
   - canonical: SALES_ENGINEER
     aliases:
       - Sales Engineer
       - Technical Sales Engineer
-      - Kỹ sư bán hàng
+      - Ká»¹ sÆ° bÃ¡n hÃ ng
 
   - canonical: TELESALES_REPRESENTATIVE
     aliases:
       - Telesales Representative
       - Telesales Executive
       - Telephone Sales Representative
-      - Nhân viên telesales
+      - NhÃ¢n viÃªn telesales
 
   - canonical: BUSINESS_DEVELOPMENT_MANAGER
     aliases:
       - Business Development Manager
       - BD Manager
-      - Quản lý phát triển kinh doanh
+      - Quáº£n lÃ½ phÃ¡t triá»ƒn kinh doanh
 
   - canonical: SALES_DIRECTOR
     aliases:
       - Sales Director
       - Director of Sales
-      - Giám đốc kinh doanh
+      - GiÃ¡m Ä‘á»‘c kinh doanh
 
   - canonical: PARTNERSHIPS_MANAGER
     aliases:
       - Partnerships Manager
       - Strategic Partnerships Manager
-      - Quản lý đối tác
+      - Quáº£n lÃ½ Ä‘á»‘i tÃ¡c
 
   - canonical: E_COMMERCE_SPECIALIST
     aliases:
       - E-commerce Specialist
       - Ecommerce Specialist
-      - Chuyên viên thương mại điện tử
+      - ChuyÃªn viÃªn thÆ°Æ¡ng máº¡i Ä‘iá»‡n tá»­
 
   - canonical: E_COMMERCE_MANAGER
     aliases:
       - E-commerce Manager
       - Ecommerce Manager
-      - Quản lý thương mại điện tử
+      - Quáº£n lÃ½ thÆ°Æ¡ng máº¡i Ä‘iá»‡n tá»­

@@ -1,4 +1,4 @@
-version: rule-v2
+﻿version: rule-v2
 
 items:
   - type: CONTACT
@@ -7,9 +7,9 @@ items:
       - Contact Information
       - Personal Information
       - Personal Details
-      - Thông tin liên hệ
-      - Thông tin cá nhân
-      - Liên hệ
+      - ThÃ´ng tin liÃªn há»‡
+      - ThÃ´ng tin cÃ¡ nhÃ¢n
+      - LiÃªn há»‡
 
   - type: SUMMARY
     headings:
@@ -20,10 +20,10 @@ items:
       - Executive Summary
       - About Me
       - Personal Profile
-      - Giới thiệu
-      - Tóm tắt
-      - Tóm tắt nghề nghiệp
-      - Hồ sơ nghề nghiệp
+      - Giá»›i thiá»‡u
+      - TÃ³m táº¯t
+      - TÃ³m táº¯t nghá» nghiá»‡p
+      - Há»“ sÆ¡ nghá» nghiá»‡p
 
   - type: OBJECTIVE
     headings:
@@ -32,9 +32,9 @@ items:
       - Professional Objective
       - Career Goal
       - Career Goals
-      - Mục tiêu
-      - Mục tiêu nghề nghiệp
-      - Định hướng nghề nghiệp
+      - Má»¥c tiÃªu
+      - Má»¥c tiÃªu nghá» nghiá»‡p
+      - Äá»‹nh hÆ°á»›ng nghá» nghiá»‡p
 
   - type: SKILLS
     headings:
@@ -47,12 +47,12 @@ items:
       - Core Competencies
       - Areas of Expertise
       - Expertise
-      - Kĩ năng
-      - Kỹ năng
-      - Kỹ năng chuyên môn
-      - Năng lực
-      - Năng lực chuyên môn
-      - Chuyên môn
+      - KÄ© nÄƒng
+      - Ká»¹ nÄƒng
+      - Ká»¹ nÄƒng chuyÃªn mÃ´n
+      - NÄƒng lá»±c
+      - NÄƒng lá»±c chuyÃªn mÃ´n
+      - ChuyÃªn mÃ´n
 
   - type: WORK_EXPERIENCE
     headings:
@@ -63,11 +63,11 @@ items:
       - Experience
       - Work History
       - Relevant Experience
-      - Kinh nghiệm làm việc
-      - Kinh nghiệm
-      - Quá trình công tác
-      - Lịch sử làm việc
-      - Kinh nghiệm nghề nghiệp
+      - Kinh nghiá»‡m lÃ m viá»‡c
+      - Kinh nghiá»‡m
+      - QuÃ¡ trÃ¬nh cÃ´ng tÃ¡c
+      - Lá»‹ch sá»­ lÃ m viá»‡c
+      - Kinh nghiá»‡m nghá» nghiá»‡p
 
   - type: PROJECTS
     headings:
@@ -77,10 +77,10 @@ items:
       - Key Projects
       - Professional Projects
       - Project Experience
-      - Dự án
-      - Dự án tiêu biểu
-      - Dự án cá nhân
-      - Kinh nghiệm dự án
+      - Dá»± Ã¡n
+      - Dá»± Ã¡n tiÃªu biá»ƒu
+      - Dá»± Ã¡n cÃ¡ nhÃ¢n
+      - Kinh nghiá»‡m dá»± Ã¡n
 
   - type: EDUCATION
     headings:
@@ -89,11 +89,11 @@ items:
       - Qualifications
       - Academic Qualifications
       - Educational Background
-      - Học vấn
-      - Giáo dục
-      - Trình độ học vấn
-      - Quá trình học tập
-      - Trình độ chuyên môn
+      - Há»c váº¥n
+      - GiÃ¡o dá»¥c
+      - TrÃ¬nh Ä‘á»™ há»c váº¥n
+      - QuÃ¡ trÃ¬nh há»c táº­p
+      - TrÃ¬nh Ä‘á»™ chuyÃªn mÃ´n
 
   - type: CERTIFICATIONS
     headings:
@@ -101,10 +101,10 @@ items:
       - Certificates
       - Professional Certifications
       - Professional Certificates
-      - Chứng chỉ
-      - Chứng nhận
-      - Chứng chỉ nghề
-      - Chứng chỉ chuyên môn
+      - Chá»©ng chá»‰
+      - Chá»©ng nháº­n
+      - Chá»©ng chá»‰ nghá»
+      - Chá»©ng chá»‰ chuyÃªn mÃ´n
 
   - type: LICENSES
     headings:
@@ -112,11 +112,11 @@ items:
       - Professional Licenses
       - Practice Licenses
       - Professional Registration
-      - Giấy phép
-      - Giấy phép hành nghề
-      - Chứng chỉ hành nghề
-      - Bằng lái
-      - Giấy phép chuyên môn
+      - Giáº¥y phÃ©p
+      - Giáº¥y phÃ©p hÃ nh nghá»
+      - Chá»©ng chá»‰ hÃ nh nghá»
+      - Báº±ng lÃ¡i
+      - Giáº¥y phÃ©p chuyÃªn mÃ´n
 
   - type: TRAINING
     headings:
@@ -125,10 +125,10 @@ items:
       - Professional Development
       - Training Courses
       - Additional Training
-      - Đào tạo
-      - Khóa học
-      - Bồi dưỡng
-      - Phát triển chuyên môn
+      - ÄÃ o táº¡o
+      - KhÃ³a há»c
+      - Bá»“i dÆ°á»¡ng
+      - PhÃ¡t triá»ƒn chuyÃªn mÃ´n
 
   - type: LANGUAGES
     headings:
@@ -136,9 +136,9 @@ items:
       - Language Skills
       - Foreign Languages
       - Language Proficiency
-      - Ngôn ngữ
-      - Ngoại ngữ
-      - Trình độ ngoại ngữ
+      - NgÃ´n ngá»¯
+      - Ngoáº¡i ngá»¯
+      - TrÃ¬nh Ä‘á»™ ngoáº¡i ngá»¯
 
   - type: AWARDS
     headings:
@@ -147,10 +147,10 @@ items:
       - Recognition
       - Awards and Honors
       - Achievements and Awards
-      - Thành tích
-      - Giải thưởng
-      - Khen thưởng
-      - Danh hiệu
+      - ThÃ nh tÃ­ch
+      - Giáº£i thÆ°á»Ÿng
+      - Khen thÆ°á»Ÿng
+      - Danh hiá»‡u
 
   - type: PUBLICATIONS
     headings:
@@ -160,10 +160,10 @@ items:
       - Research Publications
       - Articles
       - Papers
-      - Bài báo
-      - Nghiên cứu
-      - Công trình nghiên cứu
-      - Công bố khoa học
+      - BÃ i bÃ¡o
+      - NghiÃªn cá»©u
+      - CÃ´ng trÃ¬nh nghiÃªn cá»©u
+      - CÃ´ng bá»‘ khoa há»c
 
   - type: VOLUNTEERING
     headings:
@@ -171,10 +171,10 @@ items:
       - Volunteering
       - Community Service
       - Volunteer Work
-      - Hoạt động tình nguyện
-      - Tình nguyện
-      - Hoạt động cộng đồng
-      - Công tác xã hội
+      - Hoáº¡t Ä‘á»™ng tÃ¬nh nguyá»‡n
+      - TÃ¬nh nguyá»‡n
+      - Hoáº¡t Ä‘á»™ng cá»™ng Ä‘á»“ng
+      - CÃ´ng tÃ¡c xÃ£ há»™i
 
   - type: ACTIVITIES
     headings:
@@ -184,26 +184,26 @@ items:
       - Organizations
       - Associations
       - Extracurricular Activities
-      - Hoạt động
-      - Tổ chức
-      - Câu lạc bộ
-      - Hiệp hội
-      - Hoạt động ngoại khóa
+      - Hoáº¡t Ä‘á»™ng
+      - Tá»• chá»©c
+      - CÃ¢u láº¡c bá»™
+      - Hiá»‡p há»™i
+      - Hoáº¡t Ä‘á»™ng ngoáº¡i khÃ³a
 
   - type: INTERESTS
     headings:
       - Interests
       - Hobbies
       - Personal Interests
-      - Sở thích
-      - Mối quan tâm
-      - Sở thích cá nhân
+      - Sá»Ÿ thÃ­ch
+      - Má»‘i quan tÃ¢m
+      - Sá»Ÿ thÃ­ch cÃ¡ nhÃ¢n
 
   - type: REFERENCES
     headings:
       - References
       - Professional References
       - Referees
-      - Người tham chiếu
-      - Người giới thiệu
-      - Tham chiếu
+      - NgÆ°á»i tham chiáº¿u
+      - NgÆ°á»i giá»›i thiá»‡u
+      - Tham chiáº¿u

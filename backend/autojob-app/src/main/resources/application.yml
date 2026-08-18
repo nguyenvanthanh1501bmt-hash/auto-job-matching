@@ -1,4 +1,4 @@
-spring:
+﻿spring:
   application:
     name: autojob-app
 
@@ -8,8 +8,8 @@ spring:
       # Shared taxonomy
       # ==========================================================
       #
-      # Skill là taxonomy dùng chung giữa Job Normalizer
-      # và CV Parser.
+      # Skill lÃ  taxonomy dÃ¹ng chung giá»¯a Job Normalizer
+      # vÃ  CV Parser.
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/skills.yml"
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/locations.yml"
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/seniority.yml"
@@ -18,7 +18,7 @@ spring:
       # Job-specific taxonomy
       # ==========================================================
       #
-      # Skill KHÔNG còn nằm trong job-normalizer nữa.
+      # Skill KHÃ”NG cÃ²n náº±m trong job-normalizer ná»¯a.
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/job-types.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/salary.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/experience.yml"
@@ -41,7 +41,7 @@ server:
 
 autojob:
   normalization:
-    version: ${NORMALIZATION_VERSION:rule-v2}
+    version: ${NORMALIZATION_VERSION:rule-v4}
     timezone: ${NORMALIZATION_TIMEZONE:Asia/Ho_Chi_Minh}
     embedding-text-max-chars: ${NORMALIZATION_EMBEDDING_TEXT_MAX_CHARS:2400}
     embedding-description-max-chars: ${NORMALIZATION_DESCRIPTION_MAX_CHARS:6000}
@@ -144,7 +144,7 @@ autojob:
       base-url: ${CV_PARSER_BASE_URL:http://localhost:8003}
       connect-timeout: ${CV_PARSER_CONNECT_TIMEOUT:3s}
       response-timeout: ${CV_PARSER_RESPONSE_TIMEOUT:60s}
-      expected-version: ${CV_PARSER_EXPECTED_VERSION:rule-v1}
+      expected-version: ${CV_PARSER_EXPECTED_VERSION:rule-v2}
       max-error-length: ${CV_PARSER_MAX_ERROR_LENGTH:1000}
       max-response-size-bytes: ${CV_PARSER_MAX_RESPONSE_SIZE_BYTES:16777216}
 

@@ -64,66 +64,104 @@ public class JobNormalizationService {
     public NormalizationRunResult normalizeByRawJobId(
             String rawJobId
     ) {
-        return normalizeByRawJobId(rawJobId, false);
+        return normalizeByRawJobId(
+                rawJobId,
+                false
+        );
     }
 
     public NormalizationRunResult normalizeByRawJobId(
             String rawJobId,
             boolean force
     ) {
-        validateRawJobId(rawJobId);
+        validateRawJobId(
+                rawJobId
+        );
 
-        long startedAtNanos = System.nanoTime();
+        long startedAtNanos =
+                System.nanoTime();
 
         try {
-            RawJob rawJob = rawJobRepository.findById(rawJobId)
-                    .orElseThrow(
-                            () -> new RawJobNotFoundException(rawJobId)
+
+            RawJob rawJob =
+                    rawJobRepository
+                            .findById(
+                                    rawJobId
+                            )
+                            .orElseThrow(
+                                    () ->
+                                            new RawJobNotFoundException(
+                                                    rawJobId
+                                            )
+                            );
+
+            String normalizationVersion =
+                    currentVersion();
+
+            Instant normalizedAt =
+                    Instant.now(
+                            normalizationClock
                     );
 
-            String normalizationVersion = currentVersion();
-            Instant normalizedAt = Instant.now(normalizationClock);
+            NormalizedJob normalizedCandidate =
+                    normalize(
+                            rawJob,
+                            normalizationVersion,
+                            normalizedAt
+                    );
 
-            NormalizedJob normalizedCandidate = normalize(
-                    rawJob,
-                    normalizationVersion,
-                    normalizedAt
-            );
+            NormalizationExecution execution =
+                    saveIdempotently(
+                            normalizedCandidate,
+                            force
+                    );
 
-            NormalizationExecution execution = saveIdempotently(
-                    normalizedCandidate,
-                    force
-            );
-
-            publishReadyEventWhenChanged(execution);
-
-            NormalizationRunResult result = purgeAfterSuccess(
+            publishReadyEventWhenChanged(
                     execution
             );
+
+            NormalizationRunResult result =
+                    purgeAfterSuccess(
+                            execution
+                    );
 
             log.info(
                     "Normalized raw job rawJobId={}, normalizedJobId={}, "
                             + "sourceCode={}, normalizationVersion={}, "
                             + "action={}, force={}, purgeFailed={}, "
                             + "durationMs={}, status=SUCCESS",
-                    execution.normalizedJob().getRawJobId(),
-                    execution.normalizedJob().getId(),
-                    execution.normalizedJob().getSourceCode(),
-                    execution.normalizedJob().getNormalizationVersion(),
+                    execution
+                            .normalizedJob()
+                            .getRawJobId(),
+                    execution
+                            .normalizedJob()
+                            .getId(),
+                    execution
+                            .normalizedJob()
+                            .getSourceCode(),
+                    execution
+                            .normalizedJob()
+                            .getNormalizationVersion(),
                     execution.action(),
                     force,
                     result.purgeFailed(),
-                    elapsedMilliseconds(startedAtNanos)
+                    elapsedMilliseconds(
+                            startedAtNanos
+                    )
             );
 
             return result;
+
         } catch (RuntimeException exception) {
+
             log.error(
                     "Failed to normalize raw job rawJobId={}, force={}, "
                             + "durationMs={}, status=FAILED, error={}",
                     rawJobId,
                     force,
-                    elapsedMilliseconds(startedAtNanos),
+                    elapsedMilliseconds(
+                            startedAtNanos
+                    ),
                     exception.getMessage(),
                     exception
             );
@@ -137,11 +175,15 @@ public class JobNormalizationService {
     }
 
     private String currentVersion() {
-        String normalizationVersion = textNormalizer.normalizeInline(
-                normalizationProperties.getVersion()
-        );
+
+        String normalizationVersion =
+                textNormalizer.normalizeInline(
+                        normalizationProperties
+                                .getVersion()
+                );
 
         if (normalizationVersion == null) {
+
             throw new IllegalStateException(
                     "Normalization version must not be blank"
             );
@@ -153,23 +195,34 @@ public class JobNormalizationService {
     private NormalizationRunResult purgeAfterSuccess(
             NormalizationExecution execution
     ) {
-        String rawJobId = execution.normalizedJob().getRawJobId();
+        String rawJobId =
+                execution
+                        .normalizedJob()
+                        .getRawJobId();
 
         try {
+
             RawPayloadPurgeResult purgeResult =
-                    rawPayloadPurgeService.purgeRawPayload(rawJobId);
+                    rawPayloadPurgeService
+                            .purgeRawPayload(
+                                    rawJobId
+                            );
 
             return new NormalizationRunResult(
                     execution,
                     purgeResult,
                     null
             );
+
         } catch (RuntimeException exception) {
+
             log.error(
                     "Normalization succeeded but raw payload purge failed "
                             + "rawJobId={}, normalizedJobId={}, action={}, error={}",
                     rawJobId,
-                    execution.normalizedJob().getId(),
+                    execution
+                            .normalizedJob()
+                            .getId(),
                     execution.action(),
                     exception.getMessage(),
                     exception
@@ -186,11 +239,14 @@ public class JobNormalizationService {
     private void publishReadyEventWhenChanged(
             NormalizationExecution execution
     ) {
-        if (execution.action() == NormalizationAction.UNCHANGED) {
+        if (execution.action()
+                == NormalizationAction.UNCHANGED) {
+
             return;
         }
 
-        NormalizedJob normalizedJob = execution.normalizedJob();
+        NormalizedJob normalizedJob =
+                execution.normalizedJob();
 
         eventPublisher.publishEvent(
                 new JobNormalizedReadyEvent(
@@ -198,7 +254,9 @@ public class JobNormalizationService {
                         normalizedJob.getRawJobId(),
                         normalizedJob.getSourceCode(),
                         normalizedJob.getNormalizationVersion(),
-                        Instant.now(normalizationClock)
+                        Instant.now(
+                                normalizationClock
+                        )
                 )
         );
     }
@@ -208,129 +266,265 @@ public class JobNormalizationService {
             String normalizationVersion,
             Instant normalizedAt
     ) {
-        String title = textNormalizer.normalizeInline(
-                rawJob.getTitle()
-        );
-
-        String companyName = textNormalizer.normalizeInline(
-                rawJob.getCompanyName()
-        );
-
-        String salaryText = textNormalizer.normalizeInline(
-                rawJob.getSalaryText()
-        );
-
-        SalaryNormalizationResult salary = salaryNormalizer.normalize(
-                rawJob.getSalaryText()
-        );
-
-        String locationText = textNormalizer.normalizeInline(
-                rawJob.getLocationText()
-        );
-
-        List<String> locations = locationNormalizer.normalize(
-                rawJob.getLocationText()
-        );
-
-        List<String> skills = skillNormalizer.normalize(
-                rawJob.getSkills(),
-                title,
-                rawJob.getRequirementsText(),
-                rawJob.getDescriptionText()
-        );
-
-        ExperienceNormalizationResult experience =
-                experienceNormalizer.normalize(
-                        rawJob.getExperienceText()
+        String title =
+                textNormalizer.normalizeInline(
+                        rawJob.getTitle()
                 );
 
-        SeniorityLevel seniority = seniorityNormalizer.normalize(
-                rawJob.getSeniorityText(),
-                title,
-                experience
-        );
+        String companyName =
+                textNormalizer.normalizeInline(
+                        rawJob.getCompanyName()
+                );
 
-        NormalizedJobType jobType = jobTypeNormalizer.normalize(
-                rawJob.getJobTypeText(),
-                title
-        );
+        String salaryText =
+                textNormalizer.normalizeInline(
+                        rawJob.getSalaryText()
+                );
 
-        String descriptionText = textNormalizer.normalizeMultiline(
-                rawJob.getDescriptionText()
-        );
+        SalaryNormalizationResult salary =
+                salaryNormalizer.normalize(
+                        rawJob.getSalaryText()
+                );
 
-        String requirementsText = textNormalizer.normalizeMultiline(
-                rawJob.getRequirementsText()
-        );
+        String locationText =
+                textNormalizer.normalizeInline(
+                        rawJob.getLocationText()
+                );
 
-        String benefitsText = textNormalizer.normalizeMultiline(
-                rawJob.getBenefitsText()
-        );
+        List<String> locations =
+                locationNormalizer.normalize(
+                        rawJob.getLocationText()
+                );
 
-        String detailUrl = textNormalizer.normalizeInline(
-                rawJob.getDetailUrl()
-        );
+        List<String> skills =
+                skillNormalizer.normalize(
+                        rawJob.getSkills(),
+                        title,
+                        rawJob.getRequirementsText(),
+                        rawJob.getDescriptionText()
+                );
+
+        /*
+         * -------------------------------------------------
+         * Experience resolution
+         * -------------------------------------------------
+         *
+         * Trước đây:
+         *
+         * chỉ rawJob.experienceText
+         *
+         * => crawler không extract field này thì
+         * experience luôn UNKNOWN.
+         *
+         * Bây giờ:
+         *
+         * experienceText
+         *      ↓
+         * requirements context
+         *      ↓
+         * description context
+         */
+        ExperienceNormalizationResult experience =
+                experienceNormalizer.normalize(
+                        rawJob.getExperienceText(),
+                        rawJob.getRequirementsText(),
+                        rawJob.getDescriptionText()
+                );
+
+        /*
+         * SeniorityNormalizer vẫn là nơi duy nhất
+         * quyết định seniority.
+         *
+         * Matching không cần tự parse JD.
+         */
+        SeniorityLevel seniority =
+                seniorityNormalizer.normalize(
+                        rawJob.getSeniorityText(),
+                        title,
+                        experience
+                );
+
+        NormalizedJobType jobType =
+                jobTypeNormalizer.normalize(
+                        rawJob.getJobTypeText(),
+                        title
+                );
+
+        String descriptionText =
+                textNormalizer.normalizeMultiline(
+                        rawJob.getDescriptionText()
+                );
+
+        String requirementsText =
+                textNormalizer.normalizeMultiline(
+                        rawJob.getRequirementsText()
+                );
+
+        String benefitsText =
+                textNormalizer.normalizeMultiline(
+                        rawJob.getBenefitsText()
+                );
+
+        String detailUrl =
+                textNormalizer.normalizeInline(
+                        rawJob.getDetailUrl()
+                );
 
         ApplyInformationNormalizer.ApplyInformationResult
-                applyInformation = applyInformationNormalizer.normalize(
-                rawJob.getApplyUrl(),
-                rawJob.getApplyType(),
-                detailUrl
-        );
+                applyInformation =
+                applyInformationNormalizer.normalize(
+                        rawJob.getApplyUrl(),
+                        rawJob.getApplyType(),
+                        detailUrl
+                );
 
-        NormalizedJob normalizedJob = NormalizedJob.builder()
-                .rawJobId(rawJob.getId())
-                .sourceCode(
-                        textNormalizer.normalizeInline(
-                                rawJob.getSourceCode()
-                        )
-                )
-                .sourceJobId(
-                        textNormalizer.normalizeInline(
-                                rawJob.getSourceJobId()
-                        )
-                )
-                .sourceFingerprint(
-                        textNormalizer.normalizeInline(
-                                rawJob.getFingerprint()
-                        )
-                )
-                .rawContentHash(rawJobContentHasher.hash(rawJob))
-                .title(title)
-                .companyName(companyName)
-                .skills(skills)
-                .locations(locations)
-                .locationText(locationText)
-                .salaryText(salaryText)
-                .salaryMin(salary.min())
-                .salaryMax(salary.max())
-                .currency(salary.currency())
-                .experienceMin(experience.min())
-                .experienceMax(experience.max())
-                .seniority(seniority)
-                .jobType(jobType)
-                .descriptionText(descriptionText)
-                .requirementsText(requirementsText)
-                .benefitsText(benefitsText)
-                .detailUrl(detailUrl)
-                .applyUrl(applyInformation.applyUrl())
-                .applyType(applyInformation.applyType())
-                .normalizationVersion(normalizationVersion)
-                .postedAt(
-                        dateNormalizer.normalizePostedAt(
-                                rawJob.getPostedText()
-                        )
-                )
-                .deadlineAt(
-                        dateNormalizer.normalizeDeadlineAt(
-                                rawJob.getDeadlineText()
-                        )
-                )
-                .normalizedAt(normalizedAt)
-                .build();
+        NormalizedJob normalizedJob =
+                NormalizedJob.builder()
 
+                        .rawJobId(
+                                rawJob.getId()
+                        )
+
+                        .sourceCode(
+                                textNormalizer
+                                        .normalizeInline(
+                                                rawJob.getSourceCode()
+                                        )
+                        )
+
+                        .sourceJobId(
+                                textNormalizer
+                                        .normalizeInline(
+                                                rawJob.getSourceJobId()
+                                        )
+                        )
+
+                        .sourceFingerprint(
+                                textNormalizer
+                                        .normalizeInline(
+                                                rawJob.getFingerprint()
+                                        )
+                        )
+
+                        .rawContentHash(
+                                rawJobContentHasher
+                                        .hash(rawJob)
+                        )
+
+                        .title(
+                                title
+                        )
+
+                        .companyName(
+                                companyName
+                        )
+
+                        .skills(
+                                skills
+                        )
+
+                        .locations(
+                                locations
+                        )
+
+                        .locationText(
+                                locationText
+                        )
+
+                        .salaryText(
+                                salaryText
+                        )
+
+                        .salaryMin(
+                                salary.min()
+                        )
+
+                        .salaryMax(
+                                salary.max()
+                        )
+
+                        .currency(
+                                salary.currency()
+                        )
+
+                        .experienceMin(
+                                experience.min()
+                        )
+
+                        .experienceMax(
+                                experience.max()
+                        )
+
+                        .seniority(
+                                seniority
+                        )
+
+                        .jobType(
+                                jobType
+                        )
+
+                        .descriptionText(
+                                descriptionText
+                        )
+
+                        .requirementsText(
+                                requirementsText
+                        )
+
+                        .benefitsText(
+                                benefitsText
+                        )
+
+                        .detailUrl(
+                                detailUrl
+                        )
+
+                        .applyUrl(
+                                applyInformation
+                                        .applyUrl()
+                        )
+
+                        .applyType(
+                                applyInformation
+                                        .applyType()
+                        )
+
+                        .normalizationVersion(
+                                normalizationVersion
+                        )
+
+                        .postedAt(
+                                dateNormalizer
+                                        .normalizePostedAt(
+                                                rawJob.getPostedText()
+                                        )
+                        )
+
+                        .deadlineAt(
+                                dateNormalizer
+                                        .normalizeDeadlineAt(
+                                                rawJob.getDeadlineText()
+                                        )
+                        )
+
+                        .normalizedAt(
+                                normalizedAt
+                        )
+
+                        .build();
+
+        /*
+         * Experience + seniority mới đã được set
+         * trước khi build embeddingText.
+         *
+         * Vì vậy semantic embedding sau khi re-index
+         * cũng nhận được structured data tốt hơn.
+         */
         normalizedJob.setEmbeddingText(
-                jobEmbeddingTextBuilder.build(normalizedJob)
+                jobEmbeddingTextBuilder
+                        .build(
+                                normalizedJob
+                        )
         );
 
         return normalizedJob;
@@ -346,13 +540,20 @@ public class JobNormalizationService {
                         candidate.getNormalizationVersion()
                 )
                 .map(
-                        existing -> resolveExisting(
-                                existing,
-                                candidate,
-                                force
-                        )
+                        existing ->
+                                resolveExisting(
+                                        existing,
+                                        candidate,
+                                        force
+                                )
                 )
-                .orElseGet(() -> insertSafely(candidate, force));
+                .orElseGet(
+                        () ->
+                                insertSafely(
+                                        candidate,
+                                        force
+                                )
+                );
     }
 
     private NormalizationExecution insertSafely(
@@ -360,21 +561,29 @@ public class JobNormalizationService {
             boolean force
     ) {
         try {
-            NormalizedJob inserted = normalizedJobRepository.insert(
-                    candidate
-            );
+
+            NormalizedJob inserted =
+                    normalizedJobRepository
+                            .insert(
+                                    candidate
+                            );
 
             return new NormalizationExecution(
                     inserted,
                     NormalizationAction.CREATED
             );
+
         } catch (DuplicateKeyException exception) {
-            NormalizedJob existing = normalizedJobRepository
-                    .findByRawJobIdAndNormalizationVersion(
-                            candidate.getRawJobId(),
-                            candidate.getNormalizationVersion()
-                    )
-                    .orElseThrow(() -> exception);
+
+            NormalizedJob existing =
+                    normalizedJobRepository
+                            .findByRawJobIdAndNormalizationVersion(
+                                    candidate.getRawJobId(),
+                                    candidate.getNormalizationVersion()
+                            )
+                            .orElseThrow(
+                                    () -> exception
+                            );
 
             return resolveExisting(
                     existing,
@@ -389,22 +598,26 @@ public class JobNormalizationService {
             NormalizedJob candidate,
             boolean force
     ) {
-        boolean contentChanged = !Objects.equals(
-                existing.getRawContentHash(),
-                candidate.getRawContentHash()
-        );
+        boolean contentChanged =
+                !Objects.equals(
+                        existing.getRawContentHash(),
+                        candidate.getRawContentHash()
+                );
 
-        if (!force && !contentChanged) {
+        if (!force
+                && !contentChanged) {
+
             return new NormalizationExecution(
                     existing,
                     NormalizationAction.UNCHANGED
             );
         }
 
-        NormalizedJob updated = updateAndSave(
-                existing,
-                candidate
-        );
+        NormalizedJob updated =
+                updateAndSave(
+                        existing,
+                        candidate
+                );
 
         return new NormalizationExecution(
                 updated,
@@ -416,59 +629,145 @@ public class JobNormalizationService {
             NormalizedJob existing,
             NormalizedJob candidate
     ) {
-        existing.setRawJobId(candidate.getRawJobId());
-        existing.setSourceCode(candidate.getSourceCode());
-        existing.setSourceJobId(candidate.getSourceJobId());
+        existing.setRawJobId(
+                candidate.getRawJobId()
+        );
+
+        existing.setSourceCode(
+                candidate.getSourceCode()
+        );
+
+        existing.setSourceJobId(
+                candidate.getSourceJobId()
+        );
+
         existing.setSourceFingerprint(
                 candidate.getSourceFingerprint()
         );
-        existing.setRawContentHash(candidate.getRawContentHash());
 
-        existing.setTitle(candidate.getTitle());
-        existing.setCompanyName(candidate.getCompanyName());
-        existing.setSkills(candidate.getSkills());
-        existing.setLocations(candidate.getLocations());
-        existing.setLocationText(candidate.getLocationText());
+        existing.setRawContentHash(
+                candidate.getRawContentHash()
+        );
 
-        existing.setSalaryText(candidate.getSalaryText());
-        existing.setSalaryMin(candidate.getSalaryMin());
-        existing.setSalaryMax(candidate.getSalaryMax());
-        existing.setCurrency(candidate.getCurrency());
+        existing.setTitle(
+                candidate.getTitle()
+        );
 
-        existing.setExperienceMin(candidate.getExperienceMin());
-        existing.setExperienceMax(candidate.getExperienceMax());
-        existing.setSeniority(candidate.getSeniority());
-        existing.setJobType(candidate.getJobType());
+        existing.setCompanyName(
+                candidate.getCompanyName()
+        );
 
-        existing.setDescriptionText(candidate.getDescriptionText());
-        existing.setRequirementsText(candidate.getRequirementsText());
-        existing.setBenefitsText(candidate.getBenefitsText());
+        existing.setSkills(
+                candidate.getSkills()
+        );
 
-        existing.setDetailUrl(candidate.getDetailUrl());
-        existing.setApplyUrl(candidate.getApplyUrl());
-        existing.setApplyType(candidate.getApplyType());
+        existing.setLocations(
+                candidate.getLocations()
+        );
 
-        existing.setEmbeddingText(candidate.getEmbeddingText());
+        existing.setLocationText(
+                candidate.getLocationText()
+        );
+
+        existing.setSalaryText(
+                candidate.getSalaryText()
+        );
+
+        existing.setSalaryMin(
+                candidate.getSalaryMin()
+        );
+
+        existing.setSalaryMax(
+                candidate.getSalaryMax()
+        );
+
+        existing.setCurrency(
+                candidate.getCurrency()
+        );
+
+        existing.setExperienceMin(
+                candidate.getExperienceMin()
+        );
+
+        existing.setExperienceMax(
+                candidate.getExperienceMax()
+        );
+
+        existing.setSeniority(
+                candidate.getSeniority()
+        );
+
+        existing.setJobType(
+                candidate.getJobType()
+        );
+
+        existing.setDescriptionText(
+                candidate.getDescriptionText()
+        );
+
+        existing.setRequirementsText(
+                candidate.getRequirementsText()
+        );
+
+        existing.setBenefitsText(
+                candidate.getBenefitsText()
+        );
+
+        existing.setDetailUrl(
+                candidate.getDetailUrl()
+        );
+
+        existing.setApplyUrl(
+                candidate.getApplyUrl()
+        );
+
+        existing.setApplyType(
+                candidate.getApplyType()
+        );
+
+        existing.setEmbeddingText(
+                candidate.getEmbeddingText()
+        );
 
         existing.setNormalizationVersion(
                 candidate.getNormalizationVersion()
         );
-        existing.setPostedAt(candidate.getPostedAt());
-        existing.setDeadlineAt(candidate.getDeadlineAt());
-        existing.setNormalizedAt(candidate.getNormalizedAt());
 
-        return normalizedJobRepository.save(existing);
+        existing.setPostedAt(
+                candidate.getPostedAt()
+        );
+
+        existing.setDeadlineAt(
+                candidate.getDeadlineAt()
+        );
+
+        existing.setNormalizedAt(
+                candidate.getNormalizedAt()
+        );
+
+        return normalizedJobRepository.save(
+                existing
+        );
     }
 
-    private void validateRawJobId(String rawJobId) {
-        if (rawJobId == null || rawJobId.isBlank()) {
+    private void validateRawJobId(
+            String rawJobId
+    ) {
+        if (rawJobId == null
+                || rawJobId.isBlank()) {
+
             throw new IllegalArgumentException(
                     "rawJobId must not be blank"
             );
         }
     }
 
-    private long elapsedMilliseconds(long startedAtNanos) {
-        return (System.nanoTime() - startedAtNanos) / 1_000_000L;
+    private long elapsedMilliseconds(
+            long startedAtNanos
+    ) {
+        return (
+                System.nanoTime()
+                        - startedAtNanos
+        ) / 1_000_000L;
     }
 }

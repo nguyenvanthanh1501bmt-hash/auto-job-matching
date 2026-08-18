@@ -62,36 +62,49 @@ class MatchingPropertiesTest {
     }
 
     @Test
-    void defaultsShouldDescribePlannedHybridV1Contract() {
+    void defaultsShouldDescribeCurrentHybridContract() {
         MatchingProperties properties =
                 new MatchingProperties();
 
-        assertThat(properties.getVersion())
-                .isEqualTo("hybrid-v1");
+        assertThat(
+                properties.getVersion()
+        ).isEqualTo(
+                "hybrid-v6"
+        );
 
         assertThat(
                 properties.getCompatibility()
                         .getNormalizationVersion()
-        ).isEqualTo("rule-v2");
+        ).isEqualTo(
+                "rule-v3"
+        );
 
         assertThat(
                 properties.getCompatibility()
                         .getCandidateTextVersion()
-        ).isEqualTo("candidate-text-v1");
+        ).isEqualTo(
+                "candidate-text-v1"
+        );
 
         assertThat(
                 properties.getCompatibility()
                         .getJobTextVersion()
-        ).isEqualTo("job-text-v2");
+        ).isEqualTo(
+                "job-text-v2"
+        );
 
         assertThat(
                 properties.getRetrieval()
                         .getCandidatePoolSize()
-        ).isEqualTo(100);
+        ).isEqualTo(
+                100
+        );
 
         assertThat(
                 properties.getRetrieval()
                         .getResultLimit()
-        ).isEqualTo(20);
+        ).isEqualTo(
+                20
+        );
     }
 }
