@@ -11,9 +11,7 @@ from app.taxonomy.shared_taxonomy_loader import (
 )
 
 
-WHITESPACE_PATTERN = re.compile(
-    r"\s+"
-)
+WHITESPACE_PATTERN = re.compile(r"\s+")
 
 
 EXPERIENCE_BANDS = {
@@ -35,6 +33,15 @@ EARLY_CAREER_LEVEL_PRIORITY = (
 )
 
 
+TARGET_HINT_LEVELS = {
+    "INTERN",
+    "TRAINEE",
+    "FRESHER",
+    "ENTRY_LEVEL",
+    "JUNIOR",
+}
+
+
 STUDENT_PATTERNS = (
     re.compile(r"\bstudent\b"),
     re.compile(r"\bundergraduate\b"),
@@ -44,47 +51,48 @@ STUDENT_PATTERNS = (
 )
 
 
-@dataclass(
-    frozen=True,
-    slots=True,
-)
+@dataclass(frozen=True, slots=True)
 class SeniorityParseResult:
     seniority: str
     warnings: tuple[str, ...]
 
 
-@dataclass(
-    frozen=True,
-    slots=True,
-)
+@dataclass(frozen=True, slots=True)
 class _Signal:
     seniority: str
     source_priority: int
     recency_priority: int
     title: str
+    source: str
 
 
-@dataclass(
-    frozen=True,
-    slots=True,
-)
+@dataclass(frozen=True, slots=True)
 class _CompiledRule:
     level: str
-    patterns: tuple[
-        re.Pattern[str],
-        ...
-    ]
-    exclude_patterns: tuple[
-        re.Pattern[str],
-        ...
-    ]
-    allow_patterns: tuple[
-        re.Pattern[str],
-        ...
-    ]
+    patterns: tuple[re.Pattern[str], ...]
+    exclude_patterns: tuple[re.Pattern[str], ...]
+    allow_patterns: tuple[re.Pattern[str], ...]
 
 
 class SeniorityParser:
+    """
+    Resolve candidate-level seniority from CV evidence.
+
+    Priority:
+    1. Explicit seniority in headline.
+    2. Explicit seniority in current / most-recent work role.
+    3. Experience years.
+    4. Career objective as an early-career hint.
+    5. Target job title as a last-resort early-career hint.
+
+    Historical roles must not permanently pin the candidate to an old level.
+
+    Examples:
+    - An old INTERN role must not make an experienced candidate INTERN.
+    - An old DIRECTOR role must not automatically make the current candidate
+      DIRECTOR if the latest role no longer carries that seniority.
+    - "Assistant to the Director" must not become DIRECTOR.
+    """
 
     def __init__(
             self,
@@ -98,9 +106,7 @@ class SeniorityParser:
         }
 
         self._rules = tuple(
-            self._compile_rule(
-                item
-            )
+            self._compile_rule(item)
             for item in taxonomy.levels
             if item.level != "UNKNOWN"
         )
@@ -115,125 +121,89 @@ class SeniorityParser:
             *,
             headline: str | None,
             career_objective: str | None = None,
-            target_job_titles: (
-                    list[str]
-                    | tuple[str, ...]
-            ),
-            work_experiences: (
-                    list[WorkExperience]
-                    | tuple[WorkExperience, ...]
-            ),
+            target_job_titles: list[str] | tuple[str, ...],
+            work_experiences: list[WorkExperience] | tuple[WorkExperience, ...],
             experience_years: float | None,
     ) -> SeniorityParseResult:
-        signals: list[_Signal] = []
+        experience_fallback = self._from_experience_years(
+            experience_years
+        )
 
-        if headline is not None:
-            explicit = (
-                self._classify_title(
-                    headline
-                )
+        career_signal = self._from_career_objective(
+            career_objective
+        )
+
+        primary_signals: list[_Signal] = []
+
+        # Headline is strong explicit evidence.
+        if headline:
+            explicit = self._classify_title(
+                headline
             )
 
             if explicit is not None:
-                signals.append(
+                primary_signals.append(
                     _Signal(
                         seniority=explicit,
                         source_priority=100,
                         recency_priority=100,
                         title=headline,
+                        source="HEADLINE",
                     )
                 )
 
-        ordered_work = (
-            self._ordered_work_experiences(
-                work_experiences
-            )
+        # Only current / most-recent roles define current candidate seniority.
+        ordered_work = self._ordered_work_experiences(
+            work_experiences
         )
 
-        for index, experience in enumerate(
-                ordered_work
-        ):
-            title = (
-                    experience.job_title
-                    or experience.normalized_job_title
+        primary_work = self._primary_work_experiences(
+            ordered_work
+        )
+
+        for index, experience in enumerate(primary_work):
+            classified = self._classify_work_experience(
+                experience
             )
 
-            if title is None:
+            if classified is None:
                 continue
 
-            explicit = (
-                self._classify_title(
-                    title
-                )
-            )
+            explicit_level, title = classified
 
-            if explicit is None:
-                continue
-
-            signals.append(
+            primary_signals.append(
                 _Signal(
-                    seniority=explicit,
+                    seniority=explicit_level,
                     source_priority=95,
                     recency_priority=max(
                         0,
-                        90 - index * 5,
+                        95 - index,
                         ),
                     title=title,
+                    source="WORK_EXPERIENCE",
                 )
             )
 
-        for index, title in enumerate(
-                target_job_titles
-        ):
-            explicit = (
-                self._classify_title(
-                    title
+        warnings: list[str] = []
+
+        # Explicit headline/current-role evidence wins.
+        if primary_signals:
+            selected = self._select_signal(
+                primary_signals
+            )
+
+            if self._signals_conflict(
+                    primary_signals
+            ):
+                warnings.append(
+                    "SENIORITY_SIGNALS_CONFLICT"
                 )
-            )
-
-            if explicit is None:
-                continue
-
-            signals.append(
-                _Signal(
-                    seniority=explicit,
-                    source_priority=80,
-                    recency_priority=max(
-                        0,
-                        70 - index * 5,
-                        ),
-                    title=title,
-                )
-            )
-
-        fallback = (
-            self._from_experience_years(
-                experience_years
-            )
-        )
-
-        career_signal = (
-            self._from_career_objective(
-                career_objective
-            )
-        )
-
-        if not signals:
-            resolved = (
-                self._resolve_without_explicit_title(
-                    fallback=fallback,
-                    career_signal=career_signal,
-                )
-            )
-
-            warnings: list[str] = []
 
             if (
-                    career_signal is not None
-                    and fallback != "UNKNOWN"
+                    experience_fallback != "UNKNOWN"
                     and self._experience_signals_conflict(
-                career_signal,
-                fallback,
+                selected.seniority,
+                experience_fallback,
             )
             ):
                 warnings.append(
@@ -241,90 +211,102 @@ class SeniorityParser:
                 )
 
             return SeniorityParseResult(
-                seniority=resolved,
+                seniority=selected.seniority,
                 warnings=tuple(
-                    dict.fromkeys(
-                        warnings
-                    )
+                    dict.fromkeys(warnings)
                 ),
             )
 
-        selected = (
-            self._select_signal(
-                signals
+        # Structured work history is stronger than career objective.
+        #
+        # A candidate may still write:
+        # "I am a student..."
+        # "I am looking for an opportunity..."
+        #
+        # while already having meaningful work history.
+        #
+        # Therefore career objective must never downgrade a seniority that
+        # can already be inferred from experience years.
+        if experience_fallback != "UNKNOWN":
+            return SeniorityParseResult(
+                seniority=experience_fallback,
+                warnings=(),
             )
+
+        # Career objective is only used when structured experience cannot
+        # determine a seniority.
+        if career_signal is not None:
+            return SeniorityParseResult(
+                seniority=career_signal,
+                warnings=(),
+            )
+
+        # Target job title is an aspiration, not historical evidence.
+        # Only allow low-level hints from it.
+        target_hint = self._from_target_job_titles(
+            target_job_titles
         )
-
-        warnings: list[str] = []
-
-        relevant_signals = [
-            signal
-            for signal in signals
-            if (
-                    signal.source_priority >= 95
-                    and signal.recency_priority >= 90
-            )
-        ]
-
-        explicit_levels = {
-            signal.seniority
-            for signal in relevant_signals
-        }
-
-        if len(explicit_levels) > 1:
-            min_rank = min(
-                self._rank(
-                    level
-                )
-                for level in explicit_levels
-            )
-
-            max_rank = max(
-                self._rank(
-                    level
-                )
-                for level in explicit_levels
-            )
-
-            if (
-                    max_rank
-                    - min_rank
-                    >= 2
-            ):
-                warnings.append(
-                    "SENIORITY_SIGNALS_CONFLICT"
-                )
-
-        if (
-                fallback != "UNKNOWN"
-                and self._experience_signals_conflict(
-            selected.seniority,
-            fallback,
-        )
-        ):
-            warnings.append(
-                "SENIORITY_SIGNALS_CONFLICT"
-            )
 
         return SeniorityParseResult(
-            seniority=selected.seniority,
-            warnings=tuple(
-                dict.fromkeys(
-                    warnings
-                )
-            ),
+            seniority=target_hint or "UNKNOWN",
+            warnings=(),
         )
+
+    def _classify_work_experience(
+            self,
+            experience: WorkExperience,
+    ) -> tuple[str, str] | None:
+        # Raw title first because it can contain meaningful modifiers:
+        #
+        # Senior Software Engineer
+        # Lead Developer
+        # Junior Accountant
+        #
+        # while normalizedJobTitle may intentionally remove those modifiers.
+        if experience.job_title:
+            explicit = self._classify_title(
+                experience.job_title
+            )
+
+            if explicit is not None:
+                return (
+                    explicit,
+                    experience.job_title,
+                )
+
+        # Canonical title is fallback evidence.
+        if experience.normalized_job_title:
+            explicit = self._classify_title(
+                experience.normalized_job_title
+            )
+
+            if explicit is not None:
+                return (
+                    explicit,
+                    experience.normalized_job_title,
+                )
+
+        # Structured internship employment type is reliable evidence.
+        if experience.employment_type == "INTERNSHIP":
+            return (
+                "INTERN",
+                (
+                        experience.job_title
+                        or experience.normalized_job_title
+                        or "INTERNSHIP"
+                ),
+            )
+
+        return None
 
     def _classify_title(
             self,
             value: str,
     ) -> str | None:
-        folded = (
-            self._fold(
-                value.replace(
-                    "_",
-                    " ",
-                )
+        folded = self._fold(
+            value.replace(
+                "_",
+                " ",
             )
         )
 
@@ -338,21 +320,17 @@ class SeniorityParser:
             ):
                 continue
 
-            excluded = (
-                self._matches_any(
-                    rule.exclude_patterns,
-                    folded,
-                )
+            excluded = self._matches_any(
+                rule.exclude_patterns,
+                folded,
             )
 
             if not excluded:
                 return rule.level
 
-            explicitly_allowed = (
-                self._matches_any(
-                    rule.allow_patterns,
-                    folded,
-                )
+            explicitly_allowed = self._matches_any(
+                rule.allow_patterns,
+                folded,
             )
 
             if explicitly_allowed:
@@ -367,13 +345,17 @@ class SeniorityParser:
         if value is None:
             return None
 
-        folded = self._fold(
-            value
-        )
+        folded = self._fold(value)
 
         if not folded:
             return None
 
+        # Only early-career levels are allowed to come from objective text.
+        #
+        # We intentionally do not infer:
+        # SENIOR / LEAD / MANAGER / DIRECTOR / EXECUTIVE
+        #
+        # from an aspiration paragraph.
         for level in EARLY_CAREER_LEVEL_PRIORITY:
             rule = self._rules_by_level.get(
                 level
@@ -388,11 +370,9 @@ class SeniorityParser:
             ):
                 continue
 
-            excluded = (
-                self._matches_any(
-                    rule.exclude_patterns,
-                    folded,
-                )
+            excluded = self._matches_any(
+                rule.exclude_patterns,
+                folded,
             )
 
             if not excluded:
@@ -404,7 +384,6 @@ class SeniorityParser:
             ):
                 return level
 
-
         if self._matches_any(
                 STUDENT_PATTERNS,
                 folded,
@@ -413,19 +392,48 @@ class SeniorityParser:
 
         return None
 
-    @staticmethod
-    def _resolve_without_explicit_title(
-            *,
-            fallback: str,
-            career_signal: str | None,
-    ) -> str:
-        if career_signal is None:
-            return fallback
+    def _from_target_job_titles(
+            self,
+            target_job_titles: list[str] | tuple[str, ...],
+    ) -> str | None:
+        hints: list[_Signal] = []
 
-        if fallback == "SENIOR":
-            return fallback
+        for index, title in enumerate(
+                target_job_titles
+        ):
+            explicit = self._classify_title(
+                title
+            )
 
-        return career_signal
+            # Target role is an aspiration.
+            #
+            # Somebody targeting "Engineering Manager" is not necessarily
+            # already a MANAGER.
+            if (
+                    explicit is None
+                    or explicit not in TARGET_HINT_LEVELS
+            ):
+                continue
+
+            hints.append(
+                _Signal(
+                    seniority=explicit,
+                    source_priority=20,
+                    recency_priority=max(
+                        0,
+                        20 - index,
+                        ),
+                    title=title,
+                    source="TARGET_JOB_TITLE",
+                )
+            )
+
+        if not hints:
+            return None
+
+        return self._select_signal(
+            hints
+        ).seniority
 
     def _select_signal(
             self,
@@ -442,6 +450,33 @@ class SeniorityParser:
             ),
         )
 
+    def _signals_conflict(
+            self,
+            signals: list[_Signal],
+    ) -> bool:
+        if len(signals) <= 1:
+            return False
+
+        levels = {
+            signal.seniority
+            for signal in signals
+            if signal.source_priority >= 95
+        }
+
+        if len(levels) <= 1:
+            return False
+
+        ranks = [
+            self._rank(level)
+            for level in levels
+        ]
+
+        return (
+                max(ranks)
+                - min(ranks)
+                >= 2
+        )
+
     def _from_experience_years(
             self,
             experience_years: float | None,
@@ -452,9 +487,7 @@ class SeniorityParser:
         if experience_years < 0:
             return "UNKNOWN"
 
-        thresholds = (
-            self._taxonomy.experience
-        )
+        thresholds = self._taxonomy.experience
 
         if (
                 experience_years
@@ -482,24 +515,20 @@ class SeniorityParser:
             experience_level: str,
     ) -> bool:
         """
-        Compare only levels that have a meaningful
-        experience-band interpretation.
+        Compare only career levels that have a direct years-of-experience
+        interpretation.
 
-        Leadership hierarchy such as LEAD, MANAGER,
-        HEAD or DIRECTOR must not be compared to
-        years-of-experience fallback using raw rank.
+        Leadership hierarchy such as LEAD, MANAGER, HEAD and DIRECTOR is
+        title semantics and must not automatically be downgraded from years
+        alone.
         """
 
-        explicit_band = (
-            EXPERIENCE_BANDS.get(
-                explicit_level
-            )
+        explicit_band = EXPERIENCE_BANDS.get(
+            explicit_level
         )
 
-        experience_band = (
-            EXPERIENCE_BANDS.get(
-                experience_level
-            )
+        experience_band = EXPERIENCE_BANDS.get(
+            experience_level
         )
 
         if (
@@ -537,40 +566,26 @@ class SeniorityParser:
         return _CompiledRule(
             level=item.level,
             patterns=tuple(
-                re.compile(
-                    value
-                )
+                re.compile(value)
                 for value in item.patterns
             ),
             exclude_patterns=tuple(
-                re.compile(
-                    value
-                )
-                for value
-                in item.exclude_patterns
+                re.compile(value)
+                for value in item.exclude_patterns
             ),
             allow_patterns=tuple(
-                re.compile(
-                    value
-                )
-                for value
-                in item.allow_patterns
+                re.compile(value)
+                for value in item.allow_patterns
             ),
         )
 
     @staticmethod
     def _matches_any(
-            patterns: tuple[
-                re.Pattern[str],
-                ...
-            ],
+            patterns: tuple[re.Pattern[str], ...],
             value: str,
     ) -> bool:
         return any(
-            pattern.search(
-                value
-            )
-            is not None
+            pattern.search(value) is not None
             for pattern in patterns
         )
 
@@ -581,11 +596,9 @@ class SeniorityParser:
         if not value.strip():
             return ""
 
-        decomposed = (
-            unicodedata.normalize(
-                "NFD",
-                value,
-            )
+        decomposed = unicodedata.normalize(
+            "NFD",
+            value,
         )
 
         without_diacritics = "".join(
@@ -617,11 +630,40 @@ class SeniorityParser:
             )
 
     @staticmethod
+    def _primary_work_experiences(
+            ordered_work: list[WorkExperience],
+    ) -> list[WorkExperience]:
+        if not ordered_work:
+            return []
+
+        # If CV explicitly marks current jobs, use all current jobs.
+        current = [
+            experience
+            for experience in ordered_work
+            if experience.current is True
+        ]
+
+        if current:
+            return current
+
+        # Otherwise only use role(s) with the latest end date.
+        #
+        # This avoids historical titles permanently determining the current
+        # candidate seniority.
+        latest = ordered_work[0]
+
+        if latest.end_date is None:
+            return [latest]
+
+        return [
+            experience
+            for experience in ordered_work
+            if experience.end_date == latest.end_date
+        ]
+
+    @staticmethod
     def _ordered_work_experiences(
-            work_experiences: (
-                    list[WorkExperience]
-                    | tuple[WorkExperience, ...]
-            ),
+            work_experiences: list[WorkExperience] | tuple[WorkExperience, ...],
     ) -> list[WorkExperience]:
         indexed = list(
             enumerate(
@@ -630,10 +672,7 @@ class SeniorityParser:
         )
 
         def sort_key(
-                item: tuple[
-                    int,
-                    WorkExperience,
-                ],
+                item: tuple[int, WorkExperience],
         ) -> tuple[
             int,
             str,
@@ -678,6 +717,5 @@ class SeniorityParser:
 
         return [
             experience
-            for _, experience
-            in indexed
+            for _, experience in indexed
         ]

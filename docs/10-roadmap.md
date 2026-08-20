@@ -1,309 +1,414 @@
 # Roadmap
 
-## Nguyên tắc
+## Current milestone
 
-Roadmap ưu tiên hoàn thành pipeline end-to-end trước khi mở rộng số lượng tính năng.
-
-Mỗi bước chỉ được xem là hoàn thành khi:
-
-* Có implementation thực.
-* Đã được nối vào `autojob-app` hoặc runtime tương ứng.
-* Có persistence và trạng thái xử lý cần thiết.
-* Có test hoặc command verification.
-* Không chỉ tồn tại dưới dạng package, `pom.xml`, fixture hoặc placeholder.
-
-## 1. Ổn định job pipeline
-
-### Hiện tại
-
-Đã có luồng hoạt động cho nguồn `MOCK`:
+Core MVP backend pipeline hiện đã có:
 
 ```text
-raw_jobs
-→ normalized_jobs
-→ job_embeddings
+job crawler
+→ job normalizer
+→ job embedding
 → Qdrant
-```
 
-### Kế hoạch
-
-* Bổ sung integration test khởi động toàn `autojob-app`.
-* Bổ sung reconciliation cho embedding `FAILED`.
-* Chuẩn hóa logging và metrics của từng bước.
-* Xác định lifecycle khi raw job hết TTL.
-* Xử lý Qdrant point khi job bị disable hoặc xóa.
-* Hoàn thiện idempotency cho Source Discovery.
-* Bổ sung scheduler sau khi manual trigger ổn định.
-
-### Điều kiện hoàn thành
-
-* Chạy lại pipeline không tạo duplicate.
-* Có thể recover sau khi embedding service hoặc Qdrant tạm thời lỗi.
-* Có command xác minh MongoDB và Qdrant nhất quán.
-
-## 2. Nối Java backend với CV parser
-
-### Hiện tại
-
-* CV upload đã lưu MinIO và `raw_cvs`.
-* Python parser đã có implementation.
-* Hai phía chưa giao tiếp.
-
-### Kế hoạch
-
-* Thêm `cv-parser-service` vào Docker Compose local.
-* Thêm Java HTTP client.
-* Thêm timeout và error mapping.
-* Chuyển `raw_cvs.status` qua `PARSING`, `PARSED` hoặc `FAILED`.
-* Lưu `lastError` khi parser lỗi.
-* Bổ sung retry hoặc manual re-parse API.
-
-### Điều kiện hoàn thành
-
-```text
-Upload CV
-→ Java gọi parser
-→ Java nhận parsed response
-```
-
-được verify bằng một command local.
-
-## 3. Lưu candidate profile
-
-### Kế hoạch
-
-* Tạo `CandidateProfile` và repository.
-* Lưu profile do Python parser trả về.
-* Dùng logical key:
-
-```text
-rawCvId + parserVersion
-```
-
-* Validate `rawCvId`, parser version và giới hạn dữ liệu.
-* Bổ sung API đọc candidate profile.
-* Không để Python ghi trực tiếp MongoDB.
-
-### Điều kiện hoàn thành
-
-Upload một CV hợp lệ tạo được document trong:
-
-```text
-candidate_profiles
-```
-
-và có thể trace ngược về `raw_cvs`.
-
-## 4. Tạo candidate embedding
-
-### Kế hoạch
-
-* Xây candidate `embeddingText`.
-* Dùng cùng embedding model và dimension với job.
-* Tạo `candidate_embeddings`.
-* Lưu `embeddingVersion`, `textHash`, dimension và trạng thái.
-* Hỗ trợ rebuild có version và idempotency.
-* Quyết định có cần lưu candidate vector lâu dài trong Qdrant hay chỉ dùng để search.
-
-### Điều kiện hoàn thành
-
-Một candidate profile tạo được vector tương thích với:
-
-```text
-job_vectors_v1
-```
-
-## 5. Xây Matching Engine
-
-### Hiện tại
-
-Module `matching` mới là skeleton và chưa nằm trong runtime.
-
-### Kế hoạch
-
-* Thêm module vào Maven reactor.
-* Thêm dependency vào `autojob-app`.
-* Search topK job bằng candidate vector.
-* Load `normalized_jobs` từ MongoDB.
-* Implement:
-
-```text
-vectorScore
-skillScore
-seniorityScore
-locationScore
-freshnessScore
-```
-
-* Version hóa ranking formula.
-* Lưu `match_results`.
-* Trả matched skills, missing skills và lý do xếp hạng.
-* Thêm test deterministic cho từng scorer.
-
-### Điều kiện hoàn thành
-
-```text
 CV upload
-→ parse
+→ CV parser
+→ candidate profile
 → candidate embedding
-→ Qdrant search
-→ re-ranking
+
+candidate
+→ hybrid matching
 → match_results
 ```
 
-chạy được end-to-end.
+Roadmap không còn coi CV parser, candidate embedding hay Matching Engine là chưa triển khai.
 
-## 6. Làm React frontend
+---
 
-### Hiện tại
+# 1. Stabilize CV parsing
 
-`frontend/web-app` mới là placeholder.
+Current:
 
-### Kế hoạch
+```text
+Java ↔ cv-parser-service integrated
+candidate_profiles persisted
+candidate embedding triggered
+real CV Docker verification available
+```
 
-* Khởi tạo React, Vite và TypeScript.
-* Register và login.
-* Upload CV.
-* Hiển thị trạng thái parse.
-* Hiển thị candidate profile.
-* Hiển thị matched jobs và explanation.
-* Nút Apply mở `applyUrl` ở tab mới.
-* Xử lý loading, failure và retry state.
+Next:
 
-Frontend không tự parse CV hoặc tự tính match score.
+```text
+expand real-CV regression corpus
+improve education parsing
+improve certification/award section boundaries
+improve multi-column extraction
+improve non-canonical job-title detection
+add more Vietnamese/English seniority regression cases
+```
 
-## 7. AI gợi ý sửa CV theo JD
+Seniority principles phải giữ:
 
-### Kế hoạch
+```text
+semantic > substring
+current/latest > historical
+structured history > aspiration
+```
 
-Chỉ triển khai sau khi Matching Engine ổn định.
+---
+
+# 2. Expand Matching automated coverage
+
+Matching runtime đã tồn tại nhưng automated test coverage còn mỏng.
+
+Priority:
+
+```text
+SemanticScoreNormalizer
+SkillScorer
+SeniorityScorer
+LocationScorer
+FreshnessScorer
+JobEligibilityFilter
+MatchAcceptanceFilter
+HybridRankingService
+HybridMatchingService
+```
+
+Create golden regression cases từ real data.
+
+---
+
+# 3. Matching evaluation dataset
+
+Build anonymized evaluation set:
+
+```text
+candidate profile
+expected relevant job families
+known false positives
+known stretch opportunities
+known seniority mismatch
+known location mismatch
+```
+
+Metrics có thể theo dõi:
+
+```text
+Precision@K
+Recall@K
+NDCG
+false-positive rate
+manual relevance label
+```
+
+Không tune ranking chỉ bằng một CV.
+
+---
+
+# 4. Matching configuration governance
+
+Current:
+
+```text
+hybrid-v6-balanced-r4
+```
+
+Mỗi thay đổi:
+
+```text
+weights
+threshold
+calibration
+acceptance
+skill confidence
+```
+
+phải bump:
+
+```text
+rankingVersion
+```
+
+để result cũ và result mới không bị lẫn.
+
+---
+
+# 5. Version consistency cleanup
+
+Fix remaining config inconsistency:
+
+```text
+docker-compose fallback rule-v1
+vs
+current rule-v2
+```
+
+Target:
+
+```text
+.env.example
+docker-compose.yml
+application.yml
+tests
+```
+
+dùng cùng parser version default.
+
+---
+
+# 6. Candidate embedding reliability
+
+Current:
+
+```text
+PROCESSING
+READY
+FAILED
+```
+
+Next:
+
+```text
+automatic retry/reconciliation
+metrics
+failure dashboard
+stale embedding reconciliation
+batch rebuild
+```
+
+---
+
+# 7. Job embedding reliability
+
+Next:
+
+```text
+reconcile Mongo READY vs Qdrant point
+rebuild missing points
+remove stale/deleted job vectors
+version migration tooling
+```
+
+---
+
+# 8. Crawler production hardening
+
+Live route hiện có:
+
+```text
+ITVIEC
+JOBOKO
+TOPDEV
+VIECLAM24H
+```
+
+Next:
+
+```text
+selector monitoring
+per-domain failure metrics
+rate-limit/backoff
+safe scheduler
+dedup verification
+HTML change alerts
+source-specific integration checks
+```
+
+Không bypass:
+
+```text
+CAPTCHA
+login wall
+anti-bot protection
+```
+
+---
+
+# 9. Source Discovery
+
+Current Source Discovery chỉ generate common paths:
+
+```text
+/careers
+/jobs
+/tuyen-dung
+/viec-lam
+```
+
+Next:
+
+```text
+HTTP probe
+robots validation
+content classification
+candidate scoring
+approve/reject workflow
+crawler config generation
+```
+
+---
+
+# 10. Frontend
+
+Frontend cần hỗ trợ:
+
+```text
+register/login
+CV upload
+parse status
+candidate profile
+matching results
+score explanations
+matched skills
+missing skills
+match tier
+apply URL
+retry/error states
+```
+
+Frontend không tự tính match score.
+
+---
+
+# 11. Matching UX
+
+Expose current:
+
+```text
+STRONG
+STRETCH
+POSSIBLE
+EXPLORE
+```
+
+Improve explanation:
+
+```text
+why this job
+matched core skills
+missing key skills
+seniority gap
+location relation
+freshness
+```
+
+Tránh hiển thị finalScore như một xác suất tuyệt đối.
+
+---
+
+# 12. AI CV suggestions
+
+Chỉ build sau khi matching evaluation đủ ổn.
 
 Input:
 
 ```text
 candidate profile
 selected normalized job
-match explanation
+matching explanation
 ```
 
-AI có thể:
+AI được phép:
 
-* Gợi ý làm rõ kinh nghiệm đã có.
-* Gợi ý keyword còn thiếu.
-* Gợi ý cải thiện summary hoặc bullet point.
-* Hỏi người dùng bổ sung evidence.
+```text
+gợi ý wording
+gợi ý keyword có evidence
+gợi ý làm rõ experience
+gợi ý bổ sung measurable detail
+```
 
 AI không được:
 
-* Bịa kinh nghiệm.
-* Bịa kỹ năng.
-* Bịa dự án, công ty hoặc thành tích.
-* Trình bày suggestion như dữ liệu đã được xác thực.
-
-## 8. Hoàn thiện crawler website thật
-
-### Hiện tại
-
-Có parser fixture cho:
-
 ```text
-ITVIEC
-JOBOKO
-TOPDEV
-VIECLAM24H
+bịa skill
+bịa experience
+bịa company
+bịa achievement
 ```
 
-Nhưng chỉ nguồn `MOCK` có live Camel route.
+---
 
-### Kế hoạch
+# 13. Async processing
 
-Ưu tiên:
+Hiện Spring events synchronous đủ cho local/MVP.
+
+Chỉ thêm RabbitMQ/Kafka khi có nhu cầu:
 
 ```text
-Phase 1:
-VIECLAM24H
-JOBOKO
-ITVIEC
-
-Phase 2:
-TOPDEV
-JOBSGO
+durable retries
+background CV processing
+independent worker scaling
+DLQ
+long-running workflows
 ```
 
-Với mỗi nguồn:
+Không thêm broker chỉ vì kiến trúc microservice-looking.
 
-* Kiểm tra lại robots.txt.
-* Xác minh HTML selector hiện tại.
-* Thêm list/detail route.
-* Rate limit theo domain.
-* Dừng khi gặp 401, 403, 429, CAPTCHA hoặc login wall.
-* Thêm fixture regression test.
-* Theo dõi parser failure.
-* Không bypass anti-bot.
+---
 
-Hoàn thiện Source Discovery trước khi crawl danh sách domain lớn.
+# 14. Observability
 
-## 9. Thêm RabbitMQ khi thật sự cần
-
-### Hiện tại
-
-Pipeline dùng Spring application events đồng bộ trong cùng JVM.
-
-### Kế hoạch
-
-Chỉ thêm RabbitMQ khi xuất hiện nhu cầu rõ ràng:
-
-* CV parsing cần chạy background.
-* Request upload không nên chờ parse và match.
-* Cần persistent retry.
-* Cần dead-letter queue.
-* Embedding worker cần scale độc lập.
-* Cần điều tiết tải Python services.
-
-Các event contract phải giữ version rõ ràng.
-
-Không thêm RabbitMQ chỉ để thay thế Spring event đang hoạt động tốt trong MVP.
-
-## 10. Chatbot tùy chọn
-
-### Kế hoạch
-
-Chatbot có thể hỗ trợ:
-
-* Giải thích vì sao một job được match.
-* Tóm tắt điểm phù hợp và điểm còn thiếu.
-* Hướng dẫn người dùng đọc recommendation.
-* Hỏi thêm preference về location hoặc loại công việc.
-
-Chatbot không phải dependency của:
+Add:
 
 ```text
-CV parsing
+structured logging
+pipeline correlation id
+parse latency
+embedding latency
+matching latency
+Qdrant latency
+crawler failure rate
+ranking distribution
+acceptance rate
+```
+
+---
+
+# 15. Security
+
+Before production:
+
+```text
+AUTH_PUBLIC_API_MODE=false
+strong JWT secret
+owner authorization regression tests
+rate-limit tuning
+MinIO credential rotation
+non-default Mongo credentials
+admin endpoint protection
+```
+
+---
+
+# 16. Definition of core backend complete
+
+Core backend được coi là ổn khi:
+
+```text
+job pipeline deterministic
+CV pipeline deterministic
+embedding recovery reliable
+matching regression automated
+real-data ranking quality measured
+version migrations documented
+Docker smoke test reproducible
+```
+
+Current architecture đã đi qua giai đoạn skeleton của:
+
+```text
+CV parser integration
+candidate profile
 candidate embedding
-vector search
-hybrid ranking
+matching
 ```
 
-Matching Engine phải hoạt động đầy đủ ngay cả khi không có chatbot.
-
-## Thứ tự phụ thuộc
+Focus tiếp theo là:
 
 ```text
-Ổn định job pipeline
-        ↓
-Nối CV parser
-        ↓
-Lưu candidate profile
-        ↓
-Candidate embedding
-        ↓
-Matching Engine
-        ↓
-React frontend
-        ↓
-AI CV suggestions
+quality
+regression coverage
+reliability
+frontend
+production hardening
 ```
-
-Crawler website thật có thể được phát triển song song sau khi job pipeline và parser contract đã ổn định.
-
-RabbitMQ và chatbot chỉ được thêm khi các pipeline cốt lõi đã chạy ổn định và có nhu cầu thực tế.

@@ -7,145 +7,199 @@ autojob:
           entry-level-under: 0.5
           junior-under: 2.0
           mid-under: 5.0
+
         levels:
-        - level: EXECUTIVE
-          rank: 12
-          patterns:
-          - \bchief executive officer\b
-          - \bchief operating officer\b
-          - \bchief financial officer\b
-          - \bchief technology officer\b
-          - \bchief information officer\b
-          - \bchief marketing officer\b
-          - \bmanaging director\b
-          - \bgeneral director\b
-          - \bpresident\b
-          - \bceo\b
-          - \bcoo\b
-          - \bcfo\b
-          - \bcto\b
-          - \bcio\b
-          - \bcmo\b
-          - \btong giam doc\b
-          - \bpho tong giam doc\b
-        - level: DIRECTOR
-          rank: 11
-          patterns:
-          - \bdirector\b
-          - \bgiam doc\b
-          - \bpho giam doc\b
-          - \btruong khoi\b
-        - level: HEAD
-          rank: 10
-          patterns:
-          - \bhead of\b
-          - \bdepartment head\b
-          - \bchief accountant\b
-          - \bhead chef\b
-          - \bexecutive chef\b
-          - \bhead nurse\b
-          - \btruong bo phan\b
-          - \btruong khoa\b
-          - \bke toan truong\b
-          - \bbep truong\b
-        - level: MANAGER
-          rank: 9
-          patterns:
-          - \bmanager\b
-          - \bbranch manager\b
-          - \bstore manager\b
-          - \boperations manager\b
-          - \bwarehouse manager\b
-          - \bquan ly\b
-          - \btruong phong\b
-          - \btruong ban\b
-        - level: SUPERVISOR
-          rank: 8
-          patterns:
-          - \bsupervisor\b
-          - \bforeman\b
-          - \bshift supervisor\b
-          - \bgiam sat\b
-          - \bca truong\b
-          - \bto truong\b
-        - level: LEAD
-          rank: 7
-          patterns:
-          - \bteam lead(?:er)?\b
-          - \btech lead\b
-          - \btechnical lead\b
-          - \bproject lead\b
-          - \bsales lead\b
-          - \bmarketing lead\b
-          - \boperations lead\b
-          - \brecruitment lead\b
-          - \bleader\b
-          - \btruong nhom\b
-          - \bnhom truong\b
-          - ^lead\b
-          - \blead$
-          exclude-patterns:
-          - ^lead generation
-          allow-patterns:
-          - \bteam lead(?:er)?\b
-          - \bleader\b
-        - level: SENIOR
-          rank: 6
-          patterns:
-          - \bsenior\b
-          - \bsr\.?\b
-          - \bprincipal\b
-          - \bstaff (?:engineer|nurse|accountant|specialist)\b
-          - \bexperienced\b
-          - \bcao cap\b
-          - \bchuyen vien chinh\b
-          - \bchuyen vien cao cap\b
-          - \bnhan vien cao cap\b
-        - level: MID
-          rank: 5
-          patterns:
-          - \bmiddle\b
-          - \bmid[- ]?level\b
-          - \bintermediate\b
-          - \bintermediate level\b
-        - level: JUNIOR
-          rank: 4
-          patterns:
-          - \bjunior\b
-          - \bjr\.?\b
-          - \bassociate\b
-          - \bso cap\b
-        - level: ENTRY_LEVEL
-          rank: 3
-          patterns:
-          - \bentry[- ]?level\b
-          - \bnew graduate\b
-          - \bgraduate role\b
-          - \bgraduate position\b
-          - \bgraduate program\b
-          - \bmoi tot nghiep\b
-          - \bkhong yeu cau kinh nghiem\b
-          - \bkhong can kinh nghiem\b
-          - \bchua co kinh nghiem\b
-        - level: FRESHER
-          rank: 2
-          patterns:
-          - \bfresher\b
-          - \bfresh graduate\b
-        - level: TRAINEE
-          rank: 1
-          patterns:
-          - \btrainee\b
-          - \bmanagement trainee\b
-          - \bgraduate trainee\b
-          - \bhoc viec\b
-        - level: INTERN
-          rank: 0
-          patterns:
-          - \bintern\b
-          - \binternship\b
-          - \bthuc tap\b
-          - \bthuc tap sinh\b
-        - level: UNKNOWN
-          rank: -1
-          patterns: []
+          - level: EXECUTIVE
+            rank: 12
+            patterns:
+              - \bchief executive officer\b
+              - \bchief operating officer\b
+              - \bchief financial officer\b
+              - \bchief technology officer\b
+              - \bchief information officer\b
+              - \bchief marketing officer\b
+              - \bchief human resources officer\b
+              - \bmanaging director\b
+              - \bgeneral director\b
+              - \bpresident\b
+              - \bceo\b
+              - \bcoo\b
+              - \bcfo\b
+              - \bcto\b
+              - \bcio\b
+              - \bcmo\b
+              - \bchro\b
+              - \btong giam doc\b
+              - \bpho tong giam doc\b
+              - \bchu tich\b
+            exclude-patterns:
+              - \b(?:assistant|secretary|coordinator|support|aide)\s+(?:to|for|of)\s+(?:the\s+)?(?:chief executive officer|chief operating officer|chief financial officer|chief technology officer|chief information officer|chief marketing officer|chief human resources officer|managing director|general director|president|ceo|coo|cfo|cto|cio|cmo|chro)\b
+              - \b(?:chief executive officer|managing director|general director|president|ceo)(?:'s)?\s+(?:assistant|secretary|coordinator|support|aide)\b
+              - \b(?:tro ly|thu ky|phu ta|ho tro)(?:\s+cho)?\s+(?:tong giam doc|pho tong giam doc|ceo|chu tich)\b
+              - \b(?:chanh van phong|van phong)\s+(?:ceo|tong giam doc)\b
+              - \b(?:ceo|tong giam doc)\s+office\s+(?:manager|coordinator|assistant)\b
+
+          - level: DIRECTOR
+            rank: 11
+            patterns:
+              - \bdeputy director\b
+              - \bassistant director\b
+              - \bdirector\b
+              - \bpho giam doc\b
+              - \bgiam doc\b
+              - \btruong khoi\b
+            exclude-patterns:
+              - \b(?:assistant|secretary|coordinator|support|aide)\s+(?:to|for|of)\s+(?:the\s+)?(?:deputy\s+)?director\b
+              - \bdirector(?:'s)?\s+(?:assistant|secretary|coordinator|support|aide)\b
+              - \b(?:tro ly|thu ky|phu ta|ho tro)(?:\s+cho)?\s+(?:(?:tong|pho)\s+)?giam doc\b
+              - \bthu ky\s+ban\s+giam doc\b
+              - \bvan phong\s+(?:ban\s+)?giam doc\b
+            allow-patterns:
+              - \bassistant director\b
+              - \bdeputy director\b
+              - \bpho giam doc\b
+
+          - level: HEAD
+            rank: 10
+            patterns:
+              - \bhead of\b
+              - \bdepartment head\b
+              - \bchief accountant\b
+              - \bchief of staff\b
+              - \bhead chef\b
+              - \bexecutive chef\b
+              - \bhead nurse\b
+              - \btruong bo phan\b
+              - \btruong khoa\b
+              - \bke toan truong\b
+              - \bbep truong\b
+              - \bchanh van phong\b
+            exclude-patterns:
+              - \b(?:assistant|secretary|coordinator|support|aide)\s+(?:to|for|of)\s+(?:the\s+)?(?:department\s+)?head\b
+              - \b(?:tro ly|thu ky|phu ta|ho tro)(?:\s+cho)?\s+(?:truong bo phan|truong khoa|ke toan truong|bep truong|chanh van phong)\b
+
+          - level: MANAGER
+            rank: 9
+            patterns:
+              - \bmanager\b
+              - \bbranch manager\b
+              - \bstore manager\b
+              - \boperations manager\b
+              - \bwarehouse manager\b
+              - \bquan ly\b
+              - \btruong phong\b
+              - \btruong ban\b
+            exclude-patterns:
+              - \b(?:assistant|secretary|coordinator|support|aide)\s+(?:to|for|of)\s+(?:the\s+)?manager\b
+              - \bmanager(?:'s)?\s+(?:assistant|secretary|coordinator|support|aide)\b
+              - \b(?:tro ly|thu ky|phu ta|ho tro)(?:\s+cho)?\s+(?:quan ly|truong phong|truong ban)\b
+            allow-patterns:
+              - \bassistant manager\b
+              - \bdeputy manager\b
+              - \bpho truong phong\b
+
+          - level: SUPERVISOR
+            rank: 8
+            patterns:
+              - \bsupervisor\b
+              - \bforeman\b
+              - \bshift supervisor\b
+              - \bgiam sat\b
+              - \bca truong\b
+              - \bto truong\b
+            exclude-patterns:
+              - \b(?:assistant|secretary|coordinator|support|aide)\s+(?:to|for|of)\s+(?:the\s+)?supervisor\b
+              - \b(?:tro ly|thu ky|phu ta|ho tro)(?:\s+cho)?\s+(?:giam sat|ca truong|to truong)\b
+
+          - level: LEAD
+            rank: 7
+            patterns:
+              - \bteam lead(?:er)?\b
+              - \btech lead\b
+              - \btechnical lead\b
+              - \bproject lead\b
+              - \bsales lead\b
+              - \bmarketing lead\b
+              - \boperations lead\b
+              - \brecruitment lead\b
+              - \bleader\b
+              - \btruong nhom\b
+              - \bnhom truong\b
+              - ^lead\b
+              - \blead$
+            exclude-patterns:
+              - ^lead generation
+              - \b(?:assistant|secretary|coordinator|support|aide)\s+(?:to|for|of)\s+(?:the\s+)?(?:team\s+)?lead(?:er)?\b
+              - \b(?:tro ly|thu ky|phu ta|ho tro)(?:\s+cho)?\s+(?:truong nhom|nhom truong)\b
+            allow-patterns:
+              - \bteam lead(?:er)?\b
+              - \bleader\b
+
+          - level: SENIOR
+            rank: 6
+            patterns:
+              - \bsenior\b
+              - \bsr\.?\b
+              - \bprincipal\b
+              - \bstaff (?:engineer|nurse|accountant|specialist)\b
+              - \bcao cap\b
+              - \bchuyen vien chinh\b
+              - \bchuyen vien cao cap\b
+              - \bnhan vien cao cap\b
+
+          - level: MID
+            rank: 5
+            patterns:
+              - \bmid[- ]?level\b
+              - \bintermediate\b
+              - \bintermediate level\b
+
+          - level: JUNIOR
+            rank: 4
+            patterns:
+              - \bjunior\b
+              - \bjr\.?\b
+              - \bassociate\b
+              - \bso cap\b
+            exclude-patterns:
+              - \bassociate professor\b
+              - \bassociate dean\b
+
+          - level: ENTRY_LEVEL
+            rank: 3
+            patterns:
+              - \bentry[- ]?level\b
+              - \bnew graduate\b
+              - \bgraduate role\b
+              - \bgraduate position\b
+              - \bgraduate program\b
+              - \bmoi tot nghiep\b
+              - \bkhong yeu cau kinh nghiem\b
+              - \bkhong can kinh nghiem\b
+              - \bchua co kinh nghiem\b
+
+          - level: FRESHER
+            rank: 2
+            patterns:
+              - \bfresher\b
+              - \bfresh graduate\b
+
+          - level: TRAINEE
+            rank: 1
+            patterns:
+              - \btrainee\b
+              - \bmanagement trainee\b
+              - \bgraduate trainee\b
+              - \bhoc viec\b
+
+          - level: INTERN
+            rank: 0
+            patterns:
+              - \bintern\b
+              - \binternship\b
+              - \bthuc tap\b
+              - \bthuc tap sinh\b
+
+          - level: UNKNOWN
+            rank: -1
+            patterns: []

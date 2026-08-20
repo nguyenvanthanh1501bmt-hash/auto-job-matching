@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -51,6 +52,21 @@ COMPANY_INDICATOR_PATTERN = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+ROLE_NOUN_PATTERN = re.compile(
+    r"\b(?:"
+    r"intern|trainee|fresher|assistant|secretary|specialist|analyst|"
+    r"engineer|developer|designer|architect|accountant|auditor|"
+    r"consultant|coordinator|representative|teacher|lecturer|trainer|"
+    r"nurse|doctor|pharmacist|technician|operator|driver|cashier|"
+    r"recruiter|officer|executive|manager|director|supervisor|leader|"
+    r"thuc\s+tap(?:\s+sinh)?|hoc\s+viec|tro\s+ly|thu\s+ky|"
+    r"nhan\s+vien|chuyen\s+vien|ky\s+su|lap\s+trinh\s+vien|"
+    r"giao\s+vien|giang\s+vien|bac\s+si|duoc\s+si|dieu\s+duong|"
+    r"ky\s+thuat\s+vien|tu\s+van\s+vien|tuyen\s+dung|"
+    r"quan\s+ly|giam\s+doc|giam\s+sat|truong\s+nhom|"
+    r"truong\s+phong|truong\s+ban|truong\s+bo\s+phan"
+    r")\b"
+)
 ACHIEVEMENT_PATTERN = re.compile(
     r"(?:"
     r"\b(?:achieved|awarded|delivered|exceeded|generated|grew|"
@@ -98,6 +114,14 @@ class WorkExperienceParser:
             taxonomy.preferences.work_modes
         )
         self._skill_parser = skill_parser
+        self._seniority_title_patterns = tuple(
+            re.compile(
+                pattern
+            )
+            for level in taxonomy.seniority.levels
+            if level.level != "UNKNOWN"
+            for pattern in level.patterns
+        )
 
     def parse(
             self,
@@ -649,12 +673,65 @@ class WorkExperienceParser:
                     unclassified.remove(value)
                     break
 
+        # Một CV thật có thể chứa job title chưa được khai báo trong
+        # job_titles.yml.
+        #
+        # Ví dụ:
+        #
+        # DATACENTERS | THỰC TẬP SINH KINH DOANH
+        #
+        # Nếu chỉ phụ thuộc canonical taxonomy thì "THỰC TẬP SINH KINH DOANH"
+        # bị bỏ qua và có thể bị hiểu nhầm thành company.
+        #
+        # Vì vậy nếu chưa tìm được canonical title, thử xác định title dựa
+        # trên seniority marker + role noun.
+        if job_title is None and unclassified:
+            candidates = [
+                (
+                    self._job_title_likelihood(
+                        value
+                    ),
+                    index,
+                    value,
+                )
+                for index, value
+                in enumerate(unclassified)
+            ]
+
+            candidates = [
+                candidate
+                for candidate in candidates
+                if candidate[0] > 0
+            ]
+
+            if candidates:
+                _, _, value = max(
+                    candidates,
+                    key=lambda candidate: (
+                        candidate[0],
+                        candidate[1],
+                    ),
+                )
+
+                job_title = value
+
+                normalized_job_title = (
+                    self._normalize_job_title(
+                        value
+                    )
+                )
+
+                unclassified.remove(
+                    value
+                )
+
         if (
                 company_name is None
                 and len(unclassified) == 1
                 and job_title is not None
         ):
             company_name = unclassified[0]
+
         elif (
                 company_name is None
                 and len(unclassified) >= 2
@@ -776,6 +853,91 @@ class WorkExperienceParser:
         candidates.sort()
 
         return candidates[0][2]
+
+    def _job_title_likelihood(
+            self,
+            value: str,
+    ) -> int:
+        if (
+                not value
+                or len(value) > MAX_HEADER_LINE_LENGTH
+                or SENTENCE_END_PATTERN.search(
+            value
+        )
+        ):
+            return 0
+
+        if self._normalize_job_title(
+                value
+        ) is not None:
+            return 100
+
+        folded = self._fold_for_taxonomy(
+            value
+        )
+
+        if not folded:
+            return 0
+
+        score = 0
+
+        if any(
+                pattern.search(
+                    folded
+                ) is not None
+                for pattern
+                in self._seniority_title_patterns
+        ):
+            score += 60
+
+        if ROLE_NOUN_PATTERN.search(
+                folded
+        ) is not None:
+            score += 40
+
+        if (
+                COMPANY_INDICATOR_PATTERN.search(
+                    value
+                ) is not None
+                and score == 0
+        ):
+            return 0
+
+        return score
+
+    @staticmethod
+    def _fold_for_taxonomy(
+            value: str,
+    ) -> str:
+        decomposed = unicodedata.normalize(
+            "NFD",
+            value,
+        )
+
+        without_diacritics = "".join(
+            character
+            for character in decomposed
+            if unicodedata.category(
+                character
+            )
+            != "Mn"
+        )
+
+        return re.sub(
+            r"\s+",
+            " ",
+            without_diacritics
+            .replace(
+                "đ",
+                "d",
+            )
+            .replace(
+                "Đ",
+                "D",
+            )
+            .casefold()
+            .strip(),
+            )
 
     @staticmethod
     def _is_safe_title_residue(

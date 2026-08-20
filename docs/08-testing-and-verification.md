@@ -1,626 +1,407 @@
-# Testing và verification
+# Testing and Verification
 
-## Phạm vi
+## 1. Test layers
 
-Repository hiện có ba lớp kiểm tra:
-
-```text
-Java unit/component tests
-Python service tests
-Local end-to-end smoke test
-```
-
-Local smoke test đầy đủ nhất hiện nay là job pipeline:
+AutoJob hiện được verify ở nhiều layer:
 
 ```text
-Mock site
-→ raw_jobs
-→ normalized_jobs
-→ job_embeddings
-→ Qdrant
+unit/component tests
+integration tests
+Docker smoke tests
+real-CV tests
+real Mongo/Qdrant matching validation
 ```
 
-CV pipeline chỉ verify được đến:
+Không được đồng nhất:
 
 ```text
-Upload CV
-→ MinIO
-→ raw_cvs
+ít unit test
 ```
 
-`cv-parser-service` có test riêng nhưng chưa được Java backend gọi.
+với:
 
-## Chuẩn bị môi trường
+```text
+feature chưa được test
+```
 
-Từ thư mục gốc:
+Matching hiện có real-data validation dù automated scorer coverage còn mỏng.
 
-```bash
-cp .env.example .env
+---
 
+# 2. Docker startup
+
+```powershell
 docker compose --env-file .env up -d --build
 ```
 
-Kiểm tra:
+Check:
 
-```bash
+```powershell
 docker compose --env-file .env ps
-
-curl -f http://localhost:18080/jobs.html
-curl -f http://localhost:9000/minio/health/live
-curl -f http://localhost:8002/ready
-curl -f http://localhost:6333/collections
 ```
 
-Khởi động backend:
+---
 
-```bash
-cd backend
+# 3. Java tests
 
-bash ./mvnw \
-  -pl autojob-app \
-  -am \
-  spring-boot:run \
-  -Dspring-boot.run.profiles=local
-```
+Có thể chạy Maven tests trong backend dev environment khi cần regression.
 
-Health check:
-
-```bash
-curl -s http://localhost:8080/actuator/health | jq
-```
-
-## Chạy backend tests
-
-### Toàn bộ Maven reactor
-
-```bash
-cd backend
-bash ./mvnw test
-```
-
-Lần đầu Maven Wrapper cần tải Maven 3.9.9 và dependencies từ Maven Central.
-
-### Các module job pipeline
-
-```bash
-cd backend
-
-bash ./mvnw \
-  -pl modules/job-crawler,modules/job-normalizer,modules/job-embedding \
-  -am \
-  test
-```
-
-Các test hiện có nội dung thực tập trung vào:
-
-* Crawler parser fixture.
-* Raw job fingerprint và idempotency.
-* Raw payload purge.
-* Salary, skill, location, seniority và date normalization.
-* `embeddingText`.
-* Normalization event listener.
-* Embedding HTTP response validation.
-* Embedding idempotency.
-* Qdrant collection validation và point upsert.
-
-### Trạng thái test theo module
-
-| Module           | Trạng thái test                                     |
-| ---------------- | --------------------------------------------------- |
-| `job-crawler`    | Có test thực                                        |
-| `job-normalizer` | Có test thực                                        |
-| `job-embedding`  | Có test thực                                        |
-| `cv`             | Có năm file test nhưng hiện đều rỗng                |
-| `auth`           | Chưa có test source                                 |
-| `matching`       | Chưa có implementation hoặc test                    |
-| `autojob-app`    | Chưa có integration test khởi động toàn application |
-
-Việc `mvn test` thành công chưa chứng minh CV upload, authentication hoặc full application đã được kiểm tra đầy đủ.
-
-## Chạy Embedding Service tests
-
-Từ thư mục service:
-
-```bash
-cd ai-services/embedding-service
-
-python3.12 -m venv .venv
-source .venv/bin/activate
-
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-### Fake provider tests
-
-Không tải model thật:
-
-```bash
-pytest -m "not model"
-```
-
-Các test kiểm tra:
-
-* `/health`.
-* `/ready`.
-* Vector dimension.
-* Deterministic output.
-* SHA-256 `textHash`.
-* L2 normalization.
-* Validation với text rỗng.
-
-### Real model tests
-
-```bash
-pytest -m model
-```
-
-Test này tải model:
+Modules có automated tests gồm:
 
 ```text
-intfloat/multilingual-e5-small
+job-crawler
+job-normalizer
+job-embedding
+cv
+candidate-embedding
+matching
 ```
 
-và kiểm tra:
+`matching` hiện chủ yếu có:
 
-* Model load thành công.
-* Vector 384 chiều.
-* Vector hữu hạn và L2-normalized.
-* Kết quả ổn định với cùng input.
-* Nội dung Java tương tự bằng tiếng Việt và tiếng Anh gần nhau hơn nội dung không liên quan.
-
-Lần chạy đầu cần kết nối Internet và có thể dùng nhiều RAM hơn fake provider.
-
-Chạy tất cả:
-
-```bash
-pytest
+```text
+MatchingPropertiesTest
 ```
 
-## Chạy CV Parser tests
+nên scorer/service test coverage cần bổ sung.
 
-`requirements.txt` của CV parser hiện chứa runtime dependencies nhưng chưa chứa đầy đủ test dependencies.
+---
 
-Chuẩn bị:
+# 4. CV parser tests
 
-```bash
-cd ai-services/cv-parser-service
+Python parser có unit/integration tests cho:
 
-python3.12 -m venv .venv
-source .venv/bin/activate
-
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m pip install pytest httpx reportlab
+```text
+PDF/DOC/DOCX extraction
+section detection
+identity/contact
+skills
+work experience
+education
+certification
+language
+seniority
+FastAPI validation
+MinIO integration
 ```
 
-### Unit tests
+Seniority regression cần cover:
 
-Không cần MinIO thật:
+```text
+Trợ lý giám đốc       -> not DIRECTOR
+Assistant to Director -> not DIRECTOR
+Assistant Director    -> DIRECTOR
+Deputy Director       -> DIRECTOR
+Phó giám đốc          -> DIRECTOR
 
-```bash
-pytest -m "not integration"
+Assistant to Manager  -> not MANAGER
+Assistant Manager     -> MANAGER
+
+Middle School Teacher -> not MID
+Lead Generation       -> not LEAD
+Team Lead              -> LEAD
 ```
 
-Các test kiểm tra:
+---
 
-* PDF, DOC và DOCX extraction.
-* PDF lỗi hoặc không có text.
-* DOCX archive safety.
-* Multi-column warning.
-* Contact và identity parsing.
-* Section detection.
-* Skill taxonomy.
-* Work experience.
-* Education và certification.
-* Language và seniority inference.
-* FastAPI request validation.
+# 5. Real CV test
 
-Các DOC unit test mock lệnh `antiword`, vì vậy không chứng minh binary thật đang hoạt động.
+Script:
 
-### MinIO integration test
-
-Khởi động MinIO:
-
-```bash
-docker compose --env-file .env \
-  up -d minio minio-init
+```text
+scripts/test-cv-parse-embedding.ps1
 ```
 
-Chạy integration test:
+Example:
 
-```bash
-cd ai-services/cv-parser-service
-source .venv/bin/activate
-
-RUN_MINIO_INTEGRATION=true \
-CV_TEST_MINIO_ENDPOINT=127.0.0.1:9000 \
-CV_TEST_MINIO_ACCESS_KEY=minioadmin \
-CV_TEST_MINIO_SECRET_KEY=minioadmin \
-CV_TEST_MINIO_BUCKET=autojob-cvs \
-pytest -m integration
+```powershell
+$CvPath = "D:\test-data\cv2.pdf"
 ```
 
-Test tự tạo CV fixture, upload vào MinIO, gọi parser qua FastAPI `TestClient` và dọn object sau khi hoàn thành.
+Run:
 
-Đây là integration test của Python parser với MinIO, không phải test Java-to-Python.
-
-## Smoke test job pipeline
-
-### 1. Trigger mock crawler
-
-```bash
-curl -s -X POST \
-  http://localhost:8080/api/admin/crawlers/mock/run \
-  | jq
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test-cv-parse-embedding.ps1
 ```
 
-Ở database mới:
+Verify:
 
-```json
-{
-  "sourceCode": "MOCK",
-  "insertedCount": 2,
-  "totalRawJobs": 2
-}
+```text
+upload response
+rawCvId
+
+parsed full JSON
+
+seniority
+experienceYears
+recent job titles
+work experiences
+skills
+warnings
+
+candidate_profiles Mongo document
+candidate_embeddings Mongo document
+
+embedding status
+dimension
+vector length
+normalization
 ```
 
-Mock site hiện có hai job.
+---
 
-### 2. Kiểm tra `raw_jobs`
+# 6. Latest seniority regression expectation
 
-Qua API:
+For tested real CV:
 
-```bash
-curl -s \
-  "http://localhost:8080/api/raw-jobs?limit=20" \
-  | jq
+```text
+experienceYears = 2.0
+seniority       = MID
 ```
 
-Qua MongoDB:
+Expected work experiences include:
 
-```bash
-docker compose --env-file .env exec mongo \
-  mongosh \
-  -u root \
-  -p password \
-  --authenticationDatabase admin \
-  autojob \
-  --quiet \
-  --eval '
-    db.raw_jobs.find(
-      {sourceCode: "MOCK"},
-      {
-        title: 1,
-        fingerprint: 1,
-        firstSeenAt: 1,
-        lastSeenAt: 1,
-        collectedAt: 1
-      }
-    ).sort({collectedAt: -1}).forEach(printjson)
-  '
+```text
+DATACENTERS
+THỰC TẬP SINH KINH DOANH
+INTERNSHIP
 ```
 
-Cần thấy:
+and:
 
-* Hai document nguồn `MOCK`.
-* `fingerprint` có giá trị.
-* `detailUrl` và `applyUrl` có giá trị.
-* `firstSeenAt`, `lastSeenAt` và `collectedAt` đã được ghi.
-
-### 3. Kiểm tra `normalized_jobs`
-
-```bash
-curl -s \
-  "http://localhost:8080/api/normalized-jobs?page=0&size=20&sourceCode=MOCK" \
-  | jq
+```text
+Trợ lý giám đốc
+EXECUTIVE_ASSISTANT
 ```
 
-MongoDB:
+Must not produce:
 
-```bash
-docker compose --env-file .env exec mongo \
-  mongosh \
-  -u root \
-  -p password \
-  --authenticationDatabase admin \
-  autojob \
-  --quiet \
-  --eval '
-    db.normalized_jobs.find(
-      {sourceCode: "MOCK"},
-      {
-        rawJobId: 1,
-        title: 1,
-        skills: 1,
-        locations: 1,
-        seniority: 1,
-        normalizationVersion: 1,
-        rawContentHash: 1
-      }
-    ).forEach(printjson)
-  '
+```text
+DIRECTOR
 ```
 
-Cần kiểm tra:
+Career objective containing:
 
-* Mỗi normalized job có `rawJobId`.
-* `normalizationVersion` là `rule-v1`, trừ khi đã override.
-* `rawContentHash` có giá trị.
-* `embeddingText` tồn tại trong MongoDB dù API detail không expose field này.
-
-Kiểm tra riêng `embeddingText`:
-
-```bash
-docker compose --env-file .env exec mongo \
-  mongosh \
-  -u root \
-  -p password \
-  --authenticationDatabase admin \
-  autojob \
-  --quiet \
-  --eval '
-    db.normalized_jobs.find(
-      {sourceCode: "MOCK"},
-      {title: 1, embeddingText: 1}
-    ).forEach(printjson)
-  '
+```text
+sinh viên
 ```
 
-### 4. Kiểm tra `job_embeddings`
+must not override structured experience.
 
-```bash
-NORMALIZED_JOB_ID=$(
-  curl -s \
-    "http://localhost:8080/api/normalized-jobs?page=0&size=1&sourceCode=MOCK" \
-  | jq -r '.content[0].id'
-)
+---
 
-curl -s \
-  "http://localhost:8080/api/job-embeddings/${NORMALIZED_JOB_ID}" \
-  | jq
+# 7. Job pipeline smoke test
+
+Mock:
+
+```powershell
+Invoke-RestMethod `
+  -Method POST `
+  http://localhost:8080/api/admin/crawlers/mock/run
 ```
 
-Kết quả thành công:
+Then:
+
+```powershell
+Invoke-RestMethod `
+  "http://localhost:8080/api/raw-jobs?limit=20"
+```
+
+```powershell
+Invoke-RestMethod `
+  "http://localhost:8080/api/normalized-jobs?page=0&size=20"
+```
+
+Check job embedding:
+
+```text
+GET /api/job-embeddings/{normalizedJobId}
+```
+
+---
+
+# 8. Live crawler test
+
+Example:
+
+```powershell
+Invoke-RestMethod `
+  -Method POST `
+  "http://localhost:8080/api/admin/crawlers/live/ITVIEC/run?limit=5"
+```
+
+Do not interpret external website failure automatically as parser bug.
+
+Possible causes:
+
+```text
+site HTML changed
+403/429
+network failure
+anti-bot
+redirect/login wall
+```
+
+---
+
+# 9. Candidate embedding verification
+
+Expected:
 
 ```text
 status = READY
 dimension = 384
 normalized = true
-qdrantCollection = job_vectors_v1
-qdrantPointId có giá trị
-lastError = null
+vector.Count = dimension
+textVersion = candidate-text-v1
 ```
 
-Kiểm tra toàn bộ record:
+---
 
-```bash
-docker compose --env-file .env exec mongo \
-  mongosh \
-  -u root \
-  -p password \
-  --authenticationDatabase admin \
-  autojob \
-  --quiet \
-  --eval '
-    db.job_embeddings.find(
-      {},
-      {
-        normalizedJobId: 1,
-        embeddingVersion: 1,
-        dimension: 1,
-        status: 1,
-        qdrantPointId: 1,
-        lastError: 1
-      }
-    ).forEach(printjson)
-  '
-```
+# 10. Matching real-data test
 
-Nếu embedding hoặc Qdrant lỗi, record có thể ở trạng thái `FAILED` trong khi normalized job vẫn tồn tại.
-
-### 5. Kiểm tra Qdrant collection
-
-```bash
-curl -s \
-  http://localhost:6333/collections/job_vectors_v1 \
-  | jq
-```
-
-Các giá trị cần kiểm tra:
+Prerequisites:
 
 ```text
-vector size = 384
-distance = Cosine
-points_count > 0
+candidate profile exists
+candidate embedding READY
+normalized jobs exist
+job embeddings READY
+Qdrant contains compatible points
 ```
 
-Đọc point và payload:
+Run:
 
-```bash
-curl -s -X POST \
-  http://localhost:6333/collections/job_vectors_v1/points/scroll \
-  -H "Content-Type: application/json" \
-  -d '{
-    "limit": 10,
-    "with_payload": true,
-    "with_vector": false
-  }' \
-  | jq
+```powershell
+Invoke-RestMethod `
+  -Method POST `
+  "http://localhost:8080/api/matching/candidates/$candidateProfileId?force=true"
 ```
 
-Payload cần có:
+Inspect:
 
 ```text
-jobId
-sourceCode
-normalizationVersion
-embeddingVersion
-textHash
+retrievedCount
+loadedJobCount
+matchedCount
+rankingVersion
+
+rank
+finalScore
+semanticScore
+skillScore
+seniorityScore
+locationScore
+freshnessScore
+
+matchTier
+matchedSkills
+missingSkills
+explanations
 ```
 
-`jobId` phải khớp với `_id` của `normalized_jobs`.
+---
 
-## Kiểm tra idempotency
+# 11. Matching acceptance quality
 
-Chạy lại mock crawler:
-
-```bash
-curl -s -X POST \
-  http://localhost:8080/api/admin/crawlers/mock/run \
-  | jq
-```
-
-Kết quả dự kiến:
-
-```json
-{
-  "sourceCode": "MOCK",
-  "insertedCount": 0,
-  "totalRawJobs": 2
-}
-```
-
-Kiểm tra:
-
-* Số document `raw_jobs` không tăng.
-* `lastSeenAt` hoặc `collectedAt` được cập nhật.
-* Normalizer trả logic `UNCHANGED`.
-* Không tạo thêm `normalized_jobs` cùng version.
-* Không tạo thêm Qdrant point cùng job và embedding version.
-
-## Rebuild embedding sau lỗi
-
-Sau khi embedding service và Qdrant đã hoạt động:
-
-```bash
-curl -s -X POST \
-  "http://localhost:8080/api/admin/job-embeddings/${NORMALIZED_JOB_ID}/rebuild?force=true" \
-  | jq
-```
-
-Sau đó kiểm tra lại MongoDB và Qdrant.
-
-## Upload và kiểm tra CV
-
-### 1. Upload file thật
-
-Sử dụng một file PDF, DOC hoặc DOCX hợp lệ:
-
-```bash
-CV_RESPONSE=$(
-  curl -s -X POST \
-    http://localhost:8080/api/cvs \
-    -F "file=@./sample-cv.pdf"
-)
-
-echo "$CV_RESPONSE" | jq
-
-RAW_CV_ID=$(
-  echo "$CV_RESPONSE" |
-  jq -r '.id'
-)
-```
-
-Kết quả cần có:
+Do not validate only:
 
 ```text
-status = UPLOADED
-sha256 có giá trị
-sizeBytes > 0
+rank #1
 ```
 
-Các file trong `scripts/` hiện là placeholder rỗng, vì vậy repository chưa cung cấp command tạo smoke CV sẵn.
-
-### 2. Kiểm tra `raw_cvs`
-
-```bash
-docker compose --env-file .env exec mongo \
-  mongosh \
-  -u root \
-  -p password \
-  --authenticationDatabase admin \
-  autojob \
-  --quiet \
-  --eval '
-    db.raw_cvs.findOne(
-      {_id: "'"${RAW_CV_ID}"'"},
-      {
-        ownerUserId: 1,
-        bucket: 1,
-        objectKey: 1,
-        originalFilename: 1,
-        extension: 1,
-        contentType: 1,
-        sizeBytes: 1,
-        sha256: 1,
-        status: 1,
-        uploadedAt: 1
-      }
-    )
-  '
-```
-
-Cần thấy:
+Review:
 
 ```text
-bucket = autojob-cvs
-objectKey bắt đầu bằng raw/
-status = UPLOADED
+top 5/top 10 job relevance
+obvious false positives
+skill overlap
+seniority gaps
+location behavior
+semantic-only matches
+expired/old jobs
 ```
 
-### 3. Kiểm tra MinIO object
+---
 
-Liệt kê bucket bằng MinIO client:
+# 12. Automated matching tests still needed
 
-```bash
-docker compose --env-file .env run --rm \
-  --entrypoint /bin/sh \
-  minio-init \
-  -c '
-    mc alias set local \
-      http://minio:9000 \
-      "$MINIO_ROOT_USER" \
-      "$MINIO_ROOT_PASSWORD" &&
-    mc ls --recursive \
-      "local/$MINIO_BUCKET_CVS"
-  '
-```
-
-Object key trong MinIO phải trùng `raw_cvs.objectKey`.
-
-Có thể kiểm tra trực tiếp tại:
+Priority:
 
 ```text
-http://localhost:9001
+SemanticScoreNormalizerTest
+SkillScorerTest
+SeniorityScorerTest
+LocationScorerTest
+FreshnessScorerTest
+JobEligibilityFilterTest
+MatchAcceptanceFilterTest
+HybridRankingServiceTest
+HybridMatchingServiceTest
 ```
 
-### 4. Giới hạn verification hiện tại
+Use anonymized real-data cases as golden fixtures where possible.
 
-Sau upload, không nên kỳ vọng:
+---
+
+# 13. Mongo verification
+
+```powershell
+docker exec -it autojob-mongo `
+  mongosh `
+  -u root `
+  -p password `
+  --authenticationDatabase admin `
+  autojob
+```
+
+Examples:
+
+```javascript
+db.candidate_profiles
+  .find()
+  .sort({ updatedAt: -1 })
+  .limit(5)
+
+db.candidate_embeddings
+  .find()
+  .sort({ updatedAt: -1 })
+  .limit(5)
+
+db.match_results
+  .find()
+  .sort({ generatedAt: -1 })
+  .limit(20)
+```
+
+---
+
+# 14. Qdrant verification
+
+```powershell
+Invoke-RestMethod `
+  http://localhost:6333/collections
+```
+
+Expected collection:
 
 ```text
-raw_cvs.status = PARSED
-candidate_profiles có document
-candidate_embeddings có document
-match_results có document
+job_vectors_v1
 ```
 
-Các bước này chưa được Java backend tích hợp.
+---
 
-## Checklist smoke test
+# 15. Definition of done
 
-| Kiểm tra             | Kết quả mong đợi               |
-| -------------------- | ------------------------------ |
-| Backend health       | `UP`                           |
-| Embedding readiness  | `ready`                        |
-| Mock crawler lần đầu | Hai job được insert            |
-| `raw_jobs`           | Có hai job `MOCK`              |
-| `normalized_jobs`    | Có normalized document         |
-| `job_embeddings`     | `READY`                        |
-| Qdrant               | Collection 384 chiều, có point |
-| Mock crawler lần hai | `insertedCount = 0`            |
-| CV upload            | `status = UPLOADED`            |
-| MinIO                | Có CV object                   |
-| Candidate profile    | Chưa có                        |
-| Matching result      | Chưa có                        |
+Một CV → matching flow chỉ được coi là pass khi:
+
+```text
+CV upload succeeds
+parser returns valid profile
+candidate profile persisted
+candidate embedding READY
+matching search succeeds
+results persisted
+ranking manually looks reasonable
+```
