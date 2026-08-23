@@ -122,13 +122,6 @@ services:
       CV_PARSER_VERSION: ${CV_PARSER_VERSION:-rule-v1}
       LOG_LEVEL: ${CV_PARSER_LOG_LEVEL:-INFO}
 
-      # CV-specific taxonomy vẫn nằm đây.
-      #
-      # Shared skill loader sẽ resolve:
-      #
-      # /app/config/taxonomy/cv-parser
-      #                ↓ parent
-      # /app/config/taxonomy/shared/skills.yml
       CV_TAXONOMY_DIRECTORY: /app/config/taxonomy/cv-parser
 
       MINIO_ENDPOINT: minio:9000
@@ -159,15 +152,6 @@ services:
       CV_MAX_PDF_PAGES: ${CV_MAX_PDF_PAGES:-100}
       CV_ALLOWED_OBJECT_PREFIXES: '${CV_ALLOWED_OBJECT_PREFIXES:-["raw/","cvs/"]}'
 
-    # Mount config root thay vì chỉ cv-parser taxonomy.
-    #
-    # Nhờ vậy container đọc được:
-    #
-    # /app/config/taxonomy/cv-parser
-    # /app/config/taxonomy/shared
-    #
-    # Sau này shared location/seniority cũng không cần
-    # thêm volume mới.
     volumes:
       - ./configs:/app/config:ro
 
@@ -243,17 +227,13 @@ services:
     environment:
       SERVER_PORT: "8080"
 
-      # Job-specific taxonomy còn lại.
       AUTOJOB_TAXONOMY_DIR: /app/config/taxonomy/job-normalizer
-
-      # Shared taxonomy mới.
       AUTOJOB_SHARED_TAXONOMY_DIR: /app/config/taxonomy/shared
-
-      # Matching configuration từ Batch 1.
       AUTOJOB_MATCHING_CONFIG: /app/config/matching/ranking.yml
 
       SPRING_DATA_MONGODB_URI: >-
         mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-password}@mongo:27017/${MONGO_DATABASE:-autojob}?authSource=admin
+
       MONGODB_AUTO_INDEX_CREATION: ${MONGODB_AUTO_INDEX_CREATION:-true}
 
       MINIO_ENDPOINT: http://minio:9000
@@ -261,7 +241,6 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_BUCKET_CVS: ${MINIO_BUCKET_CVS:-autojob-cvs}
 
-      CV_PUBLIC_OWNER_USER_ID: ${CV_PUBLIC_OWNER_USER_ID:-public-local-user}
       CV_MAX_FILE_SIZE_MB: ${CV_MAX_FILE_SIZE_MB:-10}
       CV_MAX_FILE_SIZE: ${CV_MAX_FILE_SIZE:-10MB}
       CV_MAX_REQUEST_SIZE: ${CV_MAX_REQUEST_SIZE:-11MB}
@@ -294,8 +273,6 @@ services:
       QDRANT_VECTOR_DIMENSION: ${QDRANT_VECTOR_DIMENSION:-384}
       QDRANT_DISTANCE: ${QDRANT_DISTANCE:-Cosine}
 
-      # Container Java phải gọi mock-job-site bằng Docker service name,
-      # không dùng localhost:18080.
       MOCK_CRAWLER_SOURCE_CODE: MOCK
       MOCK_CRAWLER_BASE_URL: http://mock-job-site
       MOCK_CRAWLER_LIST_URL: http://mock-job-site/jobs.html
@@ -303,20 +280,6 @@ services:
       MOCK_CRAWLER_STORE_RAW_HTML: ${MOCK_CRAWLER_STORE_RAW_HTML:-false}
       MOCK_CRAWLER_STORE_RAW_TEXT: ${MOCK_CRAWLER_STORE_RAW_TEXT:-false}
       MOCK_CRAWLER_RAW_TEXT_MAX_CHARS: ${MOCK_CRAWLER_RAW_TEXT_MAX_CHARS:-20000}
-      MOCK_CRAWLER_RAW_RETENTION_DAYS: ${MOCK_CRAWLER_RAW_RETENTION_DAYS:-30}
-
-      # ==========================================================
-      # Live crawler sources
-      #
-      # HTML detail được parse trong RAM.
-      # Không lưu raw HTML/text vào Mongo.
-      # Sau parse:
-      #
-      # raw structured data
-      # -> normalize
-      # -> embedding
-      # -> Qdrant
-      # ==========================================================
 
       AUTOJOB_CRAWLER_ITVIEC_SOURCE_CODE: ITVIEC
       AUTOJOB_CRAWLER_ITVIEC_BASE_URL: https://itviec.com
@@ -325,7 +288,6 @@ services:
       AUTOJOB_CRAWLER_ITVIEC_STORE_RAW_HTML: ${ITVIEC_CRAWLER_STORE_RAW_HTML:-false}
       AUTOJOB_CRAWLER_ITVIEC_STORE_RAW_TEXT: ${ITVIEC_CRAWLER_STORE_RAW_TEXT:-false}
       AUTOJOB_CRAWLER_ITVIEC_RAW_TEXT_MAX_CHARS: ${ITVIEC_CRAWLER_RAW_TEXT_MAX_CHARS:-20000}
-      AUTOJOB_CRAWLER_ITVIEC_RAW_RETENTION_DAYS: ${ITVIEC_CRAWLER_RAW_RETENTION_DAYS:-30}
 
       AUTOJOB_CRAWLER_JOBOKO_SOURCE_CODE: JOBOKO
       AUTOJOB_CRAWLER_JOBOKO_BASE_URL: https://vn.joboko.com
@@ -334,7 +296,6 @@ services:
       AUTOJOB_CRAWLER_JOBOKO_STORE_RAW_HTML: ${JOBOKO_CRAWLER_STORE_RAW_HTML:-false}
       AUTOJOB_CRAWLER_JOBOKO_STORE_RAW_TEXT: ${JOBOKO_CRAWLER_STORE_RAW_TEXT:-false}
       AUTOJOB_CRAWLER_JOBOKO_RAW_TEXT_MAX_CHARS: ${JOBOKO_CRAWLER_RAW_TEXT_MAX_CHARS:-20000}
-      AUTOJOB_CRAWLER_JOBOKO_RAW_RETENTION_DAYS: ${JOBOKO_CRAWLER_RAW_RETENTION_DAYS:-30}
 
       AUTOJOB_CRAWLER_TOPDEV_SOURCE_CODE: TOPDEV
       AUTOJOB_CRAWLER_TOPDEV_BASE_URL: https://topdev.vn
@@ -343,7 +304,6 @@ services:
       AUTOJOB_CRAWLER_TOPDEV_STORE_RAW_HTML: ${TOPDEV_CRAWLER_STORE_RAW_HTML:-false}
       AUTOJOB_CRAWLER_TOPDEV_STORE_RAW_TEXT: ${TOPDEV_CRAWLER_STORE_RAW_TEXT:-false}
       AUTOJOB_CRAWLER_TOPDEV_RAW_TEXT_MAX_CHARS: ${TOPDEV_CRAWLER_RAW_TEXT_MAX_CHARS:-20000}
-      AUTOJOB_CRAWLER_TOPDEV_RAW_RETENTION_DAYS: ${TOPDEV_CRAWLER_RAW_RETENTION_DAYS:-30}
 
       AUTOJOB_CRAWLER_VIECLAM24H_SOURCE_CODE: VIECLAM24H
       AUTOJOB_CRAWLER_VIECLAM24H_BASE_URL: https://vieclam24h.vn
@@ -352,11 +312,13 @@ services:
       AUTOJOB_CRAWLER_VIECLAM24H_STORE_RAW_HTML: ${VIECLAM24H_CRAWLER_STORE_RAW_HTML:-false}
       AUTOJOB_CRAWLER_VIECLAM24H_STORE_RAW_TEXT: ${VIECLAM24H_CRAWLER_STORE_RAW_TEXT:-false}
       AUTOJOB_CRAWLER_VIECLAM24H_RAW_TEXT_MAX_CHARS: ${VIECLAM24H_CRAWLER_RAW_TEXT_MAX_CHARS:-20000}
-      AUTOJOB_CRAWLER_VIECLAM24H_RAW_RETENTION_DAYS: ${VIECLAM24H_CRAWLER_RAW_RETENTION_DAYS:-30}
 
-      AUTH_PUBLIC_API_MODE: ${AUTH_PUBLIC_API_MODE:-true}
       AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:-autojob-app}
-      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:-YXV0b2pvYi1sb2NhbC1kZXYtc2VjcmV0LWNoYW5nZS1tZS0zMmJ5dGVzLXBsdXMhIQ==}
+
+      # Không có fallback secret.
+      # .env bắt buộc phải chứa JWT_SECRET_BASE64.
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?JWT_SECRET_BASE64 must be set in .env}
+
       AUTH_ACCESS_TOKEN_TTL: ${AUTH_ACCESS_TOKEN_TTL:-15m}
       AUTH_REFRESH_TOKEN_TTL: ${AUTH_REFRESH_TOKEN_TTL:-30d}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
@@ -364,13 +326,21 @@ services:
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_TRUST_FORWARDED_HEADERS: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:-false}
 
-    # Java cũng mount config root.
-    #
-    # Nó cần:
-    #
-    # /app/config/taxonomy/job-normalizer
-    # /app/config/taxonomy/shared
-    # /app/config/matching/ranking.yml
+      RATE_LIMIT_GENERAL_CAPACITY: ${RATE_LIMIT_GENERAL_CAPACITY:-120}
+      RATE_LIMIT_GENERAL_PERIOD: ${RATE_LIMIT_GENERAL_PERIOD:-1m}
+
+      RATE_LIMIT_LOGIN_CAPACITY: ${RATE_LIMIT_LOGIN_CAPACITY:-10}
+      RATE_LIMIT_LOGIN_PERIOD: ${RATE_LIMIT_LOGIN_PERIOD:-1m}
+
+      RATE_LIMIT_REGISTER_CAPACITY: ${RATE_LIMIT_REGISTER_CAPACITY:-5}
+      RATE_LIMIT_REGISTER_PERIOD: ${RATE_LIMIT_REGISTER_PERIOD:-1h}
+
+      RATE_LIMIT_REFRESH_CAPACITY: ${RATE_LIMIT_REFRESH_CAPACITY:-30}
+      RATE_LIMIT_REFRESH_PERIOD: ${RATE_LIMIT_REFRESH_PERIOD:-1m}
+
+      RATE_LIMIT_CV_UPLOAD_CAPACITY: ${RATE_LIMIT_CV_UPLOAD_CAPACITY:-10}
+      RATE_LIMIT_CV_UPLOAD_PERIOD: ${RATE_LIMIT_CV_UPLOAD_PERIOD:-1h}
+
     volumes:
       - ./configs:/app/config:ro
 

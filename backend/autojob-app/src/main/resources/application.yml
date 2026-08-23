@@ -4,21 +4,12 @@
 
   config:
     import:
-      # ==========================================================
-      # Shared taxonomy
-      # ==========================================================
-      #
-      # Skill lÃ  taxonomy dÃ¹ng chung giá»¯a Job Normalizer
-      # vÃ  CV Parser.
+      # Shared taxonomy.
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/skills.yml"
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/locations.yml"
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/seniority.yml"
 
-      # ==========================================================
-      # Job-specific taxonomy
-      # ==========================================================
-      #
-      # Skill KHÃ”NG cÃ²n náº±m trong job-normalizer ná»¯a.
+      # Job-specific taxonomy.
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/job-types.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/salary.yml"
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/experience.yml"
@@ -90,14 +81,13 @@ autojob:
       store-raw-html: ${MOCK_CRAWLER_STORE_RAW_HTML:false}
       store-raw-text: ${MOCK_CRAWLER_STORE_RAW_TEXT:false}
       raw-text-max-chars: ${MOCK_CRAWLER_RAW_TEXT_MAX_CHARS:20000}
-      raw-retention-days: ${MOCK_CRAWLER_RAW_RETENTION_DAYS:30}
 
   auth:
-    public-api-mode: ${AUTH_PUBLIC_API_MODE:true}
-
     issuer: ${AUTH_JWT_ISSUER:autojob-app}
 
-    jwt-secret-base64: ${JWT_SECRET_BASE64:YXV0b2pvYi1sb2NhbC1kZXYtc2VjcmV0LWNoYW5nZS1tZS0zMmJ5dGVzLXBsdXMhIQ==}
+    # Required.
+    # Không có JWT secret mặc định trong source.
+    jwt-secret-base64: ${JWT_SECRET_BASE64}
 
     access-token-ttl: ${AUTH_ACCESS_TOKEN_TTL:15m}
     refresh-token-ttl: ${AUTH_REFRESH_TOKEN_TTL:30d}
@@ -107,7 +97,6 @@ autojob:
 
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
-
     trust-forwarded-headers: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:false}
 
     general:
@@ -131,8 +120,6 @@ autojob:
       refill-period: ${RATE_LIMIT_CV_UPLOAD_PERIOD:1h}
 
   cv:
-    public-owner-user-id: ${CV_PUBLIC_OWNER_USER_ID:public-local-user}
-
     storage:
       endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
       access-key: ${MINIO_ROOT_USER:minioadmin}

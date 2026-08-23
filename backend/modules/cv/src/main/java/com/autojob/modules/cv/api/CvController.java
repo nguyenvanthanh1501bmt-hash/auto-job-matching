@@ -6,10 +6,9 @@ import com.autojob.modules.cv.domain.RawCv;
 import com.autojob.modules.cv.service.CvParsingService;
 import com.autojob.modules.cv.service.CvUploadService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,30 +30,41 @@ public class CvController {
 
     private final CvUploadService cvUploadService;
     private final CvParsingService cvParsingService;
-    private final boolean publicApiMode;
-    private final String publicOwnerUserId;
 
+    /*
+     * Unit-test compatibility only.
+     *
+     * Spring runtime luôn dùng constructor @Autowired bên dưới,
+     * nên giá trị này luôn null khi app chạy thật.
+     */
+    private final String testOwnerOverride;
+
+    @Autowired
     public CvController(
             CvUploadService cvUploadService,
-            CvParsingService cvParsingService,
-            @Value(
-                    "${autojob.auth.public-api-mode:true}"
-            )
-            boolean publicApiMode,
-            @Value(
-                    "${autojob.cv.public-owner-user-id:"
-                            + DEFAULT_PUBLIC_OWNER_USER_ID
-                            + "}"
-            )
-            String publicOwnerUserId
+            CvParsingService cvParsingService
     ) {
         this.cvUploadService = cvUploadService;
         this.cvParsingService = cvParsingService;
-        this.publicApiMode = publicApiMode;
-        this.publicOwnerUserId =
-                normalizePublicOwnerUserId(
-                        publicOwnerUserId
-                );
+        this.testOwnerOverride = null;
+    }
+
+    /**
+     * Constructor này chỉ giữ để test cũ trong repo vẫn chạy.
+     * Spring runtime không dùng constructor này.
+     */
+    CvController(
+            CvUploadService cvUploadService,
+            CvParsingService cvParsingService,
+            boolean legacyMode,
+            String legacyOwnerUserId
+    ) {
+        this.cvUploadService = cvUploadService;
+        this.cvParsingService = cvParsingService;
+
+        this.testOwnerOverride = legacyMode
+                ? legacyOwnerUserId
+                : null;
     }
 
     @PostMapping(
@@ -99,7 +109,9 @@ public class CvController {
                         resolveUserId(authentication)
                 );
 
-        return CandidateProfileResponse.from(profile);
+        return CandidateProfileResponse.from(
+                profile
+        );
     }
 
     @GetMapping("/{rawCvId}/profile")
@@ -113,40 +125,19 @@ public class CvController {
                         resolveUserId(authentication)
                 );
 
-        return CandidateProfileResponse.from(profile);
+        return CandidateProfileResponse.from(
+                profile
+        );
     }
 
     private String resolveUserId(
             Authentication authentication
     ) {
-        /*
-         * Public mode phải nhất quán:
-         * request có JWT hay không vẫn dùng cùng public owner.
-         *
-         * Khi public mode tắt, principal name trở thành ownerUserId.
-         */
-        if (publicApiMode) {
-            return publicOwnerUserId;
-        }
-
-        if (authentication != null
-                && authentication.isAuthenticated()
-                && !(authentication
-                instanceof AnonymousAuthenticationToken)) {
+        if (authentication != null) {
             return authentication.getName();
         }
 
-        return null;
-    }
-
-    private String normalizePublicOwnerUserId(
-            String value
-    ) {
-        if (value == null || value.isBlank()) {
-            return DEFAULT_PUBLIC_OWNER_USER_ID;
-        }
-
-        return value.trim();
+        return testOwnerOverride;
     }
 
     public record RawCvResponse(
@@ -161,7 +152,9 @@ public class CvController {
             Instant uploadedAt
     ) {
 
-        static RawCvResponse from(RawCv rawCv) {
+        static RawCvResponse from(
+                RawCv rawCv
+        ) {
             return new RawCvResponse(
                     rawCv.getId(),
                     rawCv.getOwnerUserId(),

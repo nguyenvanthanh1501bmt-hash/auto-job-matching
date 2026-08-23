@@ -40,9 +40,6 @@ public class RawJob {
 
     /**
      * ID gốc từ website.
-     * Ví dụ Vieclam24h:
-     * detailUrl = "...id200847455.html"
-     * sourceJobId = "200847455"
      */
     private String sourceJobId;
 
@@ -69,14 +66,15 @@ public class RawJob {
     private String benefitsText;
 
     /**
-     * Chỉ lưu tạm khi bật debug crawler. Field này được $unset ngay sau
-     * khi normalization thành công.
+     * Chỉ lưu tạm khi bật debug crawler.
+     * Raw payload có thể được purge sau normalization,
+     * nhưng document RawJob vẫn được giữ.
      */
     private String rawHtml;
 
     /**
-     * Text gốc đã strip từ HTML/detail page. Field này được $unset ngay
-     * sau khi normalization thành công.
+     * Text gốc đã strip từ HTML/detail page.
+     * Có thể được purge sau normalization.
      */
     private String rawText;
 
@@ -87,8 +85,6 @@ public class RawJob {
 
     /**
      * Unique key chống duplicate.
-     * Với source có sourceJobId:
-     * fingerprint = "VIECLAM24H:200847455"
      */
     @Indexed(unique = true)
     private String fingerprint;
@@ -97,12 +93,17 @@ public class RawJob {
     private Instant lastSeenAt;
 
     /**
-     * Absolute expiration time của toàn bộ RawJob document.
-     * Giá trị được tính một lần khi insert:
-     * expiresAt = firstSeenAt + rawRetentionDays.
-     * Crawler update không được refresh field này.
+     * Legacy metadata field.
+     *
+     * Quan trọng:
+     * field này KHÔNG còn @Indexed TTL.
+     *
+     * MongoDB sẽ không dùng field này để tự xóa RawJob.
+     *
+     * RawJobService cũng sẽ clear field này về null.
+     *
+     * Giữ field tạm thời để tương thích document/test cũ.
      */
-    @Indexed(name = "idx_raw_jobs_expires_at_ttl", expireAfter = "0s")
     private Instant expiresAt;
 
     private Instant collectedAt;

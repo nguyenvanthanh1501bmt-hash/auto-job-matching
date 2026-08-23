@@ -16,12 +16,38 @@ import java.time.Instant;
 )
 public class CvExceptionHandler {
 
+    private static final String CV_ACCESS_DENIED =
+            "CV_ACCESS_DENIED";
+
+    private static final String RAW_CV_NOT_FOUND =
+            "RAW_CV_NOT_FOUND";
+
     @ExceptionHandler(CvUploadException.class)
     public ResponseEntity<ApiErrorResponse>
     handleCvUploadException(
             CvUploadException exception,
             HttpServletRequest request
     ) {
+        /*
+         * Không tiết lộ CV ID có tồn tại nhưng thuộc user khác.
+         *
+         * CV không tồn tại
+         * và
+         * CV thuộc user khác
+         *
+         * đều nhìn giống nhau từ phía client.
+         */
+        if (CV_ACCESS_DENIED.equals(
+                exception.getCode()
+        )) {
+            return build(
+                    HttpStatus.NOT_FOUND,
+                    RAW_CV_NOT_FOUND,
+                    "Raw CV was not found",
+                    request.getRequestURI()
+            );
+        }
+
         return build(
                 exception.getStatus(),
                 exception.getCode(),
@@ -36,6 +62,21 @@ public class CvExceptionHandler {
             CvParsingException exception,
             HttpServletRequest request
     ) {
+        /*
+         * Parse/profile của CV thuộc user khác cũng trả 404,
+         * tránh resource enumeration.
+         */
+        if (CV_ACCESS_DENIED.equals(
+                exception.getCode()
+        )) {
+            return build(
+                    HttpStatus.NOT_FOUND,
+                    RAW_CV_NOT_FOUND,
+                    "Raw CV was not found",
+                    request.getRequestURI()
+            );
+        }
+
         return build(
                 exception.getStatus(),
                 exception.getCode(),
@@ -62,7 +103,7 @@ public class CvExceptionHandler {
 
     private ResponseEntity<ApiErrorResponse> build(
             HttpStatus status,
-            String code,
+            String error,
             String message,
             String path
     ) {
@@ -70,7 +111,7 @@ public class CvExceptionHandler {
                 new ApiErrorResponse(
                         Instant.now(),
                         status.value(),
-                        code,
+                        error,
                         message,
                         path
                 );

@@ -7,6 +7,7 @@ import com.autojob.modules.auth.security.RestAuthenticationEntryPoint;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -52,14 +53,9 @@ import java.util.List;
 public class SecurityConfig {
 
     private final AuthProperties authProperties;
-
     private final AuthUserDetailsService userDetailsService;
-
-    private final RestAuthenticationEntryPoint
-            authenticationEntryPoint;
-
-    private final RestAccessDeniedHandler
-            accessDeniedHandler;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final RestAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     SecurityFilterChain securityFilterChain(
@@ -68,152 +64,140 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
-                /*
-                 * API stateless bằng JWT nên không dùng
-                 * CSRF protection dựa trên session.
-                 */
-                .csrf(
-                        csrf ->
-                                csrf.disable()
-                )
-
-                .cors(
-                        Customizer.withDefaults()
-                )
-
+                .csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
                 .sessionManagement(
-                        session ->
-                                session.sessionCreationPolicy(
-                                        SessionCreationPolicy.STATELESS
+                        session -> session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+                .exceptionHandling(
+                        exceptions -> exceptions
+                                .authenticationEntryPoint(
+                                        authenticationEntryPoint
+                                )
+                                .accessDeniedHandler(
+                                        accessDeniedHandler
                                 )
                 )
-
-                .exceptionHandling(
-                        exceptions ->
-                                exceptions
-                                        .authenticationEntryPoint(
-                                                authenticationEntryPoint
-                                        )
-                                        .accessDeniedHandler(
-                                                accessDeniedHandler
-                                        )
-                )
-
                 .oauth2ResourceServer(
-                        resourceServer ->
-                                resourceServer
-                                        .jwt(
-                                                jwt ->
-                                                        jwt.jwtAuthenticationConverter(
-                                                                jwtAuthenticationConverter()
-                                                        )
+                        resourceServer -> resourceServer
+                                .jwt(
+                                        jwt -> jwt.jwtAuthenticationConverter(
+                                                jwtAuthenticationConverter()
                                         )
-                                        .authenticationEntryPoint(
-                                                authenticationEntryPoint
-                                        )
+                                )
+                                .authenticationEntryPoint(
+                                        authenticationEntryPoint
+                                )
+                )
+                .authorizeHttpRequests(
+                        authorize -> authorize
+
+                                /*
+                                 * Cho Spring internal error dispatch đi tới
+                                 * error handler.
+                                 *
+                                 * Nhờ vậy malformed JSON sẽ giữ 400 thay vì
+                                 * bị security biến thành 401.
+                                 *
+                                 * Gọi trực tiếp /error vẫn không được public
+                                 * vì request đó có DispatcherType.REQUEST.
+                                 */
+                                .dispatcherTypeMatchers(
+                                        DispatcherType.ERROR
+                                )
+                                .permitAll()
+
+                                /*
+                                 * CORS preflight từ browser.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.OPTIONS,
+                                        "/**"
+                                )
+                                .permitAll()
+
+                                /*
+                                 * Public auth endpoints.
+                                 *
+                                 * /api/auth/me không nằm ở đây.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/auth/register",
+                                        "/api/auth/login",
+                                        "/api/auth/refresh",
+                                        "/api/auth/logout"
+                                )
+                                .permitAll()
+
+                                /*
+                                 * Public infrastructure.
+                                 */
+                                .requestMatchers(
+                                        "/actuator/health",
+                                        "/actuator/health/**",
+                                        "/v3/api-docs/**",
+                                        "/swagger-ui.html",
+                                        "/swagger-ui/**"
+                                )
+                                .permitAll()
+
+                                /*
+                                 * ADMIN-only APIs.
+                                 */
+                                .requestMatchers(
+                                        "/api/admin/**",
+                                        "/api/parsers/**",
+                                        "/api/raw-jobs",
+                                        "/api/raw-jobs/**",
+                                        "/api/job-embeddings/**"
+                                )
+                                .hasRole("ADMIN")
+
+                                /*
+                                 * Business APIs cho USER và ADMIN.
+                                 *
+                                 * CV và matching còn có ownership check
+                                 * ở service.
+                                 */
+                                .requestMatchers(
+                                        "/api/auth/me",
+                                        "/api/cvs",
+                                        "/api/cvs/**",
+                                        "/api/matching/**",
+                                        "/api/normalized-jobs",
+                                        "/api/normalized-jobs/**"
+                                )
+                                .hasAnyRole(
+                                        "USER",
+                                        "ADMIN"
+                                )
+
+                                /*
+                                 * API mới mà quên cấu hình:
+                                 * deny mặc định.
+                                 */
+                                .requestMatchers("/api/**")
+                                .denyAll()
+
+                                /*
+                                 * Actuator khác health chỉ cho ADMIN.
+                                 */
+                                .requestMatchers("/actuator/**")
+                                .hasRole("ADMIN")
+
+                                /*
+                                 * Fail closed.
+                                 */
+                                .anyRequest()
+                                .denyAll()
                 );
 
         /*
-         * -----------------------------------------------------
-         * PUBLIC MODE
-         * -----------------------------------------------------
-         *
-         * Dùng cho local/demo:
-         *
-         * - tất cả API được permit
-         * - controller dùng public-local-user
-         *
-         * JWT nếu client gửi vẫn được Spring parse.
-         */
-        if (authProperties.isPublicApiMode()) {
-
-            http.authorizeHttpRequests(
-                    authorize ->
-                            authorize
-                                    .anyRequest()
-                                    .permitAll()
-            );
-
-        } else {
-
-            /*
-             * -------------------------------------------------
-             * PRIVATE MODE
-             * -------------------------------------------------
-             */
-            http.authorizeHttpRequests(
-                    authorize ->
-                            authorize
-
-                                    /*
-                                     * CORS preflight.
-                                     */
-                                    .requestMatchers(
-                                            HttpMethod.OPTIONS,
-                                            "/**"
-                                    )
-                                    .permitAll()
-
-                                    /*
-                                     * Public infrastructure/auth.
-                                     */
-                                    .requestMatchers(
-                                            "/api/auth/**",
-                                            "/actuator/health/**",
-                                            "/v3/api-docs/**",
-                                            "/swagger-ui/**"
-                                    )
-                                    .permitAll()
-
-                                    /*
-                                     * Admin routes.
-                                     */
-                                    .requestMatchers(
-                                            "/api/admin/**"
-                                    )
-                                    .hasRole(
-                                            "ADMIN"
-                                    )
-
-                                    /*
-                                     * CV ownership API.
-                                     */
-                                    .requestMatchers(
-                                            "/api/cvs/**"
-                                    )
-                                    .authenticated()
-
-                                    /*
-                                     * Hybrid matching API.
-                                     *
-                                     * Đây là phần mới của đợt 5.
-                                     *
-                                     * MatchingController còn kiểm tra
-                                     * candidate.ownerUserId ở service,
-                                     * nên ta có cả:
-                                     *
-                                     * Layer 1:
-                                     * JWT authentication.
-                                     *
-                                     * Layer 2:
-                                     * resource ownership.
-                                     */
-                                    .requestMatchers(
-                                            "/api/matching/**"
-                                    )
-                                    .authenticated()
-
-                                    /*
-                                     * Các API khác hiện giữ behavior cũ.
-                                     */
-                                    .anyRequest()
-                                    .permitAll()
-            );
-        }
-
-        /*
-         * Rate limit chạy sau JWT Bearer filter,
-         * nên SecurityContext đã có principal nếu token hợp lệ.
+         * Rate limit chạy sau BearerTokenAuthenticationFilter
+         * để có thể lấy userId từ SecurityContext.
          */
         http.addFilterAfter(
                 rateLimitFilter,
@@ -225,9 +209,7 @@ public class SecurityConfig {
 
     @Bean
     PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(
-                12
-        );
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
@@ -260,16 +242,12 @@ public class SecurityConfig {
         byte[] secretBytes;
 
         try {
-            secretBytes =
-                    Base64
-                            .getDecoder()
-                            .decode(
-                                    authProperties
-                                            .getJwtSecretBase64()
-                            );
-
+            secretBytes = Base64
+                    .getDecoder()
+                    .decode(
+                            authProperties.getJwtSecretBase64()
+                    );
         } catch (IllegalArgumentException exception) {
-
             throw new IllegalStateException(
                     "autojob.auth.jwt-secret-base64 "
                             + "must be valid Base64",
@@ -278,7 +256,7 @@ public class SecurityConfig {
         }
 
         /*
-         * HS256 cần ít nhất 256 bit.
+         * HS256 yêu cầu ít nhất 256 bit.
          */
         if (secretBytes.length < 32) {
             throw new IllegalStateException(
@@ -322,57 +300,50 @@ public class SecurityConfig {
                         .build();
 
         decoder.setJwtValidator(
-                JwtValidators
-                        .createDefaultWithIssuer(
-                                authProperties
-                                        .getIssuer()
-                        )
+                JwtValidators.createDefaultWithIssuer(
+                        authProperties.getIssuer()
+                )
         );
 
         return decoder;
     }
 
     @Bean
-    JwtAuthenticationConverter
-    jwtAuthenticationConverter() {
-
+    JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter authoritiesConverter =
                 new JwtGrantedAuthoritiesConverter();
 
         /*
          * JWT:
          *
-         * "roles": ["USER", "ADMIN"]
+         * roles: ["USER", "ADMIN"]
          *
          * =>
          *
          * ROLE_USER
          * ROLE_ADMIN
          */
-        authoritiesConverter
-                .setAuthoritiesClaimName(
-                        "roles"
-                );
+        authoritiesConverter.setAuthoritiesClaimName(
+                "roles"
+        );
 
-        authoritiesConverter
-                .setAuthorityPrefix(
-                        "ROLE_"
-                );
+        authoritiesConverter.setAuthorityPrefix(
+                "ROLE_"
+        );
 
         JwtAuthenticationConverter converter =
                 new JwtAuthenticationConverter();
 
-        converter
-                .setJwtGrantedAuthoritiesConverter(
-                        authoritiesConverter
-                );
+        converter.setJwtGrantedAuthoritiesConverter(
+                authoritiesConverter
+        );
 
         /*
          * authentication.getName()
-         * sẽ lấy JWT subject.
-         *
-         * Matching dùng giá trị này làm ownerUserId
-         * khi public-api-mode=false.
+         * =
+         * JWT subject
+         * =
+         * userId
          */
         converter.setPrincipalClaimName(
                 "sub"
@@ -382,15 +353,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource
-    corsConfigurationSource() {
-
+    CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
         configuration.setAllowedOrigins(
-                authProperties
-                        .getAllowedOrigins()
+                authProperties.getAllowedOrigins()
         );
 
         configuration.setAllowedMethods(

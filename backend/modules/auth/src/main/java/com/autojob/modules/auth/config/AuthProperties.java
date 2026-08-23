@@ -17,32 +17,30 @@ import java.util.List;
 @ConfigurationProperties(prefix = "autojob.auth")
 public class AuthProperties {
 
-    /**
-     * true:
-     * - Mọi API nghiệp vụ vẫn public.
-     * - JWT vẫn được đọc nếu client gửi Authorization header.
-     *
-     * false:
-     * - Bật authorization rules trong SecurityConfig.
-     */
-    private boolean publicApiMode = true;
-
     @NotBlank
     private String issuer = "autojob-app";
 
     /**
      * Base64 secret, sau khi decode phải dài tối thiểu 32 bytes.
+     *
+     * Không có default secret trong source code.
+     * Môi trường chạy app bắt buộc phải cung cấp JWT_SECRET_BASE64.
      */
     @NotBlank
     private String jwtSecretBase64;
 
     @NotNull
-    private Duration accessTokenTtl = Duration.ofMinutes(15);
+    private Duration accessTokenTtl =
+            Duration.ofMinutes(15);
 
     @NotNull
-    private Duration refreshTokenTtl = Duration.ofDays(30);
+    private Duration refreshTokenTtl =
+            Duration.ofDays(30);
 
-    private List<String> allowedOrigins = new ArrayList<>(List.of(
-            "http://localhost:5173"
-    ));
+    private List<String> allowedOrigins =
+            new ArrayList<>(
+                    List.of(
+                            "http://localhost:5173"
+                    )
+            );
 }

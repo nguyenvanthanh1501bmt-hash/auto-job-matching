@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 
 public record CandidateProfileResponse(
+        String candidateProfileId,
         String rawCvId,
         String fullName,
         String headline,
@@ -51,6 +52,7 @@ public record CandidateProfileResponse(
             CandidateProfile profile
     ) {
         return new CandidateProfileResponse(
+                profile.getId(),
                 profile.getRawCvId(),
                 profile.getFullName(),
                 profile.getHeadline(),

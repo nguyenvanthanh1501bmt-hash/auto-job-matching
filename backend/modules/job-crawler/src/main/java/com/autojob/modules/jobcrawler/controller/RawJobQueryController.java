@@ -23,22 +23,34 @@ public class RawJobQueryController {
 
     @GetMapping
     public List<RawJobSummaryResponse> list(
-            @RequestParam(name = "limit", defaultValue = "20") int limit
+            @RequestParam(
+                    name = "limit",
+                    defaultValue = "20"
+            )
+            int limit
     ) {
-        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        int safeLimit =
+                Math.min(
+                        Math.max(limit, 1),
+                        100
+                );
 
         return rawJobRepository
-                .findAll(PageRequest.of(
-                        0,
-                        safeLimit,
-                        Sort.by(
-                                Sort.Direction.DESC,
-                                "collectedAt"
+                .findAll(
+                        PageRequest.of(
+                                0,
+                                safeLimit,
+                                Sort.by(
+                                        Sort.Direction.DESC,
+                                        "collectedAt"
+                                )
                         )
-                ))
+                )
                 .getContent()
                 .stream()
-                .map(RawJobSummaryResponse::from)
+                .map(
+                        RawJobSummaryResponse::from
+                )
                 .toList();
     }
 
@@ -59,10 +71,12 @@ public class RawJobQueryController {
             Instant firstSeenAt,
             Instant lastSeenAt,
             Instant collectedAt,
-            Instant expiresAt,
             Instant rawPayloadPurgedAt
     ) {
-        static RawJobSummaryResponse from(RawJob rawJob) {
+
+        static RawJobSummaryResponse from(
+                RawJob rawJob
+        ) {
             return new RawJobSummaryResponse(
                     rawJob.getId(),
                     rawJob.getSourceCode(),
@@ -80,7 +94,6 @@ public class RawJobQueryController {
                     rawJob.getFirstSeenAt(),
                     rawJob.getLastSeenAt(),
                     rawJob.getCollectedAt(),
-                    rawJob.getExpiresAt(),
                     rawJob.getRawPayloadPurgedAt()
             );
         }
