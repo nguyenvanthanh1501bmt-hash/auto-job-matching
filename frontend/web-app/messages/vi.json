@@ -1,1 +1,8 @@
-{ "app": { "name": "AutoJob" }, "common": { "language": "Ng�n ng?" } }
+{
+  "app": {
+    "name": "AutoJob"
+  },
+  "common": {
+    "language": "Ngôn ngữ"
+  }
+}

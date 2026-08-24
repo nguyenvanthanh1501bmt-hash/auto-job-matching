@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string;
   displayName: string | null;
   roles: UserRole[];
+  createdAt: string;
 };
 
 export type LoginRequest = {
@@ -18,6 +19,14 @@ export type RegisterRequest = {
   displayName: string;
 };
 
+export type RefreshRequest = {
+  refreshToken: string;
+};
+
+export type LogoutRequest = {
+  refreshToken: string;
+};
+
 export type AuthResponse = {
   tokenType: string;
   accessToken: string;
@@ -27,10 +36,9 @@ export type AuthResponse = {
   user: AuthUser;
 };
 
-export type RefreshRequest = {
-  refreshToken: string;
-};
-
-export type LogoutRequest = {
-  refreshToken: string;
+export type MeResponse = {
+  authenticated: boolean;
+  userId: string | null;
+  email: string | null;
+  roles: UserRole[] | null;
 };

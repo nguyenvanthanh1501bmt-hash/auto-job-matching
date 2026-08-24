@@ -11,12 +11,15 @@ type Props = {
 };
 
 export function QueryProvider({children}: Props) {
+  // Một QueryClient ổn định giữ cache xuyên suốt vòng đời provider.
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
+            // Cache dùng lại dữ liệu trong 30 giây; hook cụ thể có thể override.
             staleTime: 30_000,
+            // Tránh refetch bất ngờ khi user quay lại tab.
             refetchOnWindowFocus: false
           }
         }
