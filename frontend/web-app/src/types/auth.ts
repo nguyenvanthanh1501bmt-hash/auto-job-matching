@@ -42,3 +42,19 @@ export type MeResponse = {
   email: string | null;
   roles: UserRole[] | null;
 };
+
+export type AuthMode =
+  | "login"
+  | "register";
+
+export type LoginFormErrors = {
+  email?: string;
+  password?: string;
+};
+
+export type RegisterFormErrors = {
+  displayName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+};

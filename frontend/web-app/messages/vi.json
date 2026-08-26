@@ -4,5 +4,80 @@
   },
   "common": {
     "language": "Ngôn ngữ"
+  },
+  "auth": {
+    "footer": "© 2026 AutoJob · AI-powered job matching",
+    "fields": {
+      "displayName": "Họ và tên",
+      "email": "Email",
+      "password": "Mật khẩu",
+      "confirmPassword": "Xác nhận mật khẩu"
+    },
+    "placeholders": {
+      "displayName": "Nguyễn Văn An",
+      "email": "name@example.com",
+      "password": "Nhập mật khẩu",
+      "newPassword": "Tối thiểu 8 ký tự",
+      "confirmPassword": "Nhập lại mật khẩu"
+    },
+    "password": {
+      "show": "Hiện mật khẩu",
+      "hide": "Ẩn mật khẩu"
+    },
+    "login": {
+      "eyebrow": "Chào mừng trở lại",
+      "title": "Đăng nhập",
+      "description": "Tiếp tục xem những cơ hội phù hợp với hồ sơ của bạn.",
+      "submit": "Tiếp tục",
+      "submitting": "Đang đăng nhập...",
+      "noAccount": "Chưa có tài khoản?",
+      "createAccount": "Đăng ký"
+    },
+    "register": {
+      "eyebrow": "Bắt đầu với AutoJob",
+      "title": "Tạo tài khoản",
+      "description": "Tạo hồ sơ để AI có thể hiểu bạn và tìm công việc phù hợp hơn.",
+      "passwordHint": "Mật khẩu cần từ 8 đến 128 ký tự.",
+      "submit": "Tạo tài khoản",
+      "submitting": "Đang tạo tài khoản...",
+      "hasAccount": "Đã có tài khoản?",
+      "signIn": "Đăng nhập"
+    },
+    "shell": {
+      "badge": "AI Job Matching",
+      "login": {
+        "title": "CV của bạn có thể tìm đúng việc hơn.",
+        "description": "Tạo hồ sơ một lần. AutoJob phân tích kỹ năng, kinh nghiệm và ưu tiên những công việc thực sự phù hợp.",
+        "switchHint": "Chưa có tài khoản? Bắt đầu miễn phí chỉ trong một phút.",
+        "switchAction": "Tạo tài khoản"
+      },
+      "register": {
+        "title": "Rất vui được gặp lại bạn.",
+        "description": "Đăng nhập để tiếp tục với CV, kết quả matching và những cơ hội AutoJob đã tìm cho bạn.",
+        "switchHint": "Hồ sơ và kết quả matching của bạn đang ở ngay đây.",
+        "switchAction": "Đăng nhập"
+      }
+    },
+    "validation": {
+      "displayNameRequired": "Vui lòng nhập họ và tên.",
+      "displayNameMax": "Họ và tên tối đa 100 ký tự.",
+      "emailRequired": "Vui lòng nhập email.",
+      "emailInvalid": "Email không đúng định dạng.",
+      "emailMax": "Email tối đa 254 ký tự.",
+      "passwordRequired": "Vui lòng nhập mật khẩu.",
+      "passwordMin": "Mật khẩu phải có ít nhất 8 ký tự.",
+      "passwordMax": "Mật khẩu tối đa 128 ký tự.",
+      "confirmPasswordRequired": "Vui lòng nhập lại mật khẩu.",
+      "passwordMismatch": "Hai mật khẩu không khớp."
+    },
+    "errors": {
+      "invalidCredentials": "Email hoặc mật khẩu không chính xác.",
+      "emailExists": "Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.",
+      "validationFailed": "Thông tin chưa hợp lệ. Vui lòng kiểm tra lại.",
+      "rateLimit": "Bạn thao tác quá nhanh. Vui lòng thử lại sau.",
+      "rateLimitWithSeconds": "Bạn thao tác quá nhanh. Vui lòng thử lại sau {seconds} giây.",
+      "network": "Không thể kết nối tới backend. Hãy kiểm tra server và NEXT_PUBLIC_API_BASE_URL.",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    }
   }
 }

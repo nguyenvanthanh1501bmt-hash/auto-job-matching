@@ -1,1 +1,83 @@
-{ "app": { "name": "AutoJob" }, "common": { "language": "Language" } }
+{
+  "app": {
+    "name": "AutoJob"
+  },
+  "common": {
+    "language": "Language"
+  },
+  "auth": {
+    "footer": "© 2026 AutoJob · AI-powered job matching",
+    "fields": {
+      "displayName": "Full name",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password"
+    },
+    "placeholders": {
+      "displayName": "Alex Nguyen",
+      "email": "name@example.com",
+      "password": "Enter your password",
+      "newPassword": "Minimum 8 characters",
+      "confirmPassword": "Enter your password again"
+    },
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "login": {
+      "eyebrow": "Welcome back",
+      "title": "Sign in",
+      "description": "Continue exploring opportunities matched to your profile.",
+      "submit": "Continue",
+      "submitting": "Signing in...",
+      "noAccount": "New to AutoJob?",
+      "createAccount": "Sign up"
+    },
+    "register": {
+      "eyebrow": "Start with AutoJob",
+      "title": "Create account",
+      "description": "Build your profile so AI can understand you and find better-fit roles.",
+      "passwordHint": "Password must contain between 8 and 128 characters.",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "shell": {
+      "badge": "AI Job Matching",
+      "login": {
+        "title": "Your CV can find better-fit work.",
+        "description": "Create your profile once. AutoJob understands your skills and experience, then prioritizes roles that actually fit.",
+        "switchHint": "No account yet? Get started for free in about a minute.",
+        "switchAction": "Create account"
+      },
+      "register": {
+        "title": "Good to see you again.",
+        "description": "Sign in to continue with your CV, match results and the opportunities AutoJob has found for you.",
+        "switchHint": "Your profile and previous matching results are right here.",
+        "switchAction": "Sign in"
+      }
+    },
+    "validation": {
+      "displayNameRequired": "Please enter your full name.",
+      "displayNameMax": "Name must be 100 characters or fewer.",
+      "emailRequired": "Please enter your email.",
+      "emailInvalid": "Enter a valid email address.",
+      "emailMax": "Email must be 254 characters or fewer.",
+      "passwordRequired": "Please enter your password.",
+      "passwordMin": "Password must contain at least 8 characters.",
+      "passwordMax": "Password must be 128 characters or fewer.",
+      "confirmPasswordRequired": "Please confirm your password.",
+      "passwordMismatch": "Passwords do not match."
+    },
+    "errors": {
+      "invalidCredentials": "Incorrect email or password.",
+      "emailExists": "This email is already registered. Sign in or use another email.",
+      "validationFailed": "Some information is invalid. Please review the form.",
+      "rateLimit": "Too many attempts. Please try again later.",
+      "rateLimitWithSeconds": "Too many attempts. Please try again in {seconds} seconds.",
+      "network": "Unable to reach the backend. Check the server and NEXT_PUBLIC_API_BASE_URL.",
+      "generic": "Something went wrong. Please try again."
+    }
+  }
+}
