@@ -1,24 +1,17 @@
 "use client";
 
 import type {ReactNode} from "react";
+import {useTranslations} from "next-intl";
 
-import {
-  useLocale,
-  useTranslations
-} from "next-intl";
-
+import {LanguageSwitcher} from "@/components/ui/language-switcher";
 import {Link} from "@/i18n/navigation";
-
 import type {AuthMode} from "@/types/auth";
+
 import {AuthVisual} from "./auth-visual";
 
 type Props = {
   mode: AuthMode;
-
-  onModeChange: (
-    mode: AuthMode
-  ) => void;
-
+  onModeChange: (mode: AuthMode) => void;
   loginForm: ReactNode;
   registerForm: ReactNode;
 };
@@ -68,16 +61,15 @@ export function AuthLayout({
   registerForm
 }: Props) {
   const t = useTranslations("auth");
-  const locale = useLocale();
+  const isLogin = mode === "login";
 
-  const isLogin =
-    mode === "login";
-
-  // Đổi locale nhưng vẫn giữ đúng mode auth hiện tại.
-  const currentPath =
-    isLogin
-      ? "/login"
-      : "/register";
+  /*
+   * AuthExperience đổi login/register bằng History API để giữ animation.
+   * Truyền path theo mode giúp language switch không dùng pathname cũ của Next Router.
+   */
+  const authPathname = isLogin
+    ? "/login"
+    : "/register";
 
   return (
     <main
@@ -112,31 +104,7 @@ export function AuthLayout({
         <header className="flex h-[82px] shrink-0 items-center justify-between">
           <Logo />
 
-          <div className="flex items-center rounded-full border border-black/[0.06] bg-white p-[3px] shadow-[0_2px_10px_rgba(0,0,0,0.035)]">
-            <Link
-              href={currentPath}
-              locale="vi"
-              className={`flex h-7 min-w-9 items-center justify-center rounded-full px-2 text-[10px] font-bold transition-colors duration-200 ${
-                locale === "vi"
-                  ? "bg-[#171717] text-white"
-                  : "text-[#aaa] hover:text-[#444]"
-              }`}
-            >
-              VI
-            </Link>
-
-            <Link
-              href={currentPath}
-              locale="en"
-              className={`flex h-7 min-w-9 items-center justify-center rounded-full px-2 text-[10px] font-bold transition-colors duration-200 ${
-                locale === "en"
-                  ? "bg-[#171717] text-white"
-                  : "text-[#aaa] hover:text-[#444]"
-              }`}
-            >
-              EN
-            </Link>
-          </div>
+          <LanguageSwitcher pathname={authPathname} />
         </header>
 
         {/* Desktop giữ product visual; mobile ưu tiên form. */}
@@ -149,9 +117,7 @@ export function AuthLayout({
                   : "translate-x-2 opacity-[0.985]"
               }`}
             >
-              <AuthVisual
-                mode={mode}
-              />
+              <AuthVisual mode={mode} />
             </div>
 
             {/* Giữ frame cố định để chuyển mode không gây reflow từng frame. */}
@@ -173,7 +139,6 @@ export function AuthLayout({
                 <div className="absolute right-5 top-5 z-20 flex items-center gap-2">
                   <span className="relative flex size-2">
                     <span className="absolute inset-0 animate-ping rounded-full bg-[#d9ff75] opacity-25" />
-
                     <span className="relative size-2 rounded-full bg-[#d9ff75]" />
                   </span>
 
@@ -221,9 +186,7 @@ export function AuthLayout({
                 <span className="size-1.5 rounded-full bg-[#d9ff75] ring-1 ring-black/[0.06]" />
 
                 <p className="text-[9px] font-bold uppercase tracking-[0.17em] text-[#888]">
-                  {t(
-                    "shell.badge"
-                  )}
+                  {t("shell.badge")}
                 </p>
               </div>
 
@@ -239,38 +202,26 @@ export function AuthLayout({
             <div className="mb-3 grid grid-cols-2 rounded-[14px] border border-black/[0.04] bg-[#edede9] p-1">
               <button
                 type="button"
-                onClick={() =>
-                  onModeChange(
-                    "login"
-                  )
-                }
+                onClick={() => onModeChange("login")}
                 className={`h-10 rounded-[11px] text-[12px] font-semibold transition-[background-color,color,box-shadow] duration-200 ${
                   isLogin
                     ? "bg-white text-[#171717] shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
                     : "text-[#969690]"
                 }`}
               >
-                {t(
-                  "login.title"
-                )}
+                {t("login.title")}
               </button>
 
               <button
                 type="button"
-                onClick={() =>
-                  onModeChange(
-                    "register"
-                  )
-                }
+                onClick={() => onModeChange("register")}
                 className={`h-10 rounded-[11px] text-[12px] font-semibold transition-[background-color,color,box-shadow] duration-200 ${
                   !isLogin
                     ? "bg-white text-[#171717] shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
                     : "text-[#969690]"
                 }`}
               >
-                {t(
-                  "register.title"
-                )}
+                {t("register.title")}
               </button>
             </div>
 

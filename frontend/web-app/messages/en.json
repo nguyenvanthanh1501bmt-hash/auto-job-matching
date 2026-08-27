@@ -79,5 +79,322 @@
       "network": "Unable to reach the backend. Check the server and NEXT_PUBLIC_API_BASE_URL.",
       "generic": "Something went wrong. Please try again."
     }
+  },
+  "admin": {
+    "access": {
+      "checking": "Checking administrator access..."
+    },
+    "header": {
+      "console": "Admin console",
+      "access": "Admin access"
+    },
+    "sidebar": {
+      "workspace": "Workspace",
+      "overview": "Overview",
+      "crawler": "Crawler",
+      "jobs": "Jobs",
+      "embeddings": "Embeddings",
+      "parser": "Parser",
+      "systemActive": "System active",
+      "systemDescription": "Internal operations workspace."
+    },
+    "overview": {
+      "eyebrow": "Operations",
+      "title": "Admin dashboard",
+      "description": "Monitor and operate the AutoJob pipeline from a unified workspace. These tools call admin/debug APIs directly and are restricted to ADMIN accounts.",
+      "workspaceSnapshot": "Workspace snapshot",
+      "systemActive": "System active",
+      "quickAccess": "Quick access",
+      "activity": "Activity",
+      "cards": {
+        "rawJobs": {
+          "label": "Raw jobs loaded",
+          "detail": "Using the dashboard default limit"
+        },
+        "liveSources": {
+          "label": "Live sources",
+          "detail": "ITVIEC, JOBOKO, TOPDEV, VIECLAM24H"
+        },
+        "parserSources": {
+          "label": "Parser sources",
+          "detail": "Includes MOCK and live sources"
+        },
+        "toolGroups": {
+          "label": "Admin tool groups",
+          "detail": "Crawler, jobs, embeddings, parser"
+        }
+      },
+      "pipeline": {
+        "title": "Pipeline operations",
+        "description": "Quick access to pipeline operation and debugging tools."
+      },
+      "quickActions": {
+        "crawler": {
+          "title": "Crawler",
+          "description": "Collect raw jobs from mock or live sources."
+        },
+        "jobs": {
+          "title": "Jobs",
+          "description": "Inspect raw jobs and run normalization."
+        },
+        "embeddings": {
+          "title": "Embeddings",
+          "description": "Inspect and rebuild vector embeddings."
+        },
+        "parser": {
+          "title": "Parser",
+          "description": "Inspect and process data from collected job pages."
+        }
+      },
+      "recent": {
+        "title": "Recent raw jobs",
+        "description": "The latest jobs available in the current data snapshot.",
+        "empty": "No raw jobs yet. Run a crawler to start collecting job data.",
+        "openJobs": "Open Jobs"
+      },
+      "notice": {
+        "title": "Operational note",
+        "description": "Some admin actions can reprocess existing data. Use them only when you need to verify or refresh results."
+      }
+    },
+    "crawler": {
+      "eyebrow": "Ingestion",
+      "title": "Crawler operations",
+      "description": "Collect job data from supported sources and review the result of each crawler execution.",
+      "summary": {
+        "sources": "Live sources",
+        "maxPerRun": "Max per run",
+        "currentSource": "Selected source"
+      },
+      "status": {
+        "idle": "Ready",
+        "running": "Running",
+        "success": "Completed",
+        "error": "Failed"
+      },
+      "mock": {
+        "label": "Development tool",
+        "title": "Mock crawler",
+        "description": "Run sample data to quickly verify the crawler and raw job flow during development.",
+        "note": "The mock crawler does not require a source or limit and can verify the pipeline without depending on an external website.",
+        "result": "Crawl result",
+        "run": "Run mock crawler",
+        "running": "Running..."
+      },
+      "live": {
+        "label": "Live ingestion",
+        "title": "Live crawler",
+        "description": "Collect jobs directly from a live source with a controlled number of items per execution.",
+        "source": "Data source",
+        "limit": "Job limit",
+        "limitHint": "Up to {max} jobs per run.",
+        "note": "The system will request up to {limit} jobs from {source}. Successfully collected data will be stored as raw jobs.",
+        "actionHint": "After completion, review the collected data in the Jobs workspace.",
+        "result": "Crawl result",
+        "run": "Run live crawler",
+        "running": "Collecting..."
+      },
+      "output": {
+        "label": "Execution",
+        "title": "Latest execution",
+        "description": "Review the result of the most recent crawler execution.",
+        "empty": "No crawler has been executed in this session yet.",
+        "running": "The crawler is collecting job data...",
+        "successTitle": "Crawl completed",
+        "successDescription": "{source} added {inserted} new raw jobs to the system.",
+        "completed": "Completed",
+        "requested": "Requested",
+        "inserted": "New jobs",
+        "total": "Total raw jobs"
+      }
+    },
+"jobs": {
+  "eyebrow": "Job pipeline",
+  "title": "Job processing",
+  "description": "Review raw jobs collected by the crawler. Normalization and embedding run automatically; the reprocessing tools below are intended only for maintenance and recovery.",
+  "rawJobs": {
+    "workspace": "Collected data",
+    "title": "Raw jobs",
+    "description": "Recent jobs stored by the crawler and automatically forwarded through the processing pipeline.",
+    "pipelineHint": "New jobs are normalized and embedded automatically. Manual reprocessing should only be used for verification or recovery.",
+    "limitLabel": "Limit",
+    "refresh": "Refresh",
+    "refreshing": "Loading...",
+    "force": "Force reprocess",
+    "latestNormalized": "Latest reprocess result",
+    "reprocessCompleted": "The job has been sent through normalization.",
+    "reprocessing": "Processing...",
+    "loading": "Loading raw jobs...",
+    "empty": "No raw jobs found.",
+    "untitled": "Untitled job",
+    "unknownCompany": "Unknown company",
+    "normalize": "Reprocess",
+    "columns": {
+      "job": "Job",
+      "source": "Source",
+      "location": "Location",
+      "collected": "Collected",
+      "action": "Action"
+    }
+  },
+  "batch": {
+  "label": "Maintenance tool",
+  "title": "Batch renormalization",
+  "description": "Re-run normalization for existing raw jobs. This tool does not crawl new jobs and should only be used for verification or data recovery.",
+  "guideTitle": "How to use",
+  "guideDescription": "Choose the data scope, then define the page and number of jobs to process in each batch. New jobs are already normalized automatically, so this tool is not part of the normal workflow.",
+  "guide": {
+    "sourceTitle": "Data source",
+    "sourceDescription": "Choose a specific source or All sources to process without filtering by source.",
+    "pageTitle": "Page",
+    "pageDescription": "Starts at 0. Page 0 is the first batch and page 1 is the next batch.",
+    "sizeTitle": "Size",
+    "sizeDescription": "The maximum number of raw jobs processed in a single batch.",
+    "forceTitle": "Force",
+    "forceDescription": "Enable only when you need to reprocess data even when the system considers it unchanged."
+  },
+  "example": "Example",
+  "exampleDescription": "ITVIEC · Page 0 · Size 100 → process up to the first 100 ITVIEC raw jobs in that batch.",
+  "source": "Source",
+  "sourceHint": "Limit the batch to a specific data source.",
+  "allSources": "All sources",
+  "page": "Page",
+  "size": "Size",
+  "sizeHint": "1 - {max}",
+  "force": "Force renormalization",
+  "result": "Batch result",
+  "run": "Run reprocess",
+  "running": "Processing..."
+}
+},
+    "embeddings": {
+  "eyebrow": "Vector pipeline",
+  "title": "Embedding tools",
+  "description": "Inspect vector embedding status for candidates and jobs. Embeddings are normally generated automatically; rebuild tools are intended for verification and recovery.",
+  "pipeline": {
+    "label": "Automatic flow",
+    "title": "Embeddings are generated automatically",
+    "description": "Candidate profiles and normalized jobs are automatically forwarded to the embedding step when their data is ready. The tools below are mainly for inspection and recovery.",
+    "steps": {
+      "source": "Source data",
+      "ready": "Data ready",
+      "embedding": "Embedding"
+    }
+  },
+  "common": {
+    "inspector": "Embedding inspector",
+    "lookup": "Lookup",
+    "lookingUp": "Looking up...",
+    "rebuild": "Rebuild embedding",
+    "rebuilding": "Rebuilding...",
+    "force": "Force rebuild",
+    "status": "Embedding status",
+    "technicalDetails": "Technical details",
+    "maintenance": "Maintenance",
+    "rebuildTitle": "Manual rebuild",
+    "rebuildCompleted": "Rebuild completed"
+  },
+  "candidate": {
+    "title": "Candidate embedding",
+    "description": "Inspect the embedding generated from a candidate profile and used during matching.",
+    "field": "Candidate profile ID",
+    "hint": "Use candidateProfileId, not the rawCvId from the uploaded CV.",
+    "placeholder": "candidateProfileId",
+    "empty": "Enter a candidate profile ID to inspect its embedding status.",
+    "rebuildDescription": "Rebuild only when the candidate embedding is missing, failed or needs to be regenerated after profile changes.",
+    "result": "Candidate embedding"
+  },
+  "job": {
+    "title": "Job embedding",
+    "description": "Inspect the normalized job embedding used to match jobs with candidates.",
+    "field": "Normalized job ID",
+    "hint": "Use normalizedJobId, not the rawJobId from crawler data.",
+    "placeholder": "normalizedJobId",
+    "empty": "Enter a normalized job ID to inspect its embedding status.",
+    "rebuildDescription": "Rebuild only when the normalized job vector is missing, failed or needs to be regenerated.",
+    "result": "Job embedding"
+  }
+},
+"parser": {
+  "eyebrow": "Parser tools",
+  "title": "Parser inspection",
+  "description": "Inspect how the system reads job listing and detail pages from HTML files available on the backend.",
+  "flow": {
+    "label": "Processing flow",
+    "title": "Parser runs in two steps",
+    "description": "Read a listing page to extract detail URLs, then parse an individual detail page to inspect the generated job data.",
+    "list": "Listing page",
+    "listDescription": "Extract detail URLs from a listing page.",
+    "detail": "Detail page",
+    "detailDescription": "Parse job data and create a raw job."
+  },
+  "source": {
+    "label": "Parser source",
+    "description": "Choose the parser that matches the HTML structure of the data source."
+  },
+  "common": {
+    "filePathHint": "Path to an HTML file accessible by the backend or container.",
+    "filesystemTitle": "The file must exist on the backend",
+    "filesystemDescription": "This is a backend/container filesystem path, not a path to a file on the computer running the browser.",
+    "currentSource": "Current source",
+    "technicalDetails": "Technical details",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "list": {
+    "label": "Step 01 · Listing parser",
+    "title": "Parse listing page",
+    "description": "Read a listing-page HTML file and extract the URLs that point to individual job detail pages.",
+    "filePath": "HTML file path",
+    "filePlaceholder": "/data/parser/list.html",
+    "baseUrl": "Base URL",
+    "baseUrlHint": "Used to resolve relative links in the HTML into complete URLs.",
+    "baseUrlPlaceholder": "https://example.com",
+    "submit": "Parse listing file",
+    "parsing": "Parsing...",
+    "actionHint": "Using the {source} parser.",
+    "resultLabel": "Step 01 result",
+    "resultTitle": "Detail URLs found",
+    "urlsFound": "URLs",
+    "detailUrls": "Detail URLs",
+    "chooseHint": "Choose a URL to continue to step 02",
+    "useUrl": "Use this URL",
+    "noUrls": "Parsing completed, but no detail URLs were found."
+  },
+  "detail": {
+    "label": "Step 02 · Detail parser",
+    "title": "Parse detail page",
+    "description": "Read the HTML of a specific job page, inspect the extracted fields and review the generated raw job.",
+    "filePath": "HTML file path",
+    "filePlaceholder": "/data/parser/detail.html",
+    "detailUrl": "Detail URL",
+    "detailUrlHint": "The original URL of the job page being parsed. You can choose one directly from step 01.",
+    "detailUrlPlaceholder": "https://example.com/jobs/123",
+    "listUrl": "List URL · optional",
+    "listUrlHint": "The listing page where this job was discovered. It can be left empty.",
+    "listUrlPlaceholder": "https://example.com/jobs",
+    "submit": "Parse detail file",
+    "parsing": "Parsing...",
+    "actionHint": "A successful result creates or updates a raw job.",
+    "aboutLabel": "What happens here?",
+    "aboutTitle": "From HTML to raw job",
+    "aboutDescription": "The detail parser reads the HTML using the selected source parser and converts the extracted fields into the system raw-job structure.",
+    "steps": {
+      "read": "Read HTML file",
+      "parse": "Extract job data",
+      "rawJob": "Create raw job"
+    },
+    "resultLabel": "Parsing completed",
+    "resultTitle": "Raw job result",
+    "untitled": "Untitled job",
+    "unknownCompany": "Unknown company",
+    "metrics": {
+      "rawJobId": "Raw job ID",
+      "location": "Location",
+      "html": "Raw HTML",
+      "text": "Raw text"
+    }
+  }
+}
   }
 }

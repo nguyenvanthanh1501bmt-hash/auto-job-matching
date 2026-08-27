@@ -1,39 +1,80 @@
-import {LogoutButton} from "@/components/auth/logout-button";
+"use client";
 
-export default function AdminPage() {
+import {useEffect, useState} from "react";
+import {useLocale, useTranslations} from "next-intl";
+
+import {AdminDashboard} from "@/components/admin/admin-dashboard";
+import {useRouter} from "@/i18n/navigation";
+import {getAuthSession} from "@/lib/auth-storage";
+import type {AdminAccessState} from "@/types/admin-ui";
+
+function LoadingScreen() {
+  const t = useTranslations("admin.access");
+
   return (
-    <main className="min-h-screen bg-[#f8f8f6] text-[#171717]">
-      <header className="border-b border-black/[0.06] bg-white">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-[#171717] text-sm font-bold text-white">
-              A
-            </div>
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f7f4] text-[#171717]">
+      <div className="flex items-center gap-3 text-[13px] font-medium text-[#777]">
+        <span className="size-4 animate-spin rounded-full border-2 border-black/10 border-t-black/60" />
 
-            <div>
-              <p className="text-[14px] font-semibold tracking-[-0.02em]">
-                AutoJob
-              </p>
-
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#999]">
-                Admin
-              </p>
-            </div>
-          </div>
-
-          <LogoutButton />
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[1280px] px-6 py-10">
-        <p className="text-sm text-[#888]">
-          Admin dashboard
-        </p>
-
-        <h1 className="mt-2 text-[32px] font-semibold tracking-[-0.045em]">
-          Admin
-        </h1>
+        {t("checking")}
       </div>
     </main>
+  );
+}
+
+export default function AdminPage() {
+  const router = useRouter();
+  const locale = useLocale();
+
+  /*
+   * SSR và lần render đầu tiên ở browser bắt buộc phải cùng render LoadingScreen.
+   * Auth session nằm trong browser storage nên chỉ được đọc sau khi component mount.
+   */
+  const [hydrated, setHydrated] = useState(false);
+  const [accessState, setAccessState] =
+    useState<AdminAccessState>("checking");
+
+  const [adminName, setAdminName] =
+    useState("Admin");
+
+  useEffect(() => {
+    const session = getAuthSession();
+
+    if (!session) {
+      setHydrated(true);
+      setAccessState("redirecting");
+      router.replace("/login");
+      return;
+    }
+
+    if (!session.user.roles.includes("ADMIN")) {
+      setHydrated(true);
+      setAccessState("redirecting");
+      router.replace("/jobs");
+      return;
+    }
+
+    /*
+     * Guard phía client chỉ phục vụ UX.
+     * Backend vẫn phải kiểm tra quyền ADMIN cho mọi admin API.
+     */
+    setAdminName(
+      session.user.displayName?.trim() ||
+        session.user.email
+    );
+
+    setAccessState("allowed");
+    setHydrated(true);
+  }, [router]);
+
+  if (!hydrated || accessState !== "allowed") {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <AdminDashboard
+      adminName={adminName}
+      locale={locale}
+    />
   );
 }

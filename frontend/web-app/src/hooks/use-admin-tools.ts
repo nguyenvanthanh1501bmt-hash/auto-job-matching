@@ -7,17 +7,41 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  adminCrawlerService
+} from "@/services/admin-crawler.service";
+
+import {
   adminEmbeddingService
 } from "@/services/admin-embedding.service";
+
+import {
+  adminJobService
+} from "@/services/admin-job.service";
 
 import {
   adminParserService
 } from "@/services/admin-parser.service";
 
 import type {
+  CrawlRunResponse,
+  LiveCrawlerSourceCode
+} from "@/types/admin-crawler";
+
+import type {
   CandidateEmbeddingResponse,
   JobEmbeddingResponse
 } from "@/types/admin-embedding";
+
+import type {
+  NormalizeRawJobOptions,
+  RawJobSummary,
+  RenormalizationBatchRequest,
+  RenormalizationBatchResponse
+} from "@/types/admin-job";
+
+import type {
+  NormalizedJobDetail
+} from "@/types/job";
 
 import type {
   DetailFileParseRequest,
@@ -27,8 +51,18 @@ import type {
   ParserSourceCode
 } from "@/types/admin-parser";
 
+export const adminRawJobQueryKeys = {
+  all: ["admin", "raw-jobs"] as const,
+
+  list: (limit: number) =>
+    [
+      ...adminRawJobQueryKeys.all,
+      "list",
+      limit
+    ] as const
+};
+
 export const adminEmbeddingQueryKeys = {
-  // Key tách riêng embedding admin theo loại resource và id để cache không lẫn dữ liệu.
   all: [
     "admin",
     "embeddings"
@@ -52,6 +86,124 @@ export const adminEmbeddingQueryKeys = {
       normalizedJobId
     ] as const
 };
+
+export function useRunMockCrawler() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CrawlRunResponse,
+    Error,
+    void
+  >({
+    mutationFn: () =>
+      adminCrawlerService.runMock(),
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminRawJobQueryKeys.all
+      });
+    }
+  });
+}
+
+export type RunLiveCrawlerVariables = {
+  sourceCode: LiveCrawlerSourceCode;
+  limit?: number;
+};
+
+export function useRunLiveCrawler() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CrawlRunResponse,
+    Error,
+    RunLiveCrawlerVariables
+  >({
+    mutationFn: ({
+      sourceCode,
+      limit
+    }) =>
+      adminCrawlerService.runLive(
+        sourceCode,
+        {limit}
+      ),
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminRawJobQueryKeys.all
+      });
+    }
+  });
+}
+
+export function useAdminRawJobs(
+  limit = 20,
+  enabled = true
+) {
+  return useQuery<RawJobSummary[]>({
+    queryKey:
+      adminRawJobQueryKeys.list(limit),
+
+    queryFn: () =>
+      adminJobService.listRawJobs({
+        limit
+      }),
+
+    enabled,
+    retry: false
+  });
+}
+
+export type NormalizeRawJobVariables = {
+  rawJobId: string;
+  options?: NormalizeRawJobOptions;
+};
+
+export function useNormalizeRawJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    NormalizedJobDetail,
+    Error,
+    NormalizeRawJobVariables
+  >({
+    mutationFn: ({
+      rawJobId,
+      options
+    }) =>
+      adminJobService.normalizeRawJob(
+        rawJobId,
+        options
+      ),
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminRawJobQueryKeys.all
+      });
+    }
+  });
+}
+
+export function useRenormalizeBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    RenormalizationBatchResponse,
+    Error,
+    RenormalizationBatchRequest
+  >({
+    mutationFn: (request) =>
+      adminJobService.renormalizeBatch(
+        request
+      ),
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminRawJobQueryKeys.all
+      });
+    }
+  });
+}
 
 export function useAdminCandidateEmbedding(
   candidateProfileId:
@@ -85,10 +237,8 @@ export function useAdminCandidateEmbedding(
         .getCandidateEmbedding(id);
     },
 
-    // Không gọi API khi chưa có candidateProfileId.
     enabled: id.length > 0,
 
-    // Đây là công cụ debug/admin; lỗi cần hiện ngay thay vì tự retry.
     retry: false
   });
 }
@@ -127,7 +277,6 @@ export function useRebuildCandidateEmbedding() {
         variables.candidateProfileId.trim();
 
       queryClient.setQueryData(
-        // POST đã trả embedding mới nhất nên cập nhật cache trực tiếp.
         adminEmbeddingQueryKeys.candidate(
           id
         ),
@@ -167,10 +316,8 @@ export function useAdminJobEmbedding(
         .getJobEmbedding(id);
     },
 
-    // Không gọi API khi chưa có normalizedJobId.
     enabled: id.length > 0,
 
-    // Tránh retry tự động cho endpoint vận hành admin.
     retry: false
   });
 }
@@ -209,7 +356,6 @@ export function useRebuildJobEmbedding() {
         variables.normalizedJobId.trim();
 
       queryClient.setQueryData(
-        // Dữ liệu rebuild đã đầy đủ, không cần GET embedding thêm lần nữa.
         adminEmbeddingQueryKeys.job(id),
         embedding
       );

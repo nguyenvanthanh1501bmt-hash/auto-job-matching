@@ -2,7 +2,7 @@
 
 import {useTranslations} from "next-intl";
 
-import type {AuthMode} from "@/type/auth";
+import type {AuthMode} from "@/types/auth";
 
 type Props = {
   mode: AuthMode;
