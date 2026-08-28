@@ -16,12 +16,23 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-public class TopdevJobDetailPageParser extends SchemaOrgJobPostingParserSupport implements JobDetailPageParser {
+public class TopdevJobDetailPageParser
+        extends SchemaOrgJobPostingParserSupport
+        implements JobDetailPageParser {
 
-    private static final Pattern SOURCE_JOB_ID_PATTERN = Pattern.compile("-(\\d+)$");
-    private static final Pattern SENIORITY_PATTERN = Pattern.compile("(?i)hiring level\\s+([^,]+)");
+    private static final Pattern SOURCE_JOB_ID_PATTERN =
+            Pattern.compile(
+                    "-(\\d+)$"
+            );
 
-    public TopdevJobDetailPageParser(ObjectMapper objectMapper) {
+    private static final Pattern SENIORITY_PATTERN =
+            Pattern.compile(
+                    "(?i)hiring level\\s+([^,]+)"
+            );
+
+    public TopdevJobDetailPageParser(
+            ObjectMapper objectMapper
+    ) {
         super(objectMapper);
     }
 
@@ -31,101 +42,267 @@ public class TopdevJobDetailPageParser extends SchemaOrgJobPostingParserSupport 
     }
 
     @Override
-    public ParsedRawJob parseDetail(String detailUrl, String html) {
-        Document doc = Jsoup.parse(html, detailUrl);
-        JsonNode jobPosting = findJobPostingJsonLd(doc);
+    public ParsedRawJob parseDetail(
+            String detailUrl,
+            String html
+    ) {
+        Document doc =
+                Jsoup.parse(
+                        html,
+                        detailUrl
+                );
 
-        String descriptionHtml = text(jobPosting, "description");
-        String jobBenefitsHtml = text(jobPosting, "jobBenefits");
+        JsonNode jobPosting =
+                findJobPostingJsonLd(
+                        doc
+                );
 
-        String descriptionText = firstNonBlank(
-                textBeforeHeading(descriptionHtml, "Your role & responsibilities"),
-                htmlToText(descriptionHtml)
-        );
+        String descriptionHtml =
+                text(
+                        jobPosting,
+                        "description"
+                );
 
-        String requirementsText = sectionFromHtmlText(
-                descriptionHtml,
-                "Your skills & qualifications",
-                "Benefits for you"
-        );
+        String jobBenefitsHtml =
+                text(
+                        jobPosting,
+                        "jobBenefits"
+                );
 
-        String benefitsText = firstNonBlank(
-                htmlToText(jobBenefitsHtml),
-                sectionFromHtmlText(descriptionHtml, "Benefits for you")
-        );
+        String descriptionText =
+                firstNonBlank(
+                        textBeforeHeading(
+                                descriptionHtml,
+                                "Your role & responsibilities"
+                        ),
+                        htmlToText(
+                                descriptionHtml
+                        )
+                );
+
+        String requirementsText =
+                sectionFromHtmlText(
+                        descriptionHtml,
+                        "Your skills & qualifications",
+                        "Benefits for you"
+                );
+
+        String benefitsText =
+                firstNonBlank(
+                        htmlToText(
+                                jobBenefitsHtml
+                        ),
+                        sectionFromHtmlText(
+                                descriptionHtml,
+                                "Benefits for you"
+                        )
+                );
 
         return ParsedRawJob.builder()
-                .sourceJobId(extractSourceJobId(detailUrl))
-                .title(clean(text(jobPosting, "title")))
-                .companyName(clean(firstNonBlank(
-                        text(jobPosting.path("hiringOrganization"), "name"),
-                        text(jobPosting.path("identifier"), "name")
-                )))
-                .salaryText(clean(parseSalaryText(jobPosting.path("baseSalary"))))
-                .locationText(clean(parseLocations(jobPosting.path("jobLocation"))))
-                .experienceText(clean(parseExperienceText(jobPosting.path("experienceRequirements"))))
-                .seniorityText(clean(parseSeniority(doc)))
-                .jobTypeText(clean(jsonNodeToText(jobPosting.path("employmentType"))))
-                .deadlineText(clean(text(jobPosting, "validThrough")))
-                .postedText(clean(text(jobPosting, "datePosted")))
-                .skills(parseSkills(jobPosting))
-                .descriptionText(clean(descriptionText))
-                .requirementsText(clean(requirementsText))
-                .benefitsText(clean(benefitsText))
-                .applyUrl(detailUrl)
-                .applyType(ApplyType.DETAIL_PAGE)
+                .sourceJobId(
+                        extractSourceJobId(
+                                detailUrl
+                        )
+                )
+                .title(
+                        clean(
+                                text(
+                                        jobPosting,
+                                        "title"
+                                )
+                        )
+                )
+                .companyName(
+                        clean(
+                                firstNonBlank(
+                                        text(
+                                                jobPosting.path(
+                                                        "hiringOrganization"
+                                                ),
+                                                "name"
+                                        ),
+                                        text(
+                                                jobPosting.path(
+                                                        "identifier"
+                                                ),
+                                                "name"
+                                        )
+                                )
+                        )
+                )
+                .salaryText(
+                        clean(
+                                parseSalaryText(
+                                        jobPosting.path(
+                                                "baseSalary"
+                                        )
+                                )
+                        )
+                )
+                .locationText(
+                        clean(
+                                parseLocations(
+                                        jobPosting.path(
+                                                "jobLocation"
+                                        )
+                                )
+                        )
+                )
+                .experienceText(
+                        clean(
+                                parseExperienceText(
+                                        jobPosting.path(
+                                                "experienceRequirements"
+                                        )
+                                )
+                        )
+                )
+                .seniorityText(
+                        clean(
+                                parseSeniority(
+                                        doc
+                                )
+                        )
+                )
+                .jobTypeText(
+                        clean(
+                                jsonNodeToText(
+                                        jobPosting.path(
+                                                "employmentType"
+                                        )
+                                )
+                        )
+                )
+                .deadlineText(
+                        clean(
+                                text(
+                                        jobPosting,
+                                        "validThrough"
+                                )
+                        )
+                )
+                .postedText(
+                        clean(
+                                text(
+                                        jobPosting,
+                                        "datePosted"
+                                )
+                        )
+                )
+                .skills(
+                        parseSkills(
+                                jobPosting
+                        )
+                )
+                .descriptionText(
+                        clean(
+                                descriptionText
+                        )
+                )
+                .requirementsText(
+                        clean(
+                                requirementsText
+                        )
+                )
+                .benefitsText(
+                        clean(
+                                benefitsText
+                        )
+                )
+                .applyUrl(
+                        detailUrl
+                )
+                .applyType(
+                        ApplyType.DETAIL_PAGE
+                )
                 .build();
     }
 
-    private List<String> parseSkills(JsonNode jobPosting) {
-        List<String> skills = parseCsvTags(text(jobPosting, "skills"));
-
-        String industry = clean(text(jobPosting, "industry"));
-
-        if (industry != null && !industry.isBlank() && !skills.contains(industry)) {
-            skills = new java.util.ArrayList<>(skills);
-            skills.add(industry);
-        }
-
-        return skills.stream()
-                .filter(value -> value != null && !value.isBlank())
-                .distinct()
-                .toList();
+    private List<String> parseSkills(
+            JsonNode jobPosting
+    ) {
+        /*
+         * TopDev có `skills` đúng nghĩa trong JSON-LD.
+         * `industry` chỉ là nhóm ngành nên không được ghép vào skills.
+         */
+        return parseCsvTags(
+                text(
+                        jobPosting,
+                        "skills"
+                )
+        );
     }
 
-    private String parseSeniority(Document doc) {
-        String keywords = metaContent(doc, "meta[name=keywords]");
+    private String parseSeniority(
+            Document doc
+    ) {
+        String keywords =
+                metaContent(
+                        doc,
+                        "meta[name=keywords]"
+                );
 
-        if (keywords == null || keywords.isBlank()) {
+        if (keywords == null
+                || keywords.isBlank()) {
+
             return null;
         }
 
-        Matcher matcher = SENIORITY_PATTERN.matcher(keywords);
+        Matcher matcher =
+                SENIORITY_PATTERN
+                        .matcher(
+                                keywords
+                        );
 
         if (matcher.find()) {
-            return clean(matcher.group(1));
+            return clean(
+                    matcher.group(
+                            1
+                    )
+            );
         }
 
         return null;
     }
 
-    private String extractSourceJobId(String detailUrl) {
+    private String extractSourceJobId(
+            String detailUrl
+    ) {
         try {
-            String path = URI.create(detailUrl).getPath();
+            String path =
+                    URI.create(
+                            detailUrl
+                    ).getPath();
 
-            if (path == null || path.isBlank()) {
+            if (path == null
+                    || path.isBlank()) {
+
                 return null;
             }
 
-            String lastSegment = path.substring(path.lastIndexOf('/') + 1);
-            Matcher matcher = SOURCE_JOB_ID_PATTERN.matcher(lastSegment);
+            String lastSegment =
+                    path.substring(
+                            path.lastIndexOf('/')
+                                    + 1
+                    );
+
+            Matcher matcher =
+                    SOURCE_JOB_ID_PATTERN
+                            .matcher(
+                                    lastSegment
+                            );
 
             if (matcher.find()) {
-                return matcher.group(1);
+                return matcher.group(
+                        1
+                );
             }
 
-            return clean(lastSegment);
-        } catch (Exception e) {
+            return clean(
+                    lastSegment
+            );
+
+        } catch (Exception exception) {
             return null;
         }
     }

@@ -1,16 +1,30 @@
-import type { AuthResponse } from "@/types/auth";
+import type {
+  AuthResponse
+} from "@/types/auth";
 
-const AUTH_SESSION_STORAGE_KEY = "autojob.auth.session";
+const AUTH_SESSION_STORAGE_KEY =
+  "autojob.auth.session";
 
 export const AUTH_SESSION_CHANGED_EVENT =
   "autojob:auth-session-changed";
 
-// Cache để getAuthSession trả cùng reference khi localStorage chưa đổi.
-let _cachedRaw: string | null = null;
-let _cachedSession: AuthResponse | null = null;
+/*
+ * Cache theo raw string thay vì chỉ cache parsed object.
+ * Cách này giúp nhận biết localStorage có thực sự thay đổi hay không.
+ */
+let cachedRawSession:
+  | string
+  | null = null;
+
+let cachedSession:
+  | AuthResponse
+  | null = null;
 
 function isBrowser(): boolean {
-  return typeof window !== "undefined";
+  return (
+    typeof window !==
+    "undefined"
+  );
 }
 
 function notifyAuthSessionChanged(): void {
@@ -19,44 +33,75 @@ function notifyAuthSessionChanged(): void {
   }
 
   window.dispatchEvent(
-    new Event(AUTH_SESSION_CHANGED_EVENT)
+    new Event(
+      AUTH_SESSION_CHANGED_EVENT
+    )
   );
 }
 
-export function getAuthSession(): AuthResponse | null {
-  // SSR không có localStorage; session chỉ được đọc ở browser.
+export function getAuthSession():
+  | AuthResponse
+  | null {
+  // SSR không có localStorage nên session chỉ được đọc ở browser.
   if (!isBrowser()) {
     return null;
   }
 
-  const rawSession = window.localStorage.getItem(
-    AUTH_SESSION_STORAGE_KEY
-  );
+  const rawSession =
+    window.localStorage.getItem(
+      AUTH_SESSION_STORAGE_KEY
+    );
 
   if (!rawSession) {
-    _cachedRaw = null;
-    _cachedSession = null;
+    cachedRawSession =
+      null;
+
+    cachedSession =
+      null;
+
     return null;
   }
 
-  // Trả cached nếu raw string chưa đổi.
-  if (rawSession === _cachedRaw) {
-    return _cachedSession;
+  if (
+    rawSession ===
+    cachedRawSession
+  ) {
+    return cachedSession;
   }
 
   try {
-    return JSON.parse(rawSession) as AuthResponse;
-    _cachedSession = JSON.parse(rawSession) as AuthResponse;
-    _cachedRaw = rawSession;
-    return _cachedSession;
+    const parsedSession =
+      JSON.parse(
+        rawSession
+      ) as AuthResponse;
+
+    /*
+     * Cache phải được cập nhật trước khi return.
+     * Bản cũ return ngay sau JSON.parse nên phần cache phía sau
+     * không bao giờ được thực thi.
+     */
+    cachedRawSession =
+      rawSession;
+
+    cachedSession =
+      parsedSession;
+
+    return parsedSession;
   } catch {
-    // Session hỏng không được giữ lại để tránh auth state không hợp lệ.
+    /*
+     * Session không parse được không nên tiếp tục tồn tại.
+     * Nếu giữ lại, interceptor có thể liên tục gửi token lỗi.
+     */
     window.localStorage.removeItem(
       AUTH_SESSION_STORAGE_KEY
     );
 
-    _cachedRaw = null;
-    _cachedSession = null;
+    cachedRawSession =
+      null;
+
+    cachedSession =
+      null;
+
     notifyAuthSessionChanged();
 
     return null;
@@ -70,12 +115,26 @@ export function setAuthSession(
     return;
   }
 
+  const rawSession =
+    JSON.stringify(
+      session
+    );
+
   window.localStorage.setItem(
     AUTH_SESSION_STORAGE_KEY,
-    JSON.stringify(session)
+    rawSession
   );
 
-  // Báo cho các phần UI đang theo dõi trạng thái đăng nhập.
+  /*
+   * Đồng bộ cache ngay tại nguồn ghi để lần đọc tiếp theo
+   * không cần parse lại cùng một JSON.
+   */
+  cachedRawSession =
+    rawSession;
+
+  cachedSession =
+    session;
+
   notifyAuthSessionChanged();
 }
 
@@ -88,18 +147,38 @@ export function clearAuthSession(): void {
     AUTH_SESSION_STORAGE_KEY
   );
 
-  // Logout hoặc refresh lỗi đều phải cập nhật UI ngay.
+  cachedRawSession =
+    null;
+
+  cachedSession =
+    null;
+
   notifyAuthSessionChanged();
 }
 
-export function getAccessToken(): string | null {
-  return getAuthSession()?.accessToken ?? null;
+export function getAccessToken():
+  | string
+  | null {
+  return (
+    getAuthSession()
+      ?.accessToken ??
+    null
+  );
 }
 
-export function getRefreshToken(): string | null {
-  return getAuthSession()?.refreshToken ?? null;
+export function getRefreshToken():
+  | string
+  | null {
+  return (
+    getAuthSession()
+      ?.refreshToken ??
+    null
+  );
 }
 
 export function hasAuthSession(): boolean {
-  return getAuthSession() !== null;
+  return (
+    getAuthSession() !==
+    null
+  );
 }

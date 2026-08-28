@@ -8,8 +8,7 @@ const NAV_ITEMS = [
   {id: "overview", index: "01"},
   {id: "crawler", index: "02"},
   {id: "jobs", index: "03"},
-  {id: "embeddings", index: "04"},
-  {id: "parser", index: "05"}
+  {id: "embeddings", index: "04"}
 ] as const;
 
 export function AdminSidebar({

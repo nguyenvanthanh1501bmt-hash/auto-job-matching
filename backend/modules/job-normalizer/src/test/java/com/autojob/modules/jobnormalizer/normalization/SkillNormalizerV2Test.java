@@ -173,6 +173,102 @@ class SkillNormalizerV2Test {
     }
 
     @Test
+    void shouldIgnoreKnownJobBoardCategoriesAndFallbackToProse() {
+        List<String> result =
+                normalizer.normalize(
+                        List.of(
+                                "IT Phần mềm",
+                                "IT / Phần mềm / IOT / Điện tử viễn thông",
+                                "Lương cao",
+                                "Việc làm cấp cao"
+                        ),
+                        "Java Backend Developer",
+                        "Yêu cầu Java, Spring Boot và PostgreSQL.",
+                        "Làm việc với Docker trong môi trường production."
+                );
+
+        assertThat(result)
+                .contains(
+                        "Java",
+                        "Spring Boot",
+                        "PostgreSQL",
+                        "Docker"
+                )
+                .doesNotContain(
+                        "IT Phần mềm",
+                        "IT / Phần mềm / IOT / Điện tử viễn thông",
+                        "Lương cao",
+                        "Việc làm cấp cao"
+                );
+    }
+
+    @Test
+    void shouldKeepRealStructuredSkillsWhileDroppingMixedCategoryLabels() {
+        List<String> result =
+                normalizer.normalize(
+                        List.of(
+                                "In ấn - Xuất bản, Truyền thông/Internet/Online Media, Search Engine Marketing",
+                                "An toàn lao động",
+                                "QA-QC/ Thẩm định/ Giám định"
+                        )
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        "Search Engine Marketing",
+                        "Occupational Safety"
+                );
+    }
+
+    @Test
+    void shouldNotLetUnknownStructuredLabelsSuppressProseFallback() {
+        List<String> result =
+                normalizer.normalize(
+                        List.of(
+                                "Kỹ thuật vận hành máy ABC",
+                                "Thiết bị chuyên dụng XYZ"
+                        ),
+                        "Kỹ sư sản xuất",
+                        "Yêu cầu AutoCAD, CNC, 5S và Kaizen.",
+                        null
+                );
+
+        assertThat(result)
+                .startsWith(
+                        "Kỹ thuật vận hành máy ABC",
+                        "Thiết bị chuyên dụng XYZ"
+                )
+                .contains(
+                        "AutoCAD",
+                        "CNC",
+                        "5S",
+                        "Kaizen"
+                );
+    }
+
+    @Test
+    void shouldTreatCategoryLikeStatisticsOnlyWhenItAppearsInProse() {
+        List<String> result =
+                normalizer.normalize(
+                        List.of(
+                                "Quản lý điều hành",
+                                "Thống kê",
+                                "Lương cao",
+                                "QA-QC/ Thẩm định/ Giám định"
+                        ),
+                        null,
+                        "Phụ trách thống kê số liệu và quản lý điều hành hoạt động hằng ngày.",
+                        null
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        "Operations Management",
+                        "Statistics"
+                );
+    }
+
+    @Test
     void shouldNotTreatShortAmbiguousAliasesAsSkillsInFreeProse() {
         List<String> result =
                 normalizer.normalize(

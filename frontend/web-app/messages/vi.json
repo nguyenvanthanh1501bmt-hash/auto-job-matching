@@ -86,7 +86,7 @@
     },
     "header": {
       "console": "Bảng quản trị",
-      "access": "Quyền quản trị"
+      "access": "Quyền quản trị viên"
     },
     "sidebar": {
       "workspace": "Workspace",
@@ -208,193 +208,249 @@
         "total": "Tổng raw jobs"
       }
     },
-"jobs": {
-  "eyebrow": "Job pipeline",
-  "title": "Job processing",
-  "description": "Theo dõi raw jobs đã được crawler thu thập. Normalization và embedding được pipeline xử lý tự động; các công cụ reprocess bên dưới chỉ dùng khi cần kiểm tra hoặc xử lý lại dữ liệu.",
-  "rawJobs": {
-    "workspace": "Dữ liệu đã thu thập",
-    "title": "Raw jobs",
-    "description": "Các job gần đây được crawler lưu vào hệ thống và chuyển tiếp qua pipeline xử lý tự động.",
-    "pipelineHint": "Job mới được normalize và tạo embedding tự động. Reprocess thủ công chỉ nên dùng khi cần kiểm tra hoặc khôi phục dữ liệu.",
-    "limitLabel": "Giới hạn",
-    "refresh": "Làm mới",
-    "refreshing": "Đang tải...",
-    "force": "Force reprocess",
-    "latestNormalized": "Kết quả reprocess gần nhất",
-    "reprocessCompleted": "Job đã được gửi qua normalization.",
-    "reprocessing": "Đang xử lý...",
-    "loading": "Đang tải raw jobs...",
-    "empty": "Chưa có raw job nào.",
-    "untitled": "Job chưa có tiêu đề",
-    "unknownCompany": "Chưa rõ công ty",
-    "normalize": "Reprocess",
-    "columns": {
-      "job": "Job",
-      "source": "Nguồn",
-      "location": "Địa điểm",
-      "collected": "Thu thập lúc",
-      "action": "Thao tác"
-    }
-  },
-  "batch": {
-  "label": "Công cụ bảo trì",
-  "title": "Batch renormalization",
-  "description": "Chạy lại normalization cho một nhóm raw jobs đã tồn tại. Công cụ này không crawl job mới và chỉ nên dùng khi cần kiểm tra hoặc xử lý lại dữ liệu.",
-  "guideTitle": "Cách sử dụng",
-  "guideDescription": "Chọn phạm vi dữ liệu cần xử lý, sau đó xác định page và số lượng job trong mỗi batch. Pipeline bình thường đã tự normalize job mới nên không cần chạy công cụ này thường xuyên.",
-  "guide": {
-    "sourceTitle": "Nguồn dữ liệu",
-    "sourceDescription": "Chọn một source cụ thể hoặc Tất cả nguồn nếu muốn xử lý không theo source.",
-    "pageTitle": "Page",
-    "pageDescription": "Bắt đầu từ 0. Page 0 là batch đầu tiên, page 1 là batch tiếp theo.",
-    "sizeTitle": "Size",
-    "sizeDescription": "Số raw jobs tối đa được xử lý trong một lần chạy.",
-    "forceTitle": "Force",
-    "forceDescription": "Chỉ bật khi muốn ép xử lý lại dữ liệu dù hệ thống có thể xem dữ liệu là không đổi."
-  },
-  "example": "Ví dụ",
-  "exampleDescription": "ITVIEC · Page 0 · Size 100 → xử lý tối đa 100 raw jobs ITVIEC trong batch đầu tiên.",
-  "source": "Source",
-  "sourceHint": "Giới hạn batch theo nguồn dữ liệu.",
-  "allSources": "Tất cả nguồn",
-  "page": "Page",
-  "size": "Size",
-  "sizeHint": "1 - {max}",
-  "force": "Force renormalization",
-  "result": "Kết quả batch",
-  "run": "Chạy reprocess",
-  "running": "Đang xử lý..."
-}
-},
-    "embeddings": {
-  "eyebrow": "Vector pipeline",
-  "title": "Embedding tools",
-  "description": "Kiểm tra trạng thái vector embedding của candidate và job. Embedding bình thường được pipeline tạo tự động; rebuild chỉ dùng khi cần kiểm tra hoặc xử lý lại dữ liệu.",
-  "pipeline": {
-    "label": "Luồng tự động",
-    "title": "Embedding được tạo tự động",
-    "description": "Candidate profile và normalized job sẽ được chuyển sang bước embedding tự động khi dữ liệu sẵn sàng. Khu vực bên dưới chủ yếu dùng để kiểm tra trạng thái hoặc xử lý lại khi có sự cố.",
-    "steps": {
-      "source": "Dữ liệu nguồn",
-      "ready": "Dữ liệu sẵn sàng",
-      "embedding": "Embedding"
-    }
-  },
-  "common": {
-    "inspector": "Embedding inspector",
-    "lookup": "Tra cứu",
-    "lookingUp": "Đang tra cứu...",
-    "rebuild": "Rebuild embedding",
-    "rebuilding": "Đang rebuild...",
-    "force": "Force rebuild",
-    "status": "Trạng thái embedding",
-    "technicalDetails": "Chi tiết kỹ thuật",
-    "maintenance": "Bảo trì",
-    "rebuildTitle": "Rebuild thủ công",
-    "rebuildCompleted": "Rebuild hoàn tất"
-  },
-  "candidate": {
-    "title": "Candidate embedding",
-    "description": "Kiểm tra embedding được tạo từ candidate profile dùng trong quá trình matching.",
-    "field": "Candidate profile ID",
-    "hint": "Sử dụng candidateProfileId, không phải rawCvId của file CV đã upload.",
-    "placeholder": "candidateProfileId",
-    "empty": "Nhập candidate profile ID để kiểm tra trạng thái embedding.",
-    "rebuildDescription": "Chỉ rebuild khi embedding candidate bị thiếu, lỗi hoặc cần tạo lại sau khi dữ liệu profile thay đổi.",
-    "result": "Candidate embedding"
-  },
-  "job": {
-    "title": "Job embedding",
-    "description": "Kiểm tra embedding của normalized job được sử dụng để so khớp với candidate.",
-    "field": "Normalized job ID",
-    "hint": "Sử dụng normalizedJobId, không phải rawJobId từ dữ liệu crawler.",
-    "placeholder": "normalizedJobId",
-    "empty": "Nhập normalized job ID để kiểm tra trạng thái embedding.",
-    "rebuildDescription": "Chỉ rebuild khi vector của normalized job bị thiếu, lỗi hoặc cần được tạo lại.",
-    "result": "Job embedding"
-  }
-},
-"parser": {
-  "eyebrow": "Parser tools",
-  "title": "Parser inspection",
-  "description": "Kiểm tra cách hệ thống đọc trang danh sách và trang chi tiết job từ các file HTML đã có trên backend.",
-  "flow": {
-    "label": "Luồng xử lý",
-    "title": "Parser hoạt động theo 2 bước",
-    "description": "Đọc trang danh sách để lấy các URL chi tiết, sau đó parse một trang chi tiết để kiểm tra dữ liệu job được tạo ra.",
-    "list": "Listing page",
-    "listDescription": "Trích xuất các detail URL từ trang danh sách.",
-    "detail": "Detail page",
-    "detailDescription": "Parse dữ liệu job và tạo raw job."
-  },
-  "source": {
-    "label": "Parser source",
-    "description": "Chọn parser tương ứng với cấu trúc HTML của nguồn dữ liệu."
-  },
-  "common": {
-    "filePathHint": "Đường dẫn tới file HTML mà backend hoặc container có thể đọc được.",
-    "filesystemTitle": "File phải nằm trên backend",
-    "filesystemDescription": "Đây là đường dẫn filesystem của backend/container, không phải đường dẫn tới file trên máy đang mở trình duyệt.",
-    "currentSource": "Source đang sử dụng",
-    "technicalDetails": "Chi tiết kỹ thuật",
-    "yes": "Có",
-    "no": "Không"
-  },
-  "list": {
-    "label": "Bước 01 · Listing parser",
-    "title": "Parse trang danh sách",
-    "description": "Đọc một file HTML của trang danh sách và trích xuất các URL dẫn tới trang chi tiết job.",
-    "filePath": "Đường dẫn file HTML",
-    "filePlaceholder": "/data/parser/list.html",
-    "baseUrl": "Base URL",
-    "baseUrlHint": "Được dùng để chuyển các đường dẫn tương đối trong HTML thành URL đầy đủ.",
-    "baseUrlPlaceholder": "https://example.com",
-    "submit": "Parse listing file",
-    "parsing": "Đang parse...",
-    "actionHint": "Sử dụng parser {source}.",
-    "resultLabel": "Kết quả bước 01",
-    "resultTitle": "Detail URLs đã tìm thấy",
-    "urlsFound": "URL",
-    "detailUrls": "Danh sách detail URL",
-    "chooseHint": "Chọn một URL để tiếp tục bước 02",
-    "useUrl": "Dùng URL này",
-    "noUrls": "Parser hoàn tất nhưng không tìm thấy detail URL nào."
-  },
-  "detail": {
-    "label": "Bước 02 · Detail parser",
-    "title": "Parse trang chi tiết",
-    "description": "Đọc HTML của một trang job cụ thể, kiểm tra dữ liệu được parser trích xuất và raw job được tạo ra.",
-    "filePath": "Đường dẫn file HTML",
-    "filePlaceholder": "/data/parser/detail.html",
-    "detailUrl": "Detail URL",
-    "detailUrlHint": "URL gốc của trang job đang được parse. Có thể chọn trực tiếp từ kết quả bước 01.",
-    "detailUrlPlaceholder": "https://example.com/jobs/123",
-    "listUrl": "List URL · tùy chọn",
-    "listUrlHint": "URL của trang danh sách nơi job này được tìm thấy. Có thể để trống.",
-    "listUrlPlaceholder": "https://example.com/jobs",
-    "submit": "Parse detail file",
-    "parsing": "Đang parse...",
-    "actionHint": "Kết quả thành công sẽ tạo hoặc cập nhật raw job.",
-    "aboutLabel": "Bước này làm gì?",
-    "aboutTitle": "Từ HTML tới raw job",
-    "aboutDescription": "Detail parser đọc nội dung HTML theo source đã chọn và chuyển dữ liệu tìm được sang cấu trúc raw job của hệ thống.",
-    "steps": {
-      "read": "Đọc file HTML",
-      "parse": "Trích xuất dữ liệu job",
-      "rawJob": "Tạo raw job"
+    "jobs": {
+      "eyebrow": "Job pipeline",
+      "title": "Xử lý công việc",
+      "description": "Theo dõi raw jobs đã được crawler thu thập. Normalization và embedding được pipeline xử lý tự động; các công cụ xử lý lại bên dưới chỉ dùng khi cần kiểm tra hoặc khôi phục dữ liệu.",
+      "rawJobs": {
+        "workspace": "Dữ liệu đã thu thập",
+        "title": "Raw jobs",
+        "description": "Các job gần đây được crawler lưu vào hệ thống và chuyển tiếp qua pipeline xử lý tự động.",
+        "pipelineHint": "Job mới được normalize và tạo embedding tự động. Xử lý lại thủ công chỉ nên dùng khi cần kiểm tra hoặc khôi phục dữ liệu.",
+        "limitLabel": "Giới hạn",
+        "refresh": "Làm mới",
+        "refreshing": "Đang tải...",
+        "force": "Bắt buộc xử lý lại",
+        "latestNormalized": "Kết quả xử lý lại gần nhất",
+        "reprocessCompleted": "Job đã được gửi qua normalization.",
+        "reprocessing": "Đang xử lý...",
+        "loading": "Đang tải raw jobs...",
+        "empty": "Chưa có raw job nào.",
+        "untitled": "Job chưa có tiêu đề",
+        "unknownCompany": "Chưa rõ công ty",
+        "normalize": "Xử lý lại",
+        "columns": {
+          "job": "Job",
+          "source": "Nguồn",
+          "location": "Địa điểm",
+          "collected": "Thu thập lúc",
+          "action": "Thao tác",
+          "pipeline": "Pipeline"
+        },
+        "copy": "Sao chép {label}",
+        "copied": "Đã sao chép {label}",
+        "details": {
+          "rawJob": "Raw job",
+          "rawJobId": "Raw job ID",
+          "sourceJobId": "Source job ID",
+          "fingerprint": "Fingerprint",
+          "location": "Địa điểm",
+          "salary": "Mức lương",
+          "experience": "Kinh nghiệm",
+          "applyType": "Kiểu ứng tuyển",
+          "firstSeenAt": "Seen lần đầu",
+          "lastSeenAt": "Seen lần cuối",
+          "collectedAt": "Thu thập lúc",
+          "rawPayloadPurgedAt": "Xoá raw payload lúc",
+          "skills": "Kỹ năng",
+          "openJob": "Mở tin tuyển dụng",
+          "openApply": "Mở link ứng tuyển"
+        }
+      },
+      "batch": {
+        "label": "Công cụ bảo trì",
+        "title": "Batch renormalization",
+        "description": "Chạy lại normalization cho một nhóm raw jobs đã tồn tại. Công cụ này không crawl job mới và chỉ nên dùng khi cần kiểm tra hoặc xử lý lại dữ liệu.",
+        "guideTitle": "Cách sử dụng",
+        "guideDescription": "Chọn phạm vi dữ liệu cần xử lý, sau đó xác định page và số lượng job trong mỗi batch. Pipeline bình thường đã tự normalize job mới nên không cần chạy công cụ này thường xuyên.",
+        "guide": {
+          "sourceTitle": "Nguồn dữ liệu",
+          "sourceDescription": "Chọn một source cụ thể hoặc Tất cả nguồn nếu muốn xử lý không theo source.",
+          "pageTitle": "Page",
+          "pageDescription": "Bắt đầu từ 0. Page 0 là batch đầu tiên, page 1 là batch tiếp theo.",
+          "sizeTitle": "Size",
+          "sizeDescription": "Số raw jobs tối đa được xử lý trong một lần chạy.",
+          "forceTitle": "Force",
+          "forceDescription": "Chỉ bật khi muốn ép xử lý lại dữ liệu dù hệ thống có thể xem dữ liệu là không đổi."
+        },
+        "example": "Ví dụ",
+        "exampleDescription": "ITVIEC · Page 0 · Size 100 → xử lý tối đa 100 raw jobs ITVIEC trong batch đầu tiên.",
+        "source": "Source",
+        "sourceHint": "Giới hạn batch theo nguồn dữ liệu.",
+        "allSources": "Tất cả nguồn",
+        "page": "Page",
+        "size": "Size",
+        "sizeHint": "1 - {max}",
+        "force": "Force renormalization",
+        "result": "Kết quả batch",
+        "run": "Chạy xử lý lại",
+        "running": "Đang xử lý..."
+      },
+      "pipeline": {
+        "normalization": "Normalized",
+        "embedding": "Embedding",
+        "normalizationDescription": "Dữ liệu đã chuẩn hoá được tạo từ raw job.",
+        "embeddingDescription": "Vector embedding được tạo từ normalized job.",
+        "normalizationShort": "NORM",
+        "embeddingShort": "EMBED",
+        "id": "ID",
+        "version": "Phiên bản",
+        "updatedAt": "Cập nhật",
+        "latestError": "Lỗi gần nhất",
+        "status": {
+          "NOT_CREATED": "CHƯA TẠO",
+          "OUTDATED": "CẦN CẬP NHẬT",
+          "PROCESSING": "ĐANG XỬ LÝ",
+          "READY": "READY",
+          "FAILED": "LỖI"
+        }
+      },
+      "actions": {
+        "title": "Thao tác pipeline",
+        "description": "Chạy từng stage riêng để dễ xác định bước nào gặp lỗi.",
+        "normalize": "Chuẩn hoá",
+        "renormalize": "Chuẩn hoá lại",
+        "retryNormalize": "Thử lại chuẩn hoá",
+        "normalizing": "Đang chuẩn hoá...",
+        "embed": "Tạo embedding",
+        "reembed": "Tạo lại embedding",
+        "retryEmbed": "Thử lại embedding",
+        "embedding": "Đang embedding...",
+        "processing": "Đang xử lý",
+        "normalizeTitle": "Chạy lại normalization cho raw job này",
+        "embedTitle": "Tạo embedding từ normalized job hiện tại",
+        "embedRequiresReady": "Chỉ có thể tạo embedding khi normalization ở trạng thái READY.",
+        "embedUsesNormalizedId": "Embedding luôn sử dụng normalizedJobId hiện tại."
+      }
     },
-    "resultLabel": "Parse hoàn tất",
-    "resultTitle": "Raw job result",
-    "untitled": "Job chưa có tiêu đề",
-    "unknownCompany": "Chưa rõ công ty",
-    "metrics": {
-      "rawJobId": "Raw job ID",
-      "location": "Địa điểm",
-      "html": "Raw HTML",
-      "text": "Raw text"
+    "embeddings": {
+      "eyebrow": "Vector pipeline",
+      "title": "Embedding tools",
+      "description": "Kiểm tra trạng thái vector embedding của candidate và job. Embedding bình thường được pipeline tạo tự động; rebuild chỉ dùng khi cần kiểm tra hoặc xử lý lại dữ liệu.",
+      "pipeline": {
+        "label": "Luồng tự động",
+        "title": "Embedding được tạo tự động",
+        "description": "Candidate profile và normalized job sẽ được chuyển sang bước embedding tự động khi dữ liệu sẵn sàng. Khu vực bên dưới chủ yếu dùng để kiểm tra trạng thái hoặc xử lý lại khi có sự cố.",
+        "steps": {
+          "source": "Dữ liệu nguồn",
+          "ready": "Dữ liệu sẵn sàng",
+          "embedding": "Embedding"
+        }
+      },
+      "common": {
+        "inspector": "Embedding inspector",
+        "lookup": "Tra cứu",
+        "lookingUp": "Đang tra cứu...",
+        "rebuild": "Rebuild embedding",
+        "rebuilding": "Đang rebuild...",
+        "force": "Force rebuild",
+        "status": "Trạng thái embedding",
+        "technicalDetails": "Chi tiết kỹ thuật",
+        "maintenance": "Bảo trì",
+        "rebuildTitle": "Rebuild thủ công",
+        "rebuildCompleted": "Rebuild hoàn tất"
+      },
+      "candidate": {
+        "title": "Candidate embedding",
+        "description": "Kiểm tra embedding được tạo từ candidate profile dùng trong quá trình matching.",
+        "field": "Candidate profile ID",
+        "hint": "Sử dụng candidateProfileId, không phải rawCvId của file CV đã upload.",
+        "placeholder": "candidateProfileId",
+        "empty": "Nhập candidate profile ID để kiểm tra trạng thái embedding.",
+        "rebuildDescription": "Chỉ rebuild khi embedding candidate bị thiếu, lỗi hoặc cần tạo lại sau khi dữ liệu profile thay đổi.",
+        "result": "Candidate embedding"
+      },
+      "job": {
+        "title": "Job embedding",
+        "description": "Kiểm tra embedding của normalized job được sử dụng để so khớp với candidate.",
+        "field": "Normalized job ID",
+        "hint": "Sử dụng normalizedJobId, không phải rawJobId từ dữ liệu crawler.",
+        "placeholder": "normalizedJobId",
+        "empty": "Nhập normalized job ID để kiểm tra trạng thái embedding.",
+        "rebuildDescription": "Chỉ rebuild khi vector của normalized job bị thiếu, lỗi hoặc cần được tạo lại.",
+        "result": "Job embedding"
+      }
+    },
+    "parser": {
+      "eyebrow": "Parser tools",
+      "title": "Parser inspection",
+      "description": "Kiểm tra cách hệ thống đọc trang danh sách và trang chi tiết job từ các file HTML đã có trên backend.",
+      "flow": {
+        "label": "Luồng xử lý",
+        "title": "Parser hoạt động theo 2 bước",
+        "description": "Đọc trang danh sách để lấy các URL chi tiết, sau đó parse một trang chi tiết để kiểm tra dữ liệu job được tạo ra.",
+        "list": "Listing page",
+        "listDescription": "Trích xuất các detail URL từ trang danh sách.",
+        "detail": "Detail page",
+        "detailDescription": "Parse dữ liệu job và tạo raw job."
+      },
+      "source": {
+        "label": "Parser source",
+        "description": "Chọn parser tương ứng với cấu trúc HTML của nguồn dữ liệu."
+      },
+      "common": {
+        "filePathHint": "Đường dẫn tới file HTML mà backend hoặc container có thể đọc được.",
+        "filesystemTitle": "File phải nằm trên backend",
+        "filesystemDescription": "Đây là đường dẫn filesystem của backend/container, không phải đường dẫn tới file trên máy đang mở trình duyệt.",
+        "currentSource": "Source đang sử dụng",
+        "technicalDetails": "Chi tiết kỹ thuật",
+        "yes": "Có",
+        "no": "Không"
+      },
+      "list": {
+        "label": "Bước 01 · Listing parser",
+        "title": "Parse trang danh sách",
+        "description": "Đọc một file HTML của trang danh sách và trích xuất các URL dẫn tới trang chi tiết job.",
+        "filePath": "Đường dẫn file HTML",
+        "filePlaceholder": "/data/parser/list.html",
+        "baseUrl": "Base URL",
+        "baseUrlHint": "Được dùng để chuyển các đường dẫn tương đối trong HTML thành URL đầy đủ.",
+        "baseUrlPlaceholder": "https://example.com",
+        "submit": "Parse listing file",
+        "parsing": "Đang parse...",
+        "actionHint": "Sử dụng parser {source}.",
+        "resultLabel": "Kết quả bước 01",
+        "resultTitle": "Detail URLs đã tìm thấy",
+        "urlsFound": "URL",
+        "detailUrls": "Danh sách detail URL",
+        "chooseHint": "Chọn một URL để tiếp tục bước 02",
+        "useUrl": "Dùng URL này",
+        "noUrls": "Parser hoàn tất nhưng không tìm thấy detail URL nào."
+      },
+      "detail": {
+        "label": "Bước 02 · Detail parser",
+        "title": "Parse trang chi tiết",
+        "description": "Đọc HTML của một trang job cụ thể, kiểm tra dữ liệu được parser trích xuất và raw job được tạo ra.",
+        "filePath": "Đường dẫn file HTML",
+        "filePlaceholder": "/data/parser/detail.html",
+        "detailUrl": "Detail URL",
+        "detailUrlHint": "URL gốc của trang job đang được parse. Có thể chọn trực tiếp từ kết quả bước 01.",
+        "detailUrlPlaceholder": "https://example.com/jobs/123",
+        "listUrl": "List URL · tùy chọn",
+        "listUrlHint": "URL của trang danh sách nơi job này được tìm thấy. Có thể để trống.",
+        "listUrlPlaceholder": "https://example.com/jobs",
+        "submit": "Parse detail file",
+        "parsing": "Đang parse...",
+        "actionHint": "Kết quả thành công sẽ tạo hoặc cập nhật raw job.",
+        "aboutLabel": "Bước này làm gì?",
+        "aboutTitle": "Từ HTML tới raw job",
+        "aboutDescription": "Detail parser đọc nội dung HTML theo source đã chọn và chuyển dữ liệu tìm được sang cấu trúc raw job của hệ thống.",
+        "steps": {
+          "read": "Đọc file HTML",
+          "parse": "Trích xuất dữ liệu job",
+          "rawJob": "Tạo raw job"
+        },
+        "resultLabel": "Parse hoàn tất",
+        "resultTitle": "Raw job result",
+        "untitled": "Job chưa có tiêu đề",
+        "unknownCompany": "Chưa rõ công ty",
+        "metrics": {
+          "rawJobId": "Raw job ID",
+          "location": "Địa điểm",
+          "html": "Raw HTML",
+          "text": "Raw text"
+        }
+      }
     }
-  }
-}
   }
 }

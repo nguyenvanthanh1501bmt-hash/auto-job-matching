@@ -8,8 +8,7 @@ export type AdminSection =
   | "overview"
   | "crawler"
   | "jobs"
-  | "embeddings"
-  | "parser";
+  | "embeddings";
 
 export type AdminOperationSection = Exclude<AdminSection, "overview">;
 

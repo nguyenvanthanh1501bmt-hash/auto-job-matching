@@ -16,99 +16,210 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class JobokoParserFixtureTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper =
+            new ObjectMapper();
 
     @Test
-    void parseJobokoListPage_shouldExtractJobDetailUrls() throws Exception {
-        String html = readFixture("fixtures/joboko/list_page_1.html");
+    void parseJobokoListPage_shouldExtractJobDetailUrls()
+            throws Exception {
 
-        JobokoJobListPageParser parser = new JobokoJobListPageParser();
+        String html =
+                readFixture(
+                        "fixtures/joboko/list_page_1.html"
+                );
 
-        List<String> urls = parser.parseDetailUrls("https://vn.joboko.com", html);
+        JobokoJobListPageParser parser =
+                new JobokoJobListPageParser();
+
+        List<String> urls =
+                parser.parseDetailUrls(
+                        "https://vn.joboko.com",
+                        html
+                );
 
         assertThat(urls)
                 .isNotEmpty()
-                .contains("https://vn.joboko.com/viec-lam-ky-su-xay-dung-xvi6563129");
+                .contains(
+                        "https://vn.joboko.com/viec-lam-ky-su-xay-dung-xvi6563129"
+                );
 
         assertThat(urls)
-                .allMatch(url -> url.startsWith("https://vn.joboko.com/viec-lam-"));
+                .allMatch(
+                        url ->
+                                url.startsWith(
+                                        "https://vn.joboko.com/viec-lam-"
+                                )
+                );
 
         assertThat(urls)
-                .allMatch(url -> url.matches("^https://vn\\.joboko\\.com/viec-lam-.+-xvi\\d+$"));
+                .allMatch(
+                        url ->
+                                url.matches(
+                                        "^https://vn\\.joboko\\.com/viec-lam-.+-xvi\\d+$"
+                                )
+                );
     }
 
     @Test
-    void parseJobokoDetailPage_shouldExtractRawJobFields() throws Exception {
-        String detailUrl = "https://vn.joboko.com/viec-lam-ky-su-xay-dung-xvi6563129";
-        String html = readFixture("fixtures/joboko/detail_1_6563129.html");
+    void parseJobokoDetailPage_shouldExtractRawJobFields()
+            throws Exception {
 
-        JobokoJobDetailPageParser parser = new JobokoJobDetailPageParser(objectMapper);
+        String detailUrl =
+                "https://vn.joboko.com/viec-lam-ky-su-xay-dung-xvi6563129";
 
-        ParsedRawJob job = parser.parseDetail(detailUrl, html);
+        String html =
+                readFixture(
+                        "fixtures/joboko/detail_1_6563129.html"
+                );
 
-        assertThat(job.sourceJobId())
-                .isEqualTo("6563129");
+        JobokoJobDetailPageParser parser =
+                new JobokoJobDetailPageParser(
+                        objectMapper
+                );
 
-        assertThat(job.title())
-                .isEqualTo("Kỹ Sư Xây Dựng");
+        ParsedRawJob job =
+                parser.parseDetail(
+                        detailUrl,
+                        html
+                );
 
-        assertThat(job.companyName())
-                .containsIgnoringCase("Xanh Toàn Cầu");
+        assertThat(
+                job.sourceJobId()
+        ).isEqualTo(
+                "6563129"
+        );
 
-        assertThat(job.salaryText())
-                .contains("20 - 30 triệu")
-                .contains("VND")
-                .contains("MONTH");
+        assertThat(
+                job.title()
+        ).isEqualTo(
+                "Kỹ Sư Xây Dựng"
+        );
 
-        assertThat(job.locationText())
-                .contains("Hồ Chí Minh")
-                .contains("Tây Ninh");
+        assertThat(
+                job.companyName()
+        ).containsIgnoringCase(
+                "Xanh Toàn Cầu"
+        );
 
-        assertThat(job.experienceText())
-                .contains("2");
+        assertThat(
+                job.salaryText()
+        )
+                .contains(
+                        "20 - 30 triệu"
+                )
+                .contains(
+                        "VND"
+                )
+                .contains(
+                        "MONTH"
+                );
 
-        assertThat(job.seniorityText())
-                .isEqualTo("Nhân viên");
+        assertThat(
+                job.locationText()
+        )
+                .contains(
+                        "Hồ Chí Minh"
+                )
+                .contains(
+                        "Tây Ninh"
+                );
 
-        assertThat(job.jobTypeText())
-                .contains("FULL_TIME");
+        assertThat(
+                job.experienceText()
+        ).contains(
+                "2"
+        );
 
-        assertThat(job.deadlineText())
-                .startsWith("2026-07-30");
+        assertThat(
+                job.seniorityText()
+        ).isEqualTo(
+                "Nhân viên"
+        );
 
-        assertThat(job.postedText())
-                .isEqualTo("2026-07-07");
+        assertThat(
+                job.jobTypeText()
+        ).contains(
+                "FULL_TIME"
+        );
 
-        assertThat(job.skills())
-                .isNotEmpty()
-                .anyMatch(skill -> skill.equalsIgnoreCase("xây dựng"));
+        assertThat(
+                job.deadlineText()
+        ).startsWith(
+                "2026-07-30"
+        );
 
-        assertThat(job.descriptionText())
+        assertThat(
+                job.postedText()
+        ).isEqualTo(
+                "2026-07-07"
+        );
+
+        /*
+         * `.block-tags` và `industry` của fixture là category nghề.
+         * Skill thật phải được normalizer lấy từ nội dung JD.
+         */
+        assertThat(
+                job.skills()
+        ).isEmpty();
+
+        assertThat(
+                job.descriptionText()
+        )
                 .isNotBlank()
-                .contains("Triển khai");
+                .contains(
+                        "Triển khai"
+                );
 
-        assertThat(job.requirementsText())
+        assertThat(
+                job.requirementsText()
+        )
                 .isNotBlank()
-                .contains("02 năm kinh nghiệm");
+                .contains(
+                        "02 năm kinh nghiệm"
+                );
 
-        assertThat(job.benefitsText())
+        assertThat(
+                job.benefitsText()
+        )
                 .isNotBlank()
-                .contains("20 - 30");
+                .contains(
+                        "20 - 30"
+                );
 
-        assertThat(job.applyUrl())
-                .isEqualTo(detailUrl);
+        assertThat(
+                job.applyUrl()
+        ).isEqualTo(
+                detailUrl
+        );
 
-        assertThat(job.applyType())
-                .isNotNull();
+        assertThat(
+                job.applyType()
+        ).isNotNull();
     }
 
-    private String readFixture(String classpathLocation) throws Exception {
-        URL resource = getClass().getClassLoader().getResource(classpathLocation);
+    private String readFixture(
+            String classpathLocation
+    ) throws Exception {
+
+        URL resource =
+                getClass()
+                        .getClassLoader()
+                        .getResource(
+                                classpathLocation
+                        );
 
         assertThat(resource)
-                .as("Fixture not found: " + classpathLocation)
+                .as(
+                        "Fixture not found: "
+                                + classpathLocation
+                )
                 .isNotNull();
 
-        return Files.readString(Path.of(resource.toURI()), StandardCharsets.UTF_8);
+        return Files.readString(
+                Path.of(
+                        resource.toURI()
+                ),
+                StandardCharsets.UTF_8
+        );
     }
 }

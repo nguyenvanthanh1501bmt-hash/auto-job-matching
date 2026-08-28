@@ -2,7 +2,7 @@
 
 import {useTranslations} from "next-intl";
 
-import {LogoutButton} from "@/components/auth/logout-button";
+import {LogoutButton} from "@/components/ui/logout-button";
 import {LanguageSwitcher} from "@/components/ui/language-switcher";
 import {Link} from "@/i18n/navigation";
 import type {AdminHeaderProps} from "@/types/admin-ui";

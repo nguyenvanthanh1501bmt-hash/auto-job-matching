@@ -18,177 +18,383 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TopdevVieclam24hParserFixtureTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper =
+            new ObjectMapper();
 
     @Test
-    void parseTopdevListPage_shouldExtractJobDetailUrls() throws Exception {
-        String html = readFixture("fixtures/topdev/list_page_1.html");
+    void parseTopdevListPage_shouldExtractJobDetailUrls()
+            throws Exception {
 
-        TopdevJobListPageParser parser = new TopdevJobListPageParser();
+        String html =
+                readFixture(
+                        "fixtures/topdev/list_page_1.html"
+                );
 
-        List<String> urls = parser.parseDetailUrls("https://topdev.vn", html);
+        TopdevJobListPageParser parser =
+                new TopdevJobListPageParser();
+
+        List<String> urls =
+                parser.parseDetailUrls(
+                        "https://topdev.vn",
+                        html
+                );
 
         assertThat(urls)
                 .isNotEmpty()
-                .contains("https://topdev.vn/detail-jobs/game-live-ops-game-ui-ux-artist-supercent-vietnam-2115969");
+                .contains(
+                        "https://topdev.vn/detail-jobs/game-live-ops-game-ui-ux-artist-supercent-vietnam-2115969"
+                );
 
         assertThat(urls)
-                .allMatch(url -> url.startsWith("https://topdev.vn/detail-jobs/"));
+                .allMatch(
+                        url ->
+                                url.startsWith(
+                                        "https://topdev.vn/detail-jobs/"
+                                )
+                );
 
         assertThat(urls)
-                .allMatch(url -> url.matches("^https://topdev\\.vn/detail-jobs/.+-\\d+$"));
+                .allMatch(
+                        url ->
+                                url.matches(
+                                        "^https://topdev\\.vn/detail-jobs/.+-\\d+$"
+                                )
+                );
     }
 
     @Test
-    void parseTopdevDetailPage_shouldExtractRawJobFields() throws Exception {
-        String detailUrl = "https://topdev.vn/detail-jobs/game-live-ops-game-ui-ux-artist-supercent-vietnam-2115969";
-        String html = readFixture("fixtures/topdev/detail_1_2115969.html");
+    void parseTopdevDetailPage_shouldExtractRawJobFields()
+            throws Exception {
 
-        TopdevJobDetailPageParser parser = new TopdevJobDetailPageParser(objectMapper);
+        String detailUrl =
+                "https://topdev.vn/detail-jobs/game-live-ops-game-ui-ux-artist-supercent-vietnam-2115969";
 
-        ParsedRawJob job = parser.parseDetail(detailUrl, html);
+        String html =
+                readFixture(
+                        "fixtures/topdev/detail_1_2115969.html"
+                );
 
-        assertThat(job.sourceJobId())
-                .isEqualTo("2115969");
+        TopdevJobDetailPageParser parser =
+                new TopdevJobDetailPageParser(
+                        objectMapper
+                );
 
-        assertThat(job.title())
-                .isEqualTo("[Game Live-Ops]_GAME UI/UX Artist");
+        ParsedRawJob job =
+                parser.parseDetail(
+                        detailUrl,
+                        html
+                );
 
-        assertThat(job.companyName())
-                .isEqualTo("SUPERCENT VIETNAM");
+        assertThat(
+                job.sourceJobId()
+        ).isEqualTo(
+                "2115969"
+        );
 
-        assertThat(job.salaryText())
-                .contains("Negotiable")
-                .contains("VND")
-                .contains("MONTH");
+        assertThat(
+                job.title()
+        ).isEqualTo(
+                "[Game Live-Ops]_GAME UI/UX Artist"
+        );
 
-        assertThat(job.locationText())
-                .contains("Hồ Chí Minh");
+        assertThat(
+                job.companyName()
+        ).isEqualTo(
+                "SUPERCENT VIETNAM"
+        );
 
-        assertThat(job.experienceText())
-                .contains("60");
+        assertThat(
+                job.salaryText()
+        )
+                .contains(
+                        "Negotiable"
+                )
+                .contains(
+                        "VND"
+                )
+                .contains(
+                        "MONTH"
+                );
 
-        assertThat(job.seniorityText())
-                .isEqualTo("Senior");
+        assertThat(
+                job.locationText()
+        ).contains(
+                "Hồ Chí Minh"
+        );
 
-        assertThat(job.jobTypeText())
-                .contains("OTHER");
+        assertThat(
+                job.experienceText()
+        ).contains(
+                "60"
+        );
 
-        assertThat(job.deadlineText())
-                .isEqualTo("2026-07-29");
+        assertThat(
+                job.seniorityText()
+        ).isEqualTo(
+                "Senior"
+        );
 
-        assertThat(job.postedText())
-                .isEqualTo("2026-06-29");
+        assertThat(
+                job.jobTypeText()
+        ).contains(
+                "OTHER"
+        );
 
-        assertThat(job.skills())
-                .contains("Photoshop", "Illustrator", "UI/UX");
+        assertThat(
+                job.deadlineText()
+        ).isEqualTo(
+                "2026-07-29"
+        );
 
-        assertThat(job.descriptionText())
+        assertThat(
+                job.postedText()
+        ).isEqualTo(
+                "2026-06-29"
+        );
+
+        /*
+         * `industry=Information Technology` không được trộn
+         * vào danh sách skill thật của TopDev.
+         */
+        assertThat(
+                job.skills()
+        )
+                .containsExactly(
+                        "Photoshop",
+                        "Illustrator",
+                        "UI/UX"
+                )
+                .doesNotContain(
+                        "Information Technology"
+                );
+
+        assertThat(
+                job.descriptionText()
+        )
                 .isNotBlank()
-                .contains("Supercent");
+                .contains(
+                        "Supercent"
+                );
 
-        assertThat(job.benefitsText())
+        assertThat(
+                job.benefitsText()
+        )
                 .isNotBlank()
-                .contains("13th Salary");
+                .contains(
+                        "13th Salary"
+                );
 
-        assertThat(job.applyUrl())
-                .isEqualTo(detailUrl);
+        assertThat(
+                job.applyUrl()
+        ).isEqualTo(
+                detailUrl
+        );
 
-        assertThat(job.applyType())
-                .isNotNull();
+        assertThat(
+                job.applyType()
+        ).isNotNull();
     }
 
     @Test
-    void parseVieclam24hListPage_shouldExtractJobDetailUrls() throws Exception {
-        String html = readFixture("fixtures/vieclam24h/list_page_1.html");
+    void parseVieclam24hListPage_shouldExtractJobDetailUrls()
+            throws Exception {
 
-        Vieclam24hJobListPageParser parser = new Vieclam24hJobListPageParser();
+        String html =
+                readFixture(
+                        "fixtures/vieclam24h/list_page_1.html"
+                );
 
-        List<String> urls = parser.parseDetailUrls("https://vieclam24h.vn", html);
+        Vieclam24hJobListPageParser parser =
+                new Vieclam24hJobListPageParser();
+
+        List<String> urls =
+                parser.parseDetailUrls(
+                        "https://vieclam24h.vn",
+                        html
+                );
 
         assertThat(urls)
                 .isNotEmpty()
-                .contains("https://vieclam24h.vn/it-phan-cung-mang/ky-thuat-vien-sua-chua-may-tinh-may-in-thu-nhap-den-20-trieu-thang-c7p73id200876404.html");
+                .contains(
+                        "https://vieclam24h.vn/it-phan-cung-mang/ky-thuat-vien-sua-chua-may-tinh-may-in-thu-nhap-den-20-trieu-thang-c7p73id200876404.html"
+                );
 
         assertThat(urls)
-                .allMatch(url -> url.startsWith("https://vieclam24h.vn/"));
+                .allMatch(
+                        url ->
+                                url.startsWith(
+                                        "https://vieclam24h.vn/"
+                                )
+                );
 
         assertThat(urls)
-                .allMatch(url -> url.matches("^https://vieclam24h\\.vn/.+id\\d+\\.html$"));
+                .allMatch(
+                        url ->
+                                url.matches(
+                                        "^https://vieclam24h\\.vn/.+id\\d+\\.html$"
+                                )
+                );
     }
 
     @Test
-    void parseVieclam24hDetailPage_shouldExtractRawJobFields() throws Exception {
-        String detailUrl = "https://vieclam24h.vn/it-phan-cung-mang/ky-thuat-vien-sua-chua-may-tinh-may-in-thu-nhap-den-20-trieu-thang-c7p73id200876404.html";
-        String html = readFixture("fixtures/vieclam24h/detail_1_200876404.html");
+    void parseVieclam24hDetailPage_shouldExtractRawJobFields()
+            throws Exception {
 
-        Vieclam24hJobDetailPageParser parser = new Vieclam24hJobDetailPageParser(objectMapper);
+        String detailUrl =
+                "https://vieclam24h.vn/it-phan-cung-mang/ky-thuat-vien-sua-chua-may-tinh-may-in-thu-nhap-den-20-trieu-thang-c7p73id200876404.html";
 
-        ParsedRawJob job = parser.parseDetail(detailUrl, html);
+        String html =
+                readFixture(
+                        "fixtures/vieclam24h/detail_1_200876404.html"
+                );
 
-        assertThat(job.sourceJobId())
-                .isEqualTo("200876404");
+        Vieclam24hJobDetailPageParser parser =
+                new Vieclam24hJobDetailPageParser(
+                        objectMapper
+                );
 
-        assertThat(job.title())
-                .isEqualTo("Kỹ Thuật Viên Sửa Chữa Máy Tính - Máy In (Thu Nhập Đến 20 Triệu / Tháng)");
+        ParsedRawJob job =
+                parser.parseDetail(
+                        detailUrl,
+                        html
+                );
 
-        assertThat(job.companyName())
-                .isEqualTo("Công Ty TNHH Công Nghệ Cao Ntp");
+        assertThat(
+                job.sourceJobId()
+        ).isEqualTo(
+                "200876404"
+        );
 
-        assertThat(job.salaryText())
-                .contains("8000000")
-                .contains("20000000")
-                .contains("VND")
-                .contains("MONTH");
+        assertThat(
+                job.title()
+        ).isEqualTo(
+                "Kỹ Thuật Viên Sửa Chữa Máy Tính - Máy In (Thu Nhập Đến 20 Triệu / Tháng)"
+        );
 
-        assertThat(job.locationText())
-                .contains("Ha Noi");
+        assertThat(
+                job.companyName()
+        ).isEqualTo(
+                "Công Ty TNHH Công Nghệ Cao Ntp"
+        );
 
-        assertThat(job.experienceText())
-                .contains("24");
+        assertThat(
+                job.salaryText()
+        )
+                .contains(
+                        "8000000"
+                )
+                .contains(
+                        "20000000"
+                )
+                .contains(
+                        "VND"
+                )
+                .contains(
+                        "MONTH"
+                );
 
-        assertThat(job.seniorityText())
-                .isEqualTo("Nhân viên");
+        assertThat(
+                job.locationText()
+        ).contains(
+                "Ha Noi"
+        );
 
-        assertThat(job.jobTypeText())
-                .contains("FULL_TIME");
+        assertThat(
+                job.experienceText()
+        ).contains(
+                "24"
+        );
 
-        assertThat(job.deadlineText())
-                .startsWith("2026-08-03");
+        assertThat(
+                job.seniorityText()
+        ).isEqualTo(
+                "Nhân viên"
+        );
 
-        assertThat(job.postedText())
-                .isEqualTo("2026-07-07");
+        assertThat(
+                job.jobTypeText()
+        ).contains(
+                "FULL_TIME"
+        );
 
-        assertThat(job.skills())
-                .isNotEmpty()
-                .anyMatch(skill -> skill.equalsIgnoreCase("IT Phần cứng - Mạng"));
+        assertThat(
+                job.deadlineText()
+        ).startsWith(
+                "2026-08-03"
+        );
 
-        assertThat(job.descriptionText())
+        assertThat(
+                job.postedText()
+        ).isEqualTo(
+                "2026-07-07"
+        );
+
+        /*
+         * Fixture chỉ có `industry`.
+         * Industry là nhóm nghề, không được giả làm skill.
+         */
+        assertThat(
+                job.skills()
+        ).isEmpty();
+
+        assertThat(
+                job.descriptionText()
+        )
                 .isNotBlank()
-                .contains("Máy in");
+                .contains(
+                        "Máy in"
+                );
 
-        assertThat(job.requirementsText())
+        assertThat(
+                job.requirementsText()
+        )
                 .isNotBlank()
-                .contains("Có kinh nghiệm");
+                .contains(
+                        "Có kinh nghiệm"
+                );
 
-        assertThat(job.benefitsText())
+        assertThat(
+                job.benefitsText()
+        )
                 .isNotBlank()
-                .contains("BHXH");
+                .contains(
+                        "BHXH"
+                );
 
-        assertThat(job.applyUrl())
-                .isEqualTo(detailUrl);
+        assertThat(
+                job.applyUrl()
+        ).isEqualTo(
+                detailUrl
+        );
 
-        assertThat(job.applyType())
-                .isNotNull();
+        assertThat(
+                job.applyType()
+        ).isNotNull();
     }
 
-    private String readFixture(String classpathLocation) throws Exception {
-        URL resource = getClass().getClassLoader().getResource(classpathLocation);
+    private String readFixture(
+            String classpathLocation
+    ) throws Exception {
+
+        URL resource =
+                getClass()
+                        .getClassLoader()
+                        .getResource(
+                                classpathLocation
+                        );
 
         assertThat(resource)
-                .as("Fixture not found: " + classpathLocation)
+                .as(
+                        "Fixture not found: "
+                                + classpathLocation
+                )
                 .isNotNull();
 
-        return Files.readString(Path.of(resource.toURI()), StandardCharsets.UTF_8);
+        return Files.readString(
+                Path.of(
+                        resource.toURI()
+                ),
+                StandardCharsets.UTF_8
+        );
     }
 }

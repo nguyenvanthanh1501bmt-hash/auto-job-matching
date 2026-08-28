@@ -6,7 +6,6 @@ import {useTranslations} from "next-intl";
 import {useAdminRawJobs} from "@/hooks/use-admin-tools";
 import {DEFAULT_RAW_JOB_LIMIT} from "@/services/admin-job.service";
 import {LIVE_CRAWLER_SOURCES} from "@/types/admin-crawler";
-import {PARSER_SOURCE_CODES} from "@/types/admin-parser";
 import type {
   AdminDashboardProps,
   AdminMetricsPanelProps,
@@ -24,7 +23,6 @@ import {CrawlerSection} from "./crawler-section";
 import {EmbeddingsSection} from "./embeddings-section";
 import {JobsSection} from "./jobs-section";
 import {formatDate} from "./admin-ui";
-import {ParserSection} from "./parser-section";
 
 function ArrowIcon() {
   return (
@@ -100,47 +98,6 @@ function OperationIcon({
     );
   }
 
-  if (type === "embeddings") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        className="size-[18px]"
-        aria-hidden="true"
-      >
-        <circle
-          cx="6"
-          cy="12"
-          r="2"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
-
-        <circle
-          cx="18"
-          cy="7"
-          r="2"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
-
-        <circle
-          cx="18"
-          cy="17"
-          r="2"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
-
-        <path
-          d="m8 11 8-3M8 13l8 3"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
-      </svg>
-    );
-  }
-
   return (
     <svg
       viewBox="0 0 24 24"
@@ -148,12 +105,34 @@ function OperationIcon({
       className="size-[18px]"
       aria-hidden="true"
     >
-      <path
-        d="M8 6 4 12l4 6M16 6l4 6-4 6M14 4l-4 16"
+      <circle
+        cx="6"
+        cy="12"
+        r="2"
         stroke="currentColor"
         strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      />
+
+      <circle
+        cx="18"
+        cy="7"
+        r="2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+
+      <circle
+        cx="18"
+        cy="17"
+        r="2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+
+      <path
+        d="m8 11 8-3M8 13l8 3"
+        stroke="currentColor"
+        strokeWidth="1.7"
       />
     </svg>
   );
@@ -209,6 +188,10 @@ function MetricsPanel({
 }: AdminMetricsPanelProps) {
   const t = useTranslations("admin.overview");
 
+  /*
+   * Parser metric đã được bỏ cùng Parser UI.
+   * Dashboard chỉ hiển thị những nhóm dữ liệu còn được thao tác từ frontend.
+   */
   const metrics = [
     {
       index: "01",
@@ -221,18 +204,6 @@ function MetricsPanel({
       label: t("cards.liveSources.label"),
       value: String(LIVE_CRAWLER_SOURCES.length),
       detail: t("cards.liveSources.detail")
-    },
-    {
-      index: "03",
-      label: t("cards.parserSources.label"),
-      value: String(PARSER_SOURCE_CODES.length),
-      detail: t("cards.parserSources.detail")
-    },
-    {
-      index: "04",
-      label: t("cards.toolGroups.label"),
-      value: "4",
-      detail: t("cards.toolGroups.detail")
     }
   ];
 
@@ -250,21 +221,17 @@ function MetricsPanel({
         <span className="size-1.5 rounded-full bg-[#d9ff75] ring-1 ring-black/[0.05]" />
       </div>
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid sm:grid-cols-2">
         {metrics.map((metric, index) => (
           <div
             key={metric.index}
             className={`relative px-6 py-6 ${
-              index !== 3
-                ? "xl:border-r xl:border-black/[0.05]"
-                : ""
-            } ${
-              index < 2
-                ? "border-b border-black/[0.05] xl:border-b-0"
-                : ""
-            } ${
-              index === 0 || index === 2
+              index !== metrics.length - 1
                 ? "sm:border-r sm:border-black/[0.05]"
+                : ""
+            } ${
+              index !== metrics.length - 1
+                ? "border-b border-black/[0.05] sm:border-b-0"
                 : ""
             }`}
           >
@@ -344,6 +311,9 @@ function OperationsPanel({
 }: AdminOperationsPanelProps) {
   const t = useTranslations("admin.overview");
 
+  /*
+   * Chỉ giữ lại 3 operation còn xuất hiện trên frontend.
+   */
   const operations = [
     {
       type: "crawler" as const,
@@ -362,12 +332,6 @@ function OperationsPanel({
       index: "03",
       title: t("quickActions.embeddings.title"),
       description: t("quickActions.embeddings.description")
-    },
-    {
-      type: "parser" as const,
-      index: "04",
-      title: t("quickActions.parser.title"),
-      description: t("quickActions.parser.description")
     }
   ];
 
@@ -594,7 +558,7 @@ export function AdminDashboard({
 }: AdminDashboardProps) {
   /*
    * Các tool hiện cùng một workspace nên section dùng local state.
-   * Khi cần deep-link/history cho từng tool thì mới nâng thành route riêng.
+   * Parser không còn nằm trong danh sách section của frontend.
    */
   const [section, setSection] =
     useState<AdminSection>("overview");
@@ -634,9 +598,12 @@ export function AdminDashboard({
               ) : null}
 
               {section === "crawler" ? <CrawlerSection /> : null}
+
               {section === "jobs" ? <JobsSection /> : null}
-              {section === "embeddings" ? <EmbeddingsSection /> : null}
-              {section === "parser" ? <ParserSection /> : null}
+
+              {section === "embeddings" ? (
+                <EmbeddingsSection />
+              ) : null}
             </div>
           </div>
         </div>

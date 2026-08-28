@@ -88,7 +88,8 @@ export const adminEmbeddingQueryKeys = {
 };
 
 export function useRunMockCrawler() {
-  const queryClient = useQueryClient();
+  const queryClient =
+    useQueryClient();
 
   return useMutation<
     CrawlRunResponse,
@@ -100,7 +101,8 @@ export function useRunMockCrawler() {
 
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: adminRawJobQueryKeys.all
+        queryKey:
+          adminRawJobQueryKeys.all
       });
     }
   });
@@ -112,7 +114,8 @@ export type RunLiveCrawlerVariables = {
 };
 
 export function useRunLiveCrawler() {
-  const queryClient = useQueryClient();
+  const queryClient =
+    useQueryClient();
 
   return useMutation<
     CrawlRunResponse,
@@ -130,7 +133,8 @@ export function useRunLiveCrawler() {
 
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: adminRawJobQueryKeys.all
+        queryKey:
+          adminRawJobQueryKeys.all
       });
     }
   });
@@ -140,9 +144,13 @@ export function useAdminRawJobs(
   limit = 20,
   enabled = true
 ) {
-  return useQuery<RawJobSummary[]>({
+  return useQuery<
+    RawJobSummary[]
+  >({
     queryKey:
-      adminRawJobQueryKeys.list(limit),
+      adminRawJobQueryKeys.list(
+        limit
+      ),
 
     queryFn: () =>
       adminJobService.listRawJobs({
@@ -160,7 +168,8 @@ export type NormalizeRawJobVariables = {
 };
 
 export function useNormalizeRawJob() {
-  const queryClient = useQueryClient();
+  const queryClient =
+    useQueryClient();
 
   return useMutation<
     NormalizedJobDetail,
@@ -177,15 +186,21 @@ export function useNormalizeRawJob() {
       ),
 
     onSuccess: () => {
+      /*
+       * normalizedJobId/version/status đều nằm trong Raw Jobs API.
+       * Invalidate toàn bộ list để row lấy trạng thái pipeline mới nhất.
+       */
       void queryClient.invalidateQueries({
-        queryKey: adminRawJobQueryKeys.all
+        queryKey:
+          adminRawJobQueryKeys.all
       });
     }
   });
 }
 
 export function useRenormalizeBatch() {
-  const queryClient = useQueryClient();
+  const queryClient =
+    useQueryClient();
 
   return useMutation<
     RenormalizationBatchResponse,
@@ -199,7 +214,8 @@ export function useRenormalizeBatch() {
 
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: adminRawJobQueryKeys.all
+        queryKey:
+          adminRawJobQueryKeys.all
       });
     }
   });
@@ -212,7 +228,8 @@ export function useAdminCandidateEmbedding(
     | undefined
 ) {
   const id =
-    candidateProfileId?.trim() ?? "";
+    candidateProfileId?.trim() ??
+    "";
 
   return useQuery({
     queryKey:
@@ -234,10 +251,13 @@ export function useAdminCandidateEmbedding(
       }
 
       return adminEmbeddingService
-        .getCandidateEmbedding(id);
+        .getCandidateEmbedding(
+          id
+        );
     },
 
-    enabled: id.length > 0,
+    enabled:
+      id.length > 0,
 
     retry: false
   });
@@ -274,12 +294,13 @@ export function useRebuildCandidateEmbedding() {
       variables
     ) => {
       const id =
-        variables.candidateProfileId.trim();
+        variables
+          .candidateProfileId
+          .trim();
 
       queryClient.setQueryData(
-        adminEmbeddingQueryKeys.candidate(
-          id
-        ),
+        adminEmbeddingQueryKeys
+          .candidate(id),
         embedding
       );
     }
@@ -293,12 +314,15 @@ export function useAdminJobEmbedding(
     | undefined
 ) {
   const id =
-    normalizedJobId?.trim() ?? "";
+    normalizedJobId?.trim() ??
+    "";
 
   return useQuery({
     queryKey:
       id
-        ? adminEmbeddingQueryKeys.job(id)
+        ? adminEmbeddingQueryKeys.job(
+            id
+          )
         : [
             ...adminEmbeddingQueryKeys.all,
             "job",
@@ -313,10 +337,13 @@ export function useAdminJobEmbedding(
       }
 
       return adminEmbeddingService
-        .getJobEmbedding(id);
+        .getJobEmbedding(
+          id
+        );
     },
 
-    enabled: id.length > 0,
+    enabled:
+      id.length > 0,
 
     retry: false
   });
@@ -353,12 +380,25 @@ export function useRebuildJobEmbedding() {
       variables
     ) => {
       const id =
-        variables.normalizedJobId.trim();
+        variables
+          .normalizedJobId
+          .trim();
 
       queryClient.setQueryData(
-        adminEmbeddingQueryKeys.job(id),
+        adminEmbeddingQueryKeys.job(
+          id
+        ),
         embedding
       );
+
+      /*
+       * Raw Jobs đang hiển thị embedding status/id được join từ backend.
+       * Sau rebuild phải invalidate list để row phản ánh trạng thái mới.
+       */
+      void queryClient.invalidateQueries({
+        queryKey:
+          adminRawJobQueryKeys.all
+      });
     }
   });
 }
@@ -378,10 +418,11 @@ export function useParseListFile() {
       sourceCode,
       request
     }) =>
-      adminParserService.parseListFile(
-        sourceCode,
-        request
-      )
+      adminParserService
+        .parseListFile(
+          sourceCode,
+          request
+        )
   });
 }
 
@@ -400,9 +441,10 @@ export function useParseDetailFile() {
       sourceCode,
       request
     }) =>
-      adminParserService.parseDetailFile(
-        sourceCode,
-        request
-      )
+      adminParserService
+        .parseDetailFile(
+          sourceCode,
+          request
+        )
   });
 }

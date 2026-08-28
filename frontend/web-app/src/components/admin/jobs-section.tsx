@@ -4,19 +4,27 @@ import {useState} from "react";
 import type {FormEvent} from "react";
 import {useLocale, useTranslations} from "next-intl";
 
-import {useAdminRawJobs, useNormalizeRawJob, useRenormalizeBatch} from "@/hooks/use-admin-tools";
+import {
+  useAdminRawJobs,
+  useNormalizeRawJob,
+  useRebuildJobEmbedding,
+  useRenormalizeBatch
+} from "@/hooks/use-admin-tools";
+
 import {
   DEFAULT_RAW_JOB_LIMIT,
   DEFAULT_RENORMALIZATION_SIZE,
   MAX_RAW_JOB_LIMIT,
   MAX_RENORMALIZATION_SIZE
 } from "@/services/admin-job.service";
-import {LIVE_CRAWLER_SOURCES} from "@/types/admin-crawler";
 
+import {LIVE_CRAWLER_SOURCES} from "@/types/admin-crawler";
+import type {RawJobSummary} from "@/types/admin-job";
+
+import {AdminJobRow} from "./admin-job-row";
 import {
   ErrorMessage,
   Field,
-  formatDate,
   numberFromInput,
   PageHeading,
   PrimaryButton,
@@ -79,25 +87,6 @@ function MaintenanceIcon() {
   );
 }
 
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      className="size-4"
-      aria-hidden="true"
-    >
-      <path
-        d="m5 10 3.2 3.2L15.5 6"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function InfoIcon() {
   return (
     <svg
@@ -147,38 +136,54 @@ export function JobsSection() {
   const t = useTranslations("admin.jobs");
   const locale = useLocale();
 
-  const [rawJobLimit, setRawJobLimit] = useState(String(DEFAULT_RAW_JOB_LIMIT));
-  const [singleForce, setSingleForce] = useState(false);
-  const [normalizingId, setNormalizingId] = useState<string | null>(null);
+  const [rawJobLimit, setRawJobLimit] = useState(
+    String(DEFAULT_RAW_JOB_LIMIT)
+  );
 
+  const [normalizingId, setNormalizingId] = useState<string | null>(null);
+  const [embeddingId, setEmbeddingId] = useState<string | null>(null);
   const [batchSource, setBatchSource] = useState("");
   const [batchPage, setBatchPage] = useState("0");
-  const [batchSize, setBatchSize] = useState(String(DEFAULT_RENORMALIZATION_SIZE));
+  const [batchSize, setBatchSize] = useState(
+    String(DEFAULT_RENORMALIZATION_SIZE)
+  );
   const [batchForce, setBatchForce] = useState(false);
 
   const normalizedRawJobLimit = Math.min(
-    Math.max(numberFromInput(rawJobLimit, DEFAULT_RAW_JOB_LIMIT), 1),
+    Math.max(
+      numberFromInput(rawJobLimit, DEFAULT_RAW_JOB_LIMIT),
+      1
+    ),
     MAX_RAW_JOB_LIMIT
   );
 
-  const rawJobsQuery = useAdminRawJobs(normalizedRawJobLimit, true);
+  const rawJobsQuery = useAdminRawJobs(
+    normalizedRawJobLimit,
+    true
+  );
+
   const normalizeRawJob = useNormalizeRawJob();
+  const rebuildJobEmbedding = useRebuildJobEmbedding();
   const renormalizeBatch = useRenormalizeBatch();
 
   const rawJobs = rawJobsQuery.data ?? [];
 
-  function normalizeJob(rawJobId: string) {
-    setNormalizingId(rawJobId);
+  const pipelinePending =
+    normalizeRawJob.isPending ||
+    rebuildJobEmbedding.isPending;
+
+  function normalizeJob(job: RawJobSummary) {
+    setNormalizingId(job.id);
 
     /*
-     * Happy path của backend đã tự normalize sau khi crawler lưu RawJob.
-     * Action này chỉ dành cho trường hợp admin cần kiểm tra hoặc xử lý lại.
+     * Nếu normalized document đã tồn tại thì force=true. Action thủ công này
+     * có mục đích recompute dữ liệu chứ không chỉ bảo đảm record đã được tạo.
      */
     normalizeRawJob.mutate(
       {
-        rawJobId,
+        rawJobId: job.id,
         options: {
-          force: singleForce
+          force: job.normalizationStatus !== "NOT_CREATED"
         }
       },
       {
@@ -189,13 +194,48 @@ export function JobsSection() {
     );
   }
 
-  function runBatchNormalization(event: FormEvent<HTMLFormElement>) {
+  function embedJob(job: RawJobSummary) {
+    const normalizedJobId = job.normalizedJobId?.trim();
+
+    /*
+     * Embedding contract nhận normalizedJobId. Không fallback sang rawJobId
+     * vì hai ID thuộc hai stage khác nhau dù hình thức của chúng khá giống nhau.
+     */
+    if (
+      !normalizedJobId ||
+      job.normalizationStatus !== "READY" ||
+      job.embeddingStatus === "PROCESSING"
+    ) {
+      return;
+    }
+
+    setEmbeddingId(normalizedJobId);
+
+    rebuildJobEmbedding.mutate(
+      {
+        normalizedJobId,
+        force: job.embeddingStatus !== "NOT_CREATED"
+      },
+      {
+        onSettled: () => {
+          setEmbeddingId(null);
+        }
+      }
+    );
+  }
+
+  function runBatchNormalization(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     renormalizeBatch.mutate({
       sourceCode: batchSource || undefined,
       page: numberFromInput(batchPage, 0),
-      size: numberFromInput(batchSize, DEFAULT_RENORMALIZATION_SIZE),
+      size: numberFromInput(
+        batchSize,
+        DEFAULT_RENORMALIZATION_SIZE
+      ),
       force: batchForce
     });
   }
@@ -209,43 +249,43 @@ export function JobsSection() {
       />
 
       <section className="overflow-hidden rounded-[20px] border border-black/[0.055] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.025)]">
-        <div className="border-b border-black/[0.045] px-5 py-5 sm:px-6">
+        <div className="border-b border-black/[0.055] px-5 py-5 sm:px-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="flex items-start gap-3.5">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-[11px] border border-black/[0.055] bg-[#fafaf8] text-[#555]">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-[11px] border border-black/[0.07] bg-[#fafaf8] text-[#444]">
                 <JobsIcon />
               </div>
 
               <div>
                 <div className="flex items-center gap-2.5">
-                  <span className="font-mono text-[9px] font-medium uppercase tracking-[0.15em] text-[#aaa]">
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#777771]">
                     {t("rawJobs.workspace")}
                   </span>
 
-                  <span className="h-px w-8 bg-black/[0.08]" />
+                  <span className="h-px w-8 bg-black/[0.1]" />
                 </div>
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-                  <h2 className="text-[19px] font-semibold tracking-[-0.035em] text-[#222220]">
+                  <h2 className="text-[20px] font-semibold tracking-[-0.035em] text-[#20201e]">
                     {t("rawJobs.title")}
                   </h2>
 
                   {!rawJobsQuery.isLoading ? (
-                    <span className="rounded-full border border-black/[0.055] bg-[#fafaf8] px-2.5 py-1 font-mono text-[9px] font-medium text-[#888]">
+                    <span className="rounded-full border border-black/[0.07] bg-[#fafaf8] px-2.5 py-1 font-mono text-[10px] font-semibold text-[#666660]">
                       {rawJobs.length}
                     </span>
                   ) : null}
                 </div>
 
-                <p className="mt-1.5 max-w-[650px] text-[12px] leading-5 text-[#92928c]">
+                <p className="mt-1.5 max-w-[680px] text-[13px] font-medium leading-6 text-[#666660]">
                   {t("rawJobs.description")}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex h-10 items-center rounded-[11px] border border-black/[0.065] bg-[#fafaf8]">
-                <span className="border-r border-black/[0.05] px-3 font-mono text-[8px] font-medium uppercase tracking-[0.1em] text-[#aaa]">
+              <div className="flex h-10 items-center rounded-[11px] border border-black/[0.08] bg-[#fafaf8]">
+                <span className="border-r border-black/[0.06] px-3 font-mono text-[9px] font-semibold uppercase tracking-[0.09em] text-[#777771]">
                   {t("rawJobs.limitLabel")}
                 </span>
 
@@ -254,8 +294,10 @@ export function JobsSection() {
                   min="1"
                   max={MAX_RAW_JOB_LIMIT}
                   value={rawJobLimit}
-                  onChange={(event) => setRawJobLimit(event.target.value)}
-                  className="h-full w-[68px] bg-transparent px-2 text-center text-[12px] font-semibold text-[#444] outline-none"
+                  onChange={(event) =>
+                    setRawJobLimit(event.target.value)
+                  }
+                  className="h-full w-[68px] bg-transparent px-2 text-center text-[13px] font-semibold text-[#333330] outline-none"
                 />
               </div>
 
@@ -270,20 +312,12 @@ export function JobsSection() {
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3 border-t border-black/[0.045] pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-[#d9ff75] ring-1 ring-black/[0.05]" />
+          <div className="mt-5 flex items-start gap-3 border-t border-black/[0.055] pt-4">
+            <span className="mt-[8px] size-1.5 shrink-0 rounded-full bg-[#d9ff75] ring-1 ring-black/[0.07]" />
 
-              <p className="max-w-[680px] text-[11px] leading-[19px] text-[#8d8d87]">
-                {t("rawJobs.pipelineHint")}
-              </p>
-            </div>
-
-            <Toggle
-              checked={singleForce}
-              onChange={setSingleForce}
-              label={t("rawJobs.force")}
-            />
+            <p className="max-w-[800px] text-[12px] font-medium leading-5 text-[#666660]">
+              {t("rawJobs.pipelineHint")}
+            </p>
           </div>
         </div>
 
@@ -299,36 +333,9 @@ export function JobsSection() {
           </div>
         ) : null}
 
-        {normalizeRawJob.data ? (
+        {rebuildJobEmbedding.isError ? (
           <div className="px-5 pt-5 sm:px-6">
-            <details className="group overflow-hidden rounded-[14px] border border-emerald-200/70 bg-emerald-50/40">
-              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-white text-emerald-700">
-                  <CheckIcon />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold text-emerald-800">
-                    {t("rawJobs.latestNormalized")}
-                  </p>
-
-                  <p className="mt-0.5 text-[10px] text-emerald-700/60">
-                    {t("rawJobs.reprocessCompleted")}
-                  </p>
-                </div>
-
-                <span className="text-emerald-700/60">
-                  <ChevronIcon />
-                </span>
-              </summary>
-
-              <div className="border-t border-emerald-200/60 p-3">
-                <ResultBox
-                  title={t("rawJobs.latestNormalized")}
-                  value={normalizeRawJob.data}
-                />
-              </div>
-            </details>
+            <ErrorMessage error={rebuildJobEmbedding.error} />
           </div>
         ) : null}
 
@@ -337,7 +344,7 @@ export function JobsSection() {
             <div className="flex items-center gap-3">
               <span className="size-4 animate-spin rounded-full border-2 border-black/10 border-t-black/50" />
 
-              <span className="text-[12px] font-medium text-[#888]">
+              <span className="text-[13px] font-medium text-[#666660]">
                 {t("rawJobs.loading")}
               </span>
             </div>
@@ -347,11 +354,11 @@ export function JobsSection() {
         {!rawJobsQuery.isLoading && rawJobs.length === 0 ? (
           <div className="flex min-h-[360px] items-center justify-center px-6 text-center">
             <div>
-              <div className="mx-auto flex size-10 items-center justify-center rounded-full border border-black/[0.05] bg-[#fafaf8]">
+              <div className="mx-auto flex size-10 items-center justify-center rounded-full border border-black/[0.06] bg-[#fafaf8]">
                 <span className="size-1.5 rounded-full bg-[#d9ff75]" />
               </div>
 
-              <p className="mt-4 text-[12px] leading-5 text-[#999]">
+              <p className="mt-4 text-[13px] font-medium leading-6 text-[#777771]">
                 {t("rawJobs.empty")}
               </p>
             </div>
@@ -359,208 +366,88 @@ export function JobsSection() {
         ) : null}
 
         {!rawJobsQuery.isLoading && rawJobs.length > 0 ? (
-          <div className="mt-5">
-            <div className="hidden grid-cols-[42px_minmax(300px,1fr)_110px_180px_165px_105px] items-center gap-4 border-y border-black/[0.045] bg-[#fafaf8]/80 px-6 py-3 font-mono text-[8px] font-medium uppercase tracking-[0.12em] text-[#aaa] xl:grid">
+          <div>
+            {/*
+             * Collapsed table chỉ phục vụ scan nhanh. Metadata kỹ thuật nằm
+             * trong expandable row để tăng font mà không làm bảng bị tràn ngang.
+             */}
+            <div className="hidden grid-cols-[30px_minmax(0,1.55fr)_94px_minmax(0,0.9fr)_250px_125px_34px] items-center gap-4 border-b border-black/[0.055] bg-[#fafaf8]/85 px-6 py-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-[#777771] xl:grid">
               <span>#</span>
               <span>{t("rawJobs.columns.job")}</span>
               <span>{t("rawJobs.columns.source")}</span>
               <span>{t("rawJobs.columns.location")}</span>
+              <span>{t("rawJobs.columns.pipeline")}</span>
               <span>{t("rawJobs.columns.collected")}</span>
-              <span className="text-right">{t("rawJobs.columns.action")}</span>
+              <span />
             </div>
 
-            <div>
-              {rawJobs.map((job, index) => {
-                const isNormalizing = normalizingId === job.id;
-
-                return (
-                  <article
-                    key={job.id}
-                    className={`group px-5 py-5 transition-colors hover:bg-[#fafaf8]/70 sm:px-6 ${
-                      index !== rawJobs.length - 1
-                        ? "border-b border-black/[0.045]"
-                        : ""
-                    }`}
-                  >
-                    <div className="xl:grid xl:grid-cols-[42px_minmax(300px,1fr)_110px_180px_165px_105px] xl:items-center xl:gap-4">
-                      <span className="hidden font-mono text-[9px] text-[#b5b5af] xl:block">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-
-                      <div className="min-w-0">
-                        <div className="mb-2 flex items-center gap-2 xl:hidden">
-                          <span className="font-mono text-[9px] text-[#aaa]">
-                            {String(index + 1).padStart(2, "0")}
-                          </span>
-
-                          <span className="size-1 rounded-full bg-[#d9ff75]" />
-
-                          <span className="rounded-full border border-black/[0.055] bg-[#fafaf8] px-2 py-0.5 font-mono text-[8px] font-semibold text-[#777]">
-                            {job.sourceCode || "—"}
-                          </span>
-                        </div>
-
-                        <h3 className="truncate text-[14px] font-semibold tracking-[-0.02em] text-[#292927]">
-                          {job.title || t("rawJobs.untitled")}
-                        </h3>
-
-                        <p className="mt-1 truncate text-[11px] text-[#8e8e88]">
-                          {job.companyName || t("rawJobs.unknownCompany")}
-                        </p>
-
-                        <p className="mt-1.5 truncate font-mono text-[8px] tracking-[0.02em] text-[#bbb]">
-                          {job.id}
-                        </p>
-                      </div>
-
-                      <div className="hidden xl:block">
-                        <span className="inline-flex rounded-full border border-black/[0.055] bg-[#fafaf8] px-2.5 py-1 font-mono text-[9px] font-semibold tracking-[0.03em] text-[#72726c]">
-                          {job.sourceCode || "—"}
-                        </span>
-                      </div>
-
-                      <p className="hidden truncate text-[11px] leading-5 text-[#85857f] xl:block">
-                        {job.locationText || "—"}
-                      </p>
-
-                      <p className="hidden text-[10px] leading-[17px] text-[#999] xl:block">
-                        {formatDate(job.collectedAt, locale)}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-black/[0.04] pt-4 xl:mt-0 xl:block xl:border-0 xl:pt-0 xl:text-right">
-                        <div className="min-w-0 text-[10px] leading-[18px] text-[#999] xl:hidden">
-                          <p className="truncate">
-                            {job.locationText || "—"}
-                          </p>
-
-                          <p>
-                            {formatDate(job.collectedAt, locale)}
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => normalizeJob(job.id)}
-                          disabled={normalizeRawJob.isPending}
-                          className="inline-flex h-9 shrink-0 items-center justify-center rounded-[10px] border border-black/[0.07] bg-white px-3.5 text-[10px] font-semibold text-[#62625d] transition hover:border-black/[0.13] hover:bg-[#f7f7f4] hover:text-[#222] disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {isNormalizing
-                            ? t("rawJobs.reprocessing")
-                            : t("rawJobs.normalize")}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+            <div className="divide-y divide-black/[0.055]">
+              {rawJobs.map((job, index) => (
+                <AdminJobRow
+                  key={job.id}
+                  job={job}
+                  index={index}
+                  locale={locale}
+                  isNormalizing={normalizingId === job.id}
+                  isEmbedding={
+                    embeddingId !== null &&
+                    embeddingId === job.normalizedJobId
+                  }
+                  pending={pipelinePending}
+                  onNormalize={normalizeJob}
+                  onEmbed={embedJob}
+                />
+              ))}
             </div>
           </div>
         ) : null}
       </section>
 
       <details className="group overflow-hidden rounded-[20px] border border-black/[0.055] bg-white shadow-[0_10px_32px_rgba(0,0,0,0.02)]">
-        <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-5 sm:px-6">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-[11px] border border-black/[0.055] bg-[#fafaf8] text-[#555]">
+        <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-5 sm:px-6 [&::-webkit-details-marker]:hidden">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-[11px] border border-black/[0.07] bg-[#fafaf8] text-[#444]">
             <MaintenanceIcon />
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2.5">
-              <span className="font-mono text-[9px] font-medium uppercase tracking-[0.15em] text-[#aaa]">
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#777771]">
                 {t("batch.label")}
               </span>
 
-              <span className="h-px w-8 bg-black/[0.08]" />
+              <span className="h-px w-8 bg-black/[0.1]" />
             </div>
 
-            <h2 className="mt-2 text-[17px] font-semibold tracking-[-0.03em] text-[#292927]">
+            <h2 className="mt-2 text-[18px] font-semibold tracking-[-0.03em] text-[#292927]">
               {t("batch.title")}
             </h2>
 
-            <p className="mt-1 max-w-[760px] text-[11px] leading-[18px] text-[#92928c]">
+            <p className="mt-1 max-w-[760px] text-[12px] font-medium leading-5 text-[#666660]">
               {t("batch.description")}
             </p>
           </div>
 
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-black/[0.055] bg-[#fafaf8] text-[#888] transition group-hover:border-black/[0.1] group-hover:bg-white group-hover:text-[#333]">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-black/[0.07] bg-[#fafaf8] text-[#666]">
             <ChevronIcon />
           </div>
         </summary>
 
-        <div className="border-t border-black/[0.045] px-5 pt-5 sm:px-6">
-          <div className="rounded-[16px] border border-black/[0.05] bg-[#fafaf8] p-4 sm:p-5">
+        <div className="border-t border-black/[0.055] px-5 pt-5 sm:px-6">
+          <div className="rounded-[16px] border border-black/[0.06] bg-[#fafaf8] p-4 sm:p-5">
             <div className="flex items-start gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.055] bg-white text-[#777]">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.07] bg-white text-[#555]">
                 <InfoIcon />
               </div>
 
               <div>
-                <p className="text-[12px] font-semibold text-[#4f4f4b]">
+                <p className="text-[13px] font-semibold text-[#40403c]">
                   {t("batch.guideTitle")}
                 </p>
 
-                <p className="mt-1 max-w-[820px] text-[11px] leading-[19px] text-[#8f8f89]">
+                <p className="mt-1 max-w-[820px] text-[12px] font-medium leading-5 text-[#666660]">
                   {t("batch.guideDescription")}
                 </p>
               </div>
-            </div>
-
-            <div className="mt-5 grid gap-px overflow-hidden rounded-[12px] border border-black/[0.045] bg-black/[0.045] md:grid-cols-2 xl:grid-cols-4">
-              {[
-                {
-                  index: "01",
-                  title: t("batch.guide.sourceTitle"),
-                  description: t("batch.guide.sourceDescription")
-                },
-                {
-                  index: "02",
-                  title: t("batch.guide.pageTitle"),
-                  description: t("batch.guide.pageDescription")
-                },
-                {
-                  index: "03",
-                  title: t("batch.guide.sizeTitle"),
-                  description: t("batch.guide.sizeDescription")
-                },
-                {
-                  index: "04",
-                  title: t("batch.guide.forceTitle"),
-                  description: t("batch.guide.forceDescription")
-                }
-              ].map((item) => (
-                <div
-                  key={item.index}
-                  className="bg-[#fafaf8] px-4 py-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[8px] font-medium text-[#b4b4ae]">
-                      {item.index}
-                    </span>
-
-                    <p className="text-[11px] font-semibold text-[#5f5f59]">
-                      {item.title}
-                    </p>
-                  </div>
-
-                  <p className="mt-2 text-[10px] leading-[17px] text-[#999]">
-                    {item.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 flex flex-col gap-2 rounded-[11px] border border-black/[0.045] bg-white px-4 py-3.5 sm:flex-row sm:items-center">
-              <span className="shrink-0 font-mono text-[8px] font-medium uppercase tracking-[0.12em] text-[#aaa]">
-                {t("batch.example")}
-              </span>
-
-              <span className="hidden text-black/15 sm:block">
-                /
-              </span>
-
-              <p className="text-[10px] leading-[17px] text-[#85857f]">
-                {t("batch.exampleDescription")}
-              </p>
             </div>
           </div>
         </div>
@@ -576,7 +463,9 @@ export function JobsSection() {
             >
               <select
                 value={batchSource}
-                onChange={(event) => setBatchSource(event.target.value)}
+                onChange={(event) =>
+                  setBatchSource(event.target.value)
+                }
                 className={selectClassName}
               >
                 <option value="">
@@ -603,8 +492,10 @@ export function JobsSection() {
                 type="number"
                 min="0"
                 value={batchPage}
-                onChange={(event) => setBatchPage(event.target.value)}
-                className="h-11 w-full rounded-xl border border-black/[0.09] bg-white px-3.5 text-[13px] text-[#222] outline-none transition focus:border-black/25 focus:ring-4 focus:ring-black/[0.035]"
+                onChange={(event) =>
+                  setBatchPage(event.target.value)
+                }
+                className="h-11 w-full rounded-xl border border-black/[0.09] bg-white px-3.5 text-[13px] text-[#222] outline-none"
               />
             </Field>
 
@@ -619,13 +510,15 @@ export function JobsSection() {
                 min="1"
                 max={MAX_RENORMALIZATION_SIZE}
                 value={batchSize}
-                onChange={(event) => setBatchSize(event.target.value)}
-                className="h-11 w-full rounded-xl border border-black/[0.09] bg-white px-3.5 text-[13px] text-[#222] outline-none transition focus:border-black/25 focus:ring-4 focus:ring-black/[0.035]"
+                onChange={(event) =>
+                  setBatchSize(event.target.value)
+                }
+                className="h-11 w-full rounded-xl border border-black/[0.09] bg-white px-3.5 text-[13px] text-[#222] outline-none"
               />
             </Field>
           </div>
 
-          <div className="mt-5 flex flex-col gap-4 border-t border-black/[0.045] pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-5 flex flex-col gap-4 border-t border-black/[0.055] pt-5 sm:flex-row sm:items-center sm:justify-between">
             <Toggle
               checked={batchForce}
               onChange={setBatchForce}
@@ -649,28 +542,12 @@ export function JobsSection() {
           ) : null}
 
           {renormalizeBatch.data ? (
-            <details className="group/result mt-5 overflow-hidden rounded-[14px] border border-emerald-200/70 bg-emerald-50/40">
-              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-white text-emerald-700">
-                  <CheckIcon />
-                </div>
-
-                <span className="min-w-0 flex-1 text-[12px] font-semibold text-emerald-800">
-                  {t("batch.result")}
-                </span>
-
-                <span className="text-emerald-700/60 transition-transform group-open/result:rotate-180">
-                  <ChevronIcon />
-                </span>
-              </summary>
-
-              <div className="border-t border-emerald-200/60 p-3">
-                <ResultBox
-                  title={t("batch.result")}
-                  value={renormalizeBatch.data}
-                />
-              </div>
-            </details>
+            <div className="mt-5">
+              <ResultBox
+                title={t("batch.result")}
+                value={renormalizeBatch.data}
+              />
+            </div>
           ) : null}
         </form>
       </details>

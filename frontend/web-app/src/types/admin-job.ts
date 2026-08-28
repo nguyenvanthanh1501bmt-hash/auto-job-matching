@@ -2,6 +2,13 @@ import type {
   ApplyType
 } from "@/types/job";
 
+export type PipelineStageStatus =
+  | "NOT_CREATED"
+  | "OUTDATED"
+  | "PROCESSING"
+  | "READY"
+  | "FAILED";
+
 export type RawJobSummary = {
   id: string;
 
@@ -36,6 +43,24 @@ export type RawJobSummary = {
   collectedAt: string | null;
 
   rawPayloadPurgedAt: string | null;
+
+  normalizationStatus: PipelineStageStatus;
+
+  normalizedJobId: string | null;
+
+  normalizationVersion: string | null;
+
+  normalizedAt: string | null;
+
+  embeddingStatus: PipelineStageStatus;
+
+  embeddingJobId: string | null;
+
+  embeddingVersion: string | null;
+
+  embeddedAt: string | null;
+
+  embeddingLastError: string | null;
 };
 
 export type RawJobListParams = {
@@ -93,4 +118,45 @@ export type RenormalizationBatchResponse = {
   purgeFailed: number;
 
   failures: RenormalizationFailure[];
+};
+
+export type JobPipelineStage =
+  | "normalization"
+  | "embedding";
+
+export type PipelineStatusBadgeProps = {
+  status: PipelineStageStatus;
+};
+
+export type CopyableJobIdProps = {
+  label: string;
+  value: string | null;
+};
+
+export type JobPipelineCellProps = {
+  stage: JobPipelineStage;
+  status: PipelineStageStatus;
+  id: string | null;
+  version: string | null;
+  timestamp: string | null;
+  error?: string | null;
+  locale: string;
+};
+
+export type AdminJobRowProps = {
+  job: RawJobSummary;
+  index: number;
+  locale: string;
+
+  isNormalizing: boolean;
+  isEmbedding: boolean;
+  pending: boolean;
+
+  onNormalize: (
+    job: RawJobSummary
+  ) => void;
+
+  onEmbed: (
+    job: RawJobSummary
+  ) => void;
 };

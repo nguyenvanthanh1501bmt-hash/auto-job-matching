@@ -37,6 +37,15 @@ public class SharedSkillTaxonomyProperties {
     private Set<String> safeShortProseAliases =
             new LinkedHashSet<>();
 
+    /**
+     * Whole-label từ structured field đã biết là job category/industry.
+     * Chỉ dùng để làm sạch raw structured skills; prose extraction vẫn
+     * được phép nhận diện skill thật có cùng từ khoá trong nội dung JD.
+     */
+    @NotNull
+    private Set<String> ignoredStructuredLabels =
+            new LinkedHashSet<>();
+
     @Valid
     @NotEmpty
     private List<SkillDefinition> items =

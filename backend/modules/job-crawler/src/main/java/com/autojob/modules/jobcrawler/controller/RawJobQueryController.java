@@ -1,6 +1,8 @@
 package com.autojob.modules.jobcrawler.controller;
 
 import com.autojob.common.dtos.ApplyType;
+import com.autojob.modules.jobcrawler.controller.RawJobPipelineStatusProvider.PipelineStageStatus;
+import com.autojob.modules.jobcrawler.controller.RawJobPipelineStatusProvider.RawJobPipelineStatus;
 import com.autojob.modules.jobcrawler.domain.RawJob;
 import com.autojob.modules.jobcrawler.repository.RawJobRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/raw-jobs")
@@ -20,6 +23,7 @@ import java.util.List;
 public class RawJobQueryController {
 
     private final RawJobRepository rawJobRepository;
+    private final RawJobPipelineStatusProvider pipelineStatusProvider;
 
     @GetMapping
     public List<RawJobSummaryResponse> list(
@@ -35,7 +39,7 @@ public class RawJobQueryController {
                         100
                 );
 
-        return rawJobRepository
+        List<RawJob> rawJobs = rawJobRepository
                 .findAll(
                         PageRequest.of(
                                 0,
@@ -46,10 +50,31 @@ public class RawJobQueryController {
                                 )
                         )
                 )
-                .getContent()
+                .getContent();
+
+        /*
+         * Trạng thái normalized/embedding được resolve theo batch thay vì
+         * query từng row. Với limit 100, cách này giữ số query cố định
+         * khi dashboard admin mở danh sách jobs.
+         */
+        Map<String, RawJobPipelineStatus> statuses =
+                pipelineStatusProvider.getStatuses(
+                        rawJobs
+                                .stream()
+                                .map(RawJob::getId)
+                                .toList()
+                );
+
+        return rawJobs
                 .stream()
                 .map(
-                        RawJobSummaryResponse::from
+                        rawJob -> RawJobSummaryResponse.from(
+                                rawJob,
+                                statuses.getOrDefault(
+                                        rawJob.getId(),
+                                        RawJobPipelineStatus.empty()
+                                )
+                        )
                 )
                 .toList();
     }
@@ -71,11 +96,23 @@ public class RawJobQueryController {
             Instant firstSeenAt,
             Instant lastSeenAt,
             Instant collectedAt,
-            Instant rawPayloadPurgedAt
+            Instant rawPayloadPurgedAt,
+
+            PipelineStageStatus normalizationStatus,
+            String normalizedJobId,
+            String normalizationVersion,
+            Instant normalizedAt,
+
+            PipelineStageStatus embeddingStatus,
+            String embeddingJobId,
+            String embeddingVersion,
+            Instant embeddedAt,
+            String embeddingLastError
     ) {
 
         static RawJobSummaryResponse from(
-                RawJob rawJob
+                RawJob rawJob,
+                RawJobPipelineStatus pipelineStatus
         ) {
             return new RawJobSummaryResponse(
                     rawJob.getId(),
@@ -94,7 +131,18 @@ public class RawJobQueryController {
                     rawJob.getFirstSeenAt(),
                     rawJob.getLastSeenAt(),
                     rawJob.getCollectedAt(),
-                    rawJob.getRawPayloadPurgedAt()
+                    rawJob.getRawPayloadPurgedAt(),
+
+                    pipelineStatus.normalizationStatus(),
+                    pipelineStatus.normalizedJobId(),
+                    pipelineStatus.normalizationVersion(),
+                    pipelineStatus.normalizedAt(),
+
+                    pipelineStatus.embeddingStatus(),
+                    pipelineStatus.embeddingJobId(),
+                    pipelineStatus.embeddingVersion(),
+                    pipelineStatus.embeddedAt(),
+                    pipelineStatus.embeddingLastError()
             );
         }
     }

@@ -53,6 +53,8 @@ public class SkillNormalizer {
 
     private final Set<String> safeShortProseAliases;
 
+    private final Set<String> ignoredStructuredLabelKeys;
+
     private final Map<String, String> canonicalAliases;
 
     private final List<SkillMatcher> proseMatchers;
@@ -78,6 +80,12 @@ public class SkillNormalizer {
                 foldSet(
                         taxonomyProperties
                                 .getSafeShortProseAliases()
+                );
+
+        this.ignoredStructuredLabelKeys =
+                compactSet(
+                        taxonomyProperties
+                                .getIgnoredStructuredLabels()
                 );
 
         List<SkillDefinition> definitions =
@@ -117,12 +125,17 @@ public class SkillNormalizer {
                 );
 
         /*
-         * Nếu crawler đã cung cấp một danh sách skill đủ giàu,
-         * ưu tiên dữ liệu structured đó.
-         *
-         * Không cần tiếp tục quét prose để tránh sinh thêm noise.
+         * Chỉ canonical skill đã resolve qua taxonomy mới được tính
+         * vào ngưỡng "structured data đủ giàu". Unknown structured
+         * label vẫn được giữ để không làm mất dữ liệu, nhưng không được
+         * quyền chặn fallback từ title/requirements/description.
          */
-        if (normalizedRawSkills.size()
+        int recognizedRawSkillCount =
+                countRecognizedSkills(
+                        normalizedRawSkills
+                );
+
+        if (recognizedRawSkillCount
                 >= richRawSkillCount) {
 
             return normalizedRawSkills;
@@ -235,6 +248,18 @@ public class SkillNormalizer {
         }
 
         /*
+         * Một số crawler cũ từng ghi job category/industry vào
+         * RawJob.skills. Chỉ loại các whole-label đã biết chắc là
+         * taxonomy của job board; không áp dụng rule này cho prose.
+         */
+        if (isIgnoredStructuredLabel(
+                cleaned
+        )) {
+
+            return List.of();
+        }
+
+        /*
          * -----------------------------------------------------
          * 1. Exact alias.
          * -----------------------------------------------------
@@ -309,6 +334,51 @@ public class SkillNormalizer {
          */
         return List.of(
                 cleaned
+        );
+    }
+
+    private int countRecognizedSkills(
+            List<String> normalizedRawSkills
+    ) {
+        if (normalizedRawSkills == null
+                || normalizedRawSkills.isEmpty()) {
+
+            return 0;
+        }
+
+        int count = 0;
+
+        for (String skill : normalizedRawSkills) {
+
+            if (resolveExactAlias(
+                    skill
+            ) != null) {
+
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private boolean isIgnoredStructuredLabel(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+
+            return false;
+        }
+
+        String key =
+                NormalizationTextSupport
+                        .compactKey(
+                                value
+                        );
+
+        return !key.isBlank()
+                && ignoredStructuredLabelKeys.contains(
+                key
         );
     }
 
@@ -853,6 +923,43 @@ public class SkillNormalizer {
 
         return Set.copyOf(
                 folded
+        );
+    }
+
+    private static Set<String> compactSet(
+            Set<String> values
+    ) {
+        if (values == null
+                || values.isEmpty()) {
+
+            return Set.of();
+        }
+
+        Set<String> compacted =
+                new LinkedHashSet<>();
+
+        for (String value : values) {
+
+            if (value == null) {
+                continue;
+            }
+
+            String normalized =
+                    NormalizationTextSupport
+                            .compactKey(
+                                    value
+                            );
+
+            if (!normalized.isBlank()) {
+
+                compacted.add(
+                        normalized
+                );
+            }
+        }
+
+        return Set.copyOf(
+                compacted
         );
     }
 
