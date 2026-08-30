@@ -1,6 +1,6 @@
 "use client";
 
-import {useState} from "react";
+import {useLayoutEffect, useState} from "react";
 import {useTranslations} from "next-intl";
 
 import {useAdminRawJobs} from "@/hooks/use-admin-tools";
@@ -23,6 +23,19 @@ import {CrawlerSection} from "./crawler-section";
 import {EmbeddingsSection} from "./embeddings-section";
 import {JobsSection} from "./jobs-section";
 import {formatDate} from "./admin-ui";
+
+const ADMIN_SECTION_STORAGE_KEY = "autojob.admin.section";
+
+function isAdminSection(
+  value: string | null
+): value is AdminSection {
+  return (
+    value === "overview" ||
+    value === "crawler" ||
+    value === "jobs" ||
+    value === "embeddings"
+  );
+}
 
 function ArrowIcon() {
   return (
@@ -188,10 +201,6 @@ function MetricsPanel({
 }: AdminMetricsPanelProps) {
   const t = useTranslations("admin.overview");
 
-  /*
-   * Parser metric đã được bỏ cùng Parser UI.
-   * Dashboard chỉ hiển thị những nhóm dữ liệu còn được thao tác từ frontend.
-   */
   const metrics = [
     {
       index: "01",
@@ -311,9 +320,6 @@ function OperationsPanel({
 }: AdminOperationsPanelProps) {
   const t = useTranslations("admin.overview");
 
-  /*
-   * Chỉ giữ lại 3 operation còn xuất hiện trên frontend.
-   */
   const operations = [
     {
       type: "crawler" as const,
@@ -378,10 +384,6 @@ function RecentJobs({
 }: AdminRecentJobsProps) {
   const t = useTranslations("admin.overview");
 
-  /*
-   * Dashboard chỉ preview dữ liệu mới nhất.
-   * Sort/filter đầy đủ vẫn thuộc JobsSection.
-   */
   const recentJobs = [...jobs]
     .sort((a, b) => {
       const first = a.collectedAt
@@ -556,12 +558,27 @@ export function AdminDashboard({
   adminName,
   locale
 }: AdminDashboardProps) {
-  /*
-   * Các tool hiện cùng một workspace nên section dùng local state.
-   * Parser không còn nằm trong danh sách section của frontend.
-   */
   const [section, setSection] =
     useState<AdminSection>("overview");
+
+  useLayoutEffect(() => {
+    const savedSection = window.sessionStorage.getItem(
+      ADMIN_SECTION_STORAGE_KEY
+    );
+
+    if (isAdminSection(savedSection)) {
+      setSection(savedSection);
+    }
+  }, []);
+
+  function changeSection(nextSection: AdminSection) {
+    setSection(nextSection);
+
+    window.sessionStorage.setItem(
+      ADMIN_SECTION_STORAGE_KEY,
+      nextSection
+    );
+  }
 
   return (
     <main
@@ -585,7 +602,7 @@ export function AdminDashboard({
         <div className="grid min-w-0 gap-7 py-5 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-10 lg:py-8 xl:grid-cols-[225px_minmax(0,1fr)] xl:gap-12">
           <AdminSidebar
             activeSection={section}
-            onSectionChange={setSection}
+            onSectionChange={changeSection}
           />
 
           <div className="min-w-0 pb-14">
@@ -593,13 +610,17 @@ export function AdminDashboard({
               {section === "overview" ? (
                 <OverviewSection
                   locale={locale}
-                  onNavigate={setSection}
+                  onNavigate={changeSection}
                 />
               ) : null}
 
-              {section === "crawler" ? <CrawlerSection /> : null}
+              {section === "crawler" ? (
+                <CrawlerSection />
+              ) : null}
 
-              {section === "jobs" ? <JobsSection /> : null}
+              {section === "jobs" ? (
+                <JobsSection />
+              ) : null}
 
               {section === "embeddings" ? (
                 <EmbeddingsSection />

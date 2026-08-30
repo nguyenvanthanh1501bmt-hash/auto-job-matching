@@ -1,7 +1,6 @@
 import type {Metadata} from "next";
-import {NextIntlClientProvider} from "next-intl";
-import {getMessages} from "next-intl/server";
 
+import {AppIntlProvider} from "@/components/providers/app-intl-provider";
 import {QueryProvider} from "@/components/providers/query-provider";
 
 import "../globals.css";
@@ -13,6 +12,7 @@ export const metadata: Metadata = {
 
 type Props = {
   children: React.ReactNode;
+
   params: Promise<{
     locale: string;
   }>;
@@ -23,16 +23,17 @@ export default async function LocaleLayout({
   params
 }: Props) {
   const {locale} = await params;
-  const messages = await getMessages();
 
   return (
     <html lang={locale}>
       <body>
-        <NextIntlClientProvider messages={messages}>
+        <AppIntlProvider
+          initialLocale={locale}
+        >
           <QueryProvider>
             {children}
           </QueryProvider>
-        </NextIntlClientProvider>
+        </AppIntlProvider>
       </body>
     </html>
   );

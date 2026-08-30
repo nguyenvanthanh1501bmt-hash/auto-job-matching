@@ -1,36 +1,65 @@
 "use client";
 
-import {useLocale} from "next-intl";
-
-import {usePathname, useRouter} from "@/i18n/navigation";
+import {
+  syncLocaleInBrowserUrl,
+  type AppLocale,
+  useAppIntl
+} from "@/components/providers/app-intl-provider";
 
 const SUPPORTED_LOCALES = ["vi", "en"] as const;
-
-type AppLocale = (typeof SUPPORTED_LOCALES)[number];
 
 type Props = {
   pathname?: string;
 };
 
-export function LanguageSwitcher({pathname}: Props) {
-  const locale = useLocale();
-  const router = useRouter();
-  const currentPathname = usePathname();
+export function LanguageSwitcher({
+  pathname
+}: Props) {
+  const {
+    locale,
+    changeLocale
+  } = useAppIntl();
 
-  /*
-   * Mặc định giữ nguyên page hiện tại khi đổi locale.
-   * Auth có thể truyền pathname riêng vì login/register sync URL bằng History API.
-   */
-  const targetPathname = pathname ?? currentPathname;
-
-  function changeLocale(nextLocale: AppLocale) {
+  function selectLocale(
+    nextLocale: AppLocale
+  ) {
     if (nextLocale === locale) {
       return;
     }
 
-    router.replace(targetPathname, {
-      locale: nextLocale
-    });
+    /*
+     * QUAN TRỌNG:
+     *
+     * Không dùng router.replace() ở đây.
+     *
+     * Nếu router.replace locale:
+     * /vi/admin -> /en/admin
+     *
+     * Next sẽ thực hiện navigation và một phần tree
+     * có thể remount, dẫn tới:
+     * - scroll nhảy
+     * - section reset
+     * - details collapse
+     * - local state reset
+     *
+     * Ở đây chỉ đổi messages trong provider.
+     * Toàn bộ page hiện tại vẫn giữ nguyên DOM/state.
+     */
+    changeLocale(nextLocale);
+
+    /*
+     * URL vẫn đổi:
+     *
+     * /vi/admin
+     *      ↓
+     * /en/admin
+     *
+     * nhưng chỉ bằng History API, không navigation.
+     */
+    syncLocaleInBrowserUrl(
+      nextLocale,
+      pathname
+    );
   }
 
   return (
@@ -43,7 +72,9 @@ export function LanguageSwitcher({pathname}: Props) {
             key={item}
             type="button"
             aria-pressed={active}
-            onClick={() => changeLocale(item)}
+            onClick={() =>
+              selectLocale(item)
+            }
             className={`flex h-7 min-w-9 items-center justify-center rounded-full px-2 text-[10px] font-bold transition-colors duration-200 ${
               active
                 ? "bg-[#171717] text-white"
