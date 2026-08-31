@@ -452,5 +452,102 @@
         }
       }
     }
+  },
+  "home": {
+    "nav": {
+      "howItWorks": "How it works",
+      "features": "Features",
+      "signIn": "Sign in",
+      "workspace": "Open workspace"
+    },
+    "hero": {
+      "eyebrow": "AI-powered job matching",
+      "titleLead": "Your next job should",
+      "titleAccent": "fit you better.",
+      "description": "AutoJob turns your CV into a clear professional profile, understands what you are good at, and surfaces opportunities that make sense for you.",
+      "primary": "Getting started",
+      "primarySignedIn": "Open workspace",
+      "secondary": "See how it works",
+      "trustOne": "Private CV processing",
+      "trustTwo": "Skills-first matching",
+      "trustThree": "Clear match signals"
+    },
+    "preview": {
+      "status": "LIVE MATCHING",
+      "profile": "PROFILE / 01",
+      "profileName": "Your CV",
+      "profileRole": "Frontend Developer",
+      "skillOne": "React",
+      "skillTwo": "TypeScript",
+      "skillThree": "Next.js",
+      "match": "AI MATCH",
+      "score": "94",
+      "scoreUnit": "% fit",
+      "job": "JOB / 03",
+      "jobTitle": "Frontend Engineer",
+      "jobCompany": "Product team",
+      "jobMeta": "Remote · Mid-level",
+      "signal": "Strong match",
+      "processing": "Reading experience, skills and preferences"
+    },
+    "steps": {
+      "eyebrow": "Simple by design",
+      "title": "From CV to relevant jobs in three steps.",
+      "description": "You provide the context once. AutoJob does the repetitive filtering so you can spend more time evaluating the opportunities that matter.",
+      "one": {
+        "number": "01",
+        "title": "Build your profile",
+        "description": "Upload your CV and let AutoJob structure your skills, experience and professional background."
+      },
+      "two": {
+        "number": "02",
+        "title": "Understand the fit",
+        "description": "AI compares your profile with job data and evaluates the signals that actually affect relevance."
+      },
+      "three": {
+        "number": "03",
+        "title": "Focus on better matches",
+        "description": "Review ranked opportunities instead of scanning every listing from scratch."
+      }
+    },
+    "features": {
+      "eyebrow": "Built around your profile",
+      "title": "Less job-board noise. More useful context.",
+      "description": "AutoJob is designed to make the search process easier to understand, not to hide decisions behind a black box.",
+      "profile": {
+        "label": "PROFILE SIGNALS",
+        "title": "Your CV becomes structured context.",
+        "description": "Skills and experience are organized into signals the matching flow can use consistently.",
+        "metric": "CV → profile",
+        "metricValue": "01"
+      },
+      "matching": {
+        "label": "MATCHING",
+        "title": "Relevance comes before volume.",
+        "description": "Jobs are compared against your profile so stronger opportunities can rise to the top.",
+        "metric": "match signal",
+        "metricValue": "94"
+      },
+      "focus": {
+        "label": "FOCUS",
+        "title": "A shorter list worth reviewing.",
+        "description": "Spend your attention on jobs with stronger alignment instead of endless manual filtering.",
+        "metric": "workflow",
+        "metricValue": "03"
+      }
+    },
+    "cta": {
+      "eyebrow": "Ready when you are",
+      "title": "Start with your profile. Go deeper after sign in.",
+      "description": "The public home explains the product. Your CV, matching results and job workspace stay behind your account.",
+      "primary": "Create account",
+      "primarySignedIn": "Continue to workspace",
+      "secondary": "I already have an account"
+    },
+    "footer": {
+      "tagline": "AI-powered job matching",
+      "privacy": "Your workspace starts after sign in.",
+      "copyright": "© 2026 AutoJob"
+    }
   }
 }

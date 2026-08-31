@@ -452,5 +452,102 @@
         }
       }
     }
+  },
+  "home": {
+    "nav": {
+      "howItWorks": "Cách hoạt động",
+      "features": "Tính năng",
+      "signIn": "Đăng nhập",
+      "workspace": "Vào workspace"
+    },
+    "hero": {
+      "eyebrow": "AI Job Matching",
+      "titleLead": "Công việc tiếp theo nên",
+      "titleAccent": "phù hợp với bạn hơn.",
+      "description": "AutoJob biến CV thành một hồ sơ nghề nghiệp rõ ràng, hiểu điểm mạnh của bạn và ưu tiên những cơ hội thực sự đáng để xem.",
+      "primary": "Getting Started",
+      "primarySignedIn": "Vào workspace",
+      "secondary": "Xem cách hoạt động",
+      "trustOne": "Xử lý CV riêng tư",
+      "trustTwo": "Matching theo kỹ năng",
+      "trustThree": "Tín hiệu phù hợp rõ ràng"
+    },
+    "preview": {
+      "status": "LIVE MATCHING",
+      "profile": "PROFILE / 01",
+      "profileName": "CV của bạn",
+      "profileRole": "Frontend Developer",
+      "skillOne": "React",
+      "skillTwo": "TypeScript",
+      "skillThree": "Next.js",
+      "match": "AI MATCH",
+      "score": "94",
+      "scoreUnit": "% phù hợp",
+      "job": "JOB / 03",
+      "jobTitle": "Frontend Engineer",
+      "jobCompany": "Product team",
+      "jobMeta": "Remote · Mid-level",
+      "signal": "Phù hợp cao",
+      "processing": "Đang đọc kinh nghiệm, kỹ năng và ưu tiên của bạn"
+    },
+    "steps": {
+      "eyebrow": "Đơn giản ngay từ đầu",
+      "title": "Từ CV đến công việc phù hợp trong ba bước.",
+      "description": "Bạn cung cấp thông tin một lần. AutoJob xử lý phần lọc lặp lại để bạn tập trung đánh giá những cơ hội thực sự quan trọng.",
+      "one": {
+        "number": "01",
+        "title": "Tạo hồ sơ nghề nghiệp",
+        "description": "Tải CV lên để AutoJob cấu trúc kỹ năng, kinh nghiệm và nền tảng nghề nghiệp của bạn."
+      },
+      "two": {
+        "number": "02",
+        "title": "Hiểu mức độ phù hợp",
+        "description": "AI so sánh hồ sơ với dữ liệu công việc và đánh giá những tín hiệu thực sự ảnh hưởng tới độ phù hợp."
+      },
+      "three": {
+        "number": "03",
+        "title": "Tập trung vào job tốt hơn",
+        "description": "Xem các cơ hội đã được ưu tiên thay vì tự lọc lại toàn bộ danh sách từ đầu."
+      }
+    },
+    "features": {
+      "eyebrow": "Xoay quanh hồ sơ của bạn",
+      "title": "Ít nhiễu từ job board. Nhiều ngữ cảnh hữu ích hơn.",
+      "description": "AutoJob được thiết kế để quá trình tìm việc dễ hiểu hơn, không che giấu mọi thứ phía sau một hộp đen.",
+      "profile": {
+        "label": "PROFILE SIGNALS",
+        "title": "CV trở thành dữ liệu có cấu trúc.",
+        "description": "Kỹ năng và kinh nghiệm được tổ chức thành các tín hiệu mà luồng matching có thể sử dụng nhất quán.",
+        "metric": "CV → profile",
+        "metricValue": "01"
+      },
+      "matching": {
+        "label": "MATCHING",
+        "title": "Ưu tiên độ phù hợp trước số lượng.",
+        "description": "Công việc được so sánh với hồ sơ để những cơ hội phù hợp hơn được đưa lên trước.",
+        "metric": "match signal",
+        "metricValue": "94"
+      },
+      "focus": {
+        "label": "FOCUS",
+        "title": "Danh sách ngắn hơn nhưng đáng xem hơn.",
+        "description": "Dành thời gian cho những job có độ tương thích cao thay vì lọc thủ công không ngừng.",
+        "metric": "workflow",
+        "metricValue": "03"
+      }
+    },
+    "cta": {
+      "eyebrow": "Sẵn sàng khi bạn sẵn sàng",
+      "title": "Bắt đầu từ hồ sơ. Đi sâu hơn sau khi đăng nhập.",
+      "description": "Trang Home giới thiệu cách AutoJob hoạt động. CV, kết quả matching và workspace công việc của bạn chỉ mở sau khi đăng nhập.",
+      "primary": "Tạo tài khoản",
+      "primarySignedIn": "Tiếp tục vào workspace",
+      "secondary": "Tôi đã có tài khoản"
+    },
+    "footer": {
+      "tagline": "AI-powered job matching",
+      "privacy": "Workspace của bạn bắt đầu sau khi đăng nhập.",
+      "copyright": "© 2026 AutoJob"
+    }
   }
 }
