@@ -1,3 +1,5 @@
+import {CvWorkspace} from "@/components/cv/cv-workspace";
+
 export default function CvPage() {
-  return <main>CV</main>;
+  return <CvWorkspace />;
 }

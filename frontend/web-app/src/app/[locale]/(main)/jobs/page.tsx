@@ -1,3 +1,5 @@
+import {JobsWorkspace} from "@/components/jobs/jobs-workspace";
+
 export default function JobsPage() {
-  return <main>Jobs</main>;
+  return <JobsWorkspace />;
 }
