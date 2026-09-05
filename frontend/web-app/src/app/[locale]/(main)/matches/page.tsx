@@ -1,3 +1,5 @@
+import {MatchingWorkspace} from "@/components/matching/matching-workspace";
+
 export default function MatchesPage() {
-  return <main>Matches</main>;
+  return <MatchingWorkspace />;
 }

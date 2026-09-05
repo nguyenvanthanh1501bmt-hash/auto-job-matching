@@ -5,25 +5,49 @@ import {
   useState,
   type ReactNode
 } from "react";
-import {useTranslations} from "next-intl";
 
-import {LanguageSwitcher} from "@/components/ui/language-switcher";
-import {LogoutButton} from "@/components/ui/logout-button";
+import {
+  useTranslations
+} from "next-intl";
+
+import {
+  Footer
+} from "@/components/layout/footer";
+
+import {
+  LanguageSwitcher
+} from "@/components/ui/language-switcher";
+
+import {
+  LogoutButton
+} from "@/components/ui/logout-button";
+
 import {
   Link,
   usePathname,
   useRouter
 } from "@/i18n/navigation";
-import {getAuthSession} from "@/lib/auth-storage";
+
+import {
+  getAuthSession
+} from "@/lib/auth-storage";
 
 type Props = {
   children: ReactNode;
 };
 
 type NavigationItem = {
-  key: "jobs" | "cv" | "matches";
+  key:
+    | "jobs"
+    | "cv"
+    | "matches";
+
   index: string;
-  href: "/jobs" | "/cv" | "/matches";
+
+  href:
+    | "/jobs"
+    | "/cv"
+    | "/matches";
 };
 
 const NAVIGATION_ITEMS: NavigationItem[] = [
@@ -49,14 +73,18 @@ function getActiveNavigation(
 ): NavigationItem["key"] {
   if (
     pathname === "/cv" ||
-    pathname.startsWith("/cv/")
+    pathname.startsWith(
+      "/cv/"
+    )
   ) {
     return "cv";
   }
 
   if (
     pathname === "/matches" ||
-    pathname.startsWith("/matches/")
+    pathname.startsWith(
+      "/matches/"
+    )
   ) {
     return "matches";
   }
@@ -106,7 +134,9 @@ function AutoJobLogo() {
         </p>
 
         <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.15em] text-black/30">
-          {t("workspace")}
+          {t(
+            "workspace"
+          )}
         </p>
       </div>
     </Link>
@@ -142,6 +172,11 @@ export function UserWorkspaceShell({
       "user.shell"
     );
 
+  const footerT =
+    useTranslations(
+      "home.footer"
+    );
+
   const pathname =
     usePathname();
 
@@ -151,19 +186,23 @@ export function UserWorkspaceShell({
   const [
     checkedSession,
     setCheckedSession
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     displayName,
     setDisplayName
-  ] = useState("");
+  ] =
+    useState("");
 
   useEffect(() => {
     const session =
       getAuthSession();
 
     if (!session) {
-      setCheckedSession(true);
+      setCheckedSession(
+        true
+      );
 
       router.replace(
         "/login"
@@ -177,8 +216,12 @@ export function UserWorkspaceShell({
         session.user.email
     );
 
-    setCheckedSession(true);
-  }, [router]);
+    setCheckedSession(
+      true
+    );
+  }, [
+    router
+  ]);
 
   if (
     !checkedSession ||
@@ -196,7 +239,7 @@ export function UserWorkspaceShell({
 
   return (
     <main
-      className="min-h-screen overflow-x-clip bg-[#f7f7f4] text-[#171717] selection:bg-[#171717] selection:text-white"
+      className="flex min-h-screen flex-col overflow-x-clip bg-[#f7f7f4] text-[#171717] selection:bg-[#171717] selection:text-white"
       style={{
         backgroundImage: `
           radial-gradient(
@@ -248,7 +291,7 @@ export function UserWorkspaceShell({
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1440px] gap-7 px-5 py-7 sm:px-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10 lg:px-12 lg:py-9 xl:grid-cols-[240px_minmax(0,1fr)] xl:px-16">
+      <div className="mx-auto grid w-full max-w-[1440px] flex-1 gap-7 px-5 py-7 sm:px-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10 lg:px-12 lg:py-9 xl:grid-cols-[240px_minmax(0,1fr)] xl:px-16">
         <aside className="min-w-0 lg:border-r lg:border-black/[0.045] lg:pr-8">
           <div className="lg:sticky lg:top-[110px]">
             <div className="mb-6 hidden items-center gap-3 lg:flex">
@@ -340,6 +383,20 @@ export function UserWorkspaceShell({
         <section className="min-w-0">
           {children}
         </section>
+      </div>
+
+      <div className="mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12 xl:px-16">
+        <Footer
+          tagline={footerT(
+            "tagline"
+          )}
+          notice={footerT(
+            "privacy"
+          )}
+          copyright={footerT(
+            "copyright"
+          )}
+        />
       </div>
     </main>
   );

@@ -430,7 +430,7 @@ export function CvWorkspace() {
         )}
       />
 
-      <div className="mt-7 grid gap-6 xl:grid-cols-[330px_minmax(0,1fr)]">
+      <div className="mt-7 grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[290px_minmax(0,1fr)]">
         <aside className="min-w-0">
           <div className="space-y-4 xl:sticky xl:top-[110px]">
             <CvUploadCard

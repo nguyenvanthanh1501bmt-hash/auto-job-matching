@@ -865,6 +865,92 @@
         "yes": "Yes",
         "no": "No"
       }
+    },
+    "matches": {
+      "eyebrow": "AI Matching / Job recommendations",
+      "title": "Jobs matched to your profile.",
+      "description": "AutoJob compares your candidate profile with normalized jobs and ranks opportunities using semantic fit, skills, seniority, location and freshness.",
+      "matchedJobs": "Matched jobs",
+      "searchPlaceholder": "Search by role, company, skill...",
+      "resultsCount": "{count} results shown",
+      "actions": {
+        "run": "Find matching jobs",
+        "running": "Analyzing...",
+        "refresh": "Refresh matches",
+        "tryAgain": "Try again",
+        "goToCv": "Go to CV profile",
+        "viewJob": "View details"
+      },
+      "filters": {
+        "all": "All"
+      },
+      "tiers": {
+        "STRONG": "Strong match",
+        "STRETCH": "Stretch match",
+        "POSSIBLE": "Possible match",
+        "EXPLORE": "Worth exploring"
+      },
+      "labels": {
+        "rank": "Rank #{rank}",
+        "matchedSkills": "Matched skills",
+        "missingSkills": "Missing skills",
+        "moreSkills": "+{count} skills",
+        "whyMatch": "Why it matches"
+      },
+      "score": {
+        "label": "Match",
+        "overall": "Overall fit",
+        "semantic": "Semantic",
+        "skills": "Skills",
+        "seniority": "Seniority",
+        "location": "Location",
+        "freshness": "Freshness"
+      },
+      "summary": {
+        "eyebrow": "Matching snapshot",
+        "title": "Result overview",
+        "topScore": "Top score",
+        "strongMatches": "Strong matches",
+        "averageScore": "Average score",
+        "updatedAt": "Updated",
+        "cached": "Using the latest saved matching result for this profile.",
+        "fresh": "The result was freshly recomputed from the current data."
+      },
+      "states": {
+        "noCv": {
+          "eyebrow": "CV required",
+          "title": "Upload your CV before matching jobs",
+          "description": "AutoJob needs a parsed candidate profile to understand your skills, experience and targets before ranking jobs."
+        },
+        "firstRun": {
+          "eyebrow": "Ready to match",
+          "title": "Find the best jobs for your profile",
+          "description": "Your candidate profile is ready. Run matching to compare it with the current job pool and generate a ranked list."
+        },
+        "error": {
+          "eyebrow": "Matching unavailable",
+          "title": "We could not load your matches"
+        },
+        "empty": {
+          "eyebrow": "Completed",
+          "title": "No jobs passed the matching threshold yet",
+          "description": "You can update your CV or run matching again after new jobs are added."
+        },
+        "noFiltered": {
+          "title": "No results in this filter",
+          "description": "Try another match tier or clear the current search keyword."
+        }
+      },
+      "errors": {
+        "profileMissing": "The current candidate profile could not be found. Open the CV page and parse your profile again.",
+        "embeddingNotReady": "AI is still preparing the embedding for your CV. Please try again shortly.",
+        "embeddingStale": "The current embedding is no longer in sync with your CV. Update the CV profile and try again.",
+        "embeddingInvalid": "The CV embedding is invalid, so matching cannot run yet. Please update your CV profile.",
+        "vectorStore": "Vector search is temporarily unavailable. Please try again.",
+        "authentication": "Your session is no longer valid. Please sign in again.",
+        "invalidRequest": "The matching request is invalid. Please check your CV profile.",
+        "generic": "Something went wrong while matching jobs. Please try again."
+      }
     }
   }
 }

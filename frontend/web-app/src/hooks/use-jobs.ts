@@ -1,8 +1,13 @@
 "use client";
 
 import {
+  useCallback
+} from "react";
+
+import {
   keepPreviousData,
-  useQuery
+  useQuery,
+  useQueryClient
 } from "@tanstack/react-query";
 
 import {
@@ -15,6 +20,9 @@ import type {
   NormalizedJobListParams
 } from "@/types/job";
 
+const JOB_DETAIL_STALE_TIME =
+  5 * 60 * 1000;
+
 function normalizeOptionalText(
   value: string | undefined
 ): string | undefined {
@@ -22,7 +30,8 @@ function normalizeOptionalText(
     return undefined;
   }
 
-  const normalized = value.trim();
+  const normalized =
+    value.trim();
 
   return normalized.length > 0
     ? normalized
@@ -54,11 +63,16 @@ function normalizeJobListParams(
 }
 
 export const jobQueryKeys = {
-  // Params are part of the key so each page/filter combination has its own cache entry.
-  all: ["normalized-jobs"] as const,
+  all:
+    [
+      "normalized-jobs"
+    ] as const,
 
   lists: () =>
-    [...jobQueryKeys.all, "list"] as const,
+    [
+      ...jobQueryKeys.all,
+      "list"
+    ] as const,
 
   list: (
     params: NormalizedJobListParams
@@ -74,7 +88,9 @@ export const jobQueryKeys = {
       "detail"
     ] as const,
 
-  detail: (jobId: string) =>
+  detail: (
+    jobId: string
+  ) =>
     [
       ...jobQueryKeys.details(),
       jobId
@@ -85,7 +101,9 @@ export function useNormalizedJobs(
   params: NormalizedJobListParams = {}
 ) {
   const normalizedParams =
-    normalizeJobListParams(params);
+    normalizeJobListParams(
+      params
+    );
 
   return useQuery({
     queryKey:
@@ -98,28 +116,23 @@ export function useNormalizedJobs(
         normalizedParams
       ),
 
-    /**
-     * Khi user chuyển page:
-     *
-     * page 0 -> page 1
-     *
-     * React Query vẫn giữ dữ liệu page cũ
-     * trong lúc page mới đang tải.
-     *
-     * UI không bị nháy trắng.
-     */
     placeholderData:
       keepPreviousData,
 
-    staleTime: 60 * 1000
+    staleTime:
+      60 * 1000
   });
 }
 
 export function useNormalizedJob(
-  jobId: string | null | undefined
+  jobId:
+    | string
+    | null
+    | undefined
 ) {
   const normalizedJobId =
-    jobId?.trim() ?? "";
+    jobId?.trim() ??
+    "";
 
   return useQuery({
     queryKey:
@@ -133,7 +146,9 @@ export function useNormalizedJob(
           ] as const,
 
     queryFn: () => {
-      if (!normalizedJobId) {
+      if (
+        !normalizedJobId
+      ) {
         throw new Error(
           "Job id is required"
         );
@@ -145,9 +160,57 @@ export function useNormalizedJob(
     },
 
     enabled:
-      // Không gọi API với job id rỗng.
-      normalizedJobId.length > 0,
+      normalizedJobId.length >
+      0,
 
-    staleTime: 5 * 60 * 1000
+    staleTime:
+      JOB_DETAIL_STALE_TIME
   });
+}
+
+/*
+ * Prefetch detail nhưng không subscribe UI vào query.
+ *
+ * Drawer có thể chạy animation trước trong khi request
+ * được xử lý ngầm. Khi animation hoàn tất, useNormalizedJob
+ * mới subscribe vào đúng query key.
+ *
+ * Nếu request đã hoàn tất thì data lấy thẳng từ cache.
+ */
+export function usePrefetchNormalizedJob() {
+  const queryClient =
+    useQueryClient();
+
+  return useCallback(
+    (
+      jobId: string
+    ) => {
+      const normalizedJobId =
+        jobId.trim();
+
+      if (
+        !normalizedJobId
+      ) {
+        return;
+      }
+
+      void queryClient.prefetchQuery({
+        queryKey:
+          jobQueryKeys.detail(
+            normalizedJobId
+          ),
+
+        queryFn: () =>
+          jobService.getById(
+            normalizedJobId
+          ),
+
+        staleTime:
+          JOB_DETAIL_STALE_TIME
+      });
+    },
+    [
+      queryClient
+    ]
+  );
 }

@@ -5,30 +5,46 @@ import {
   useTranslations
 } from "next-intl";
 
+import type {
+  ProfileSectionTitleProps,
+  ProfileTagsProps,
+  StructuredProfileValueProps
+} from "@/types/cv-ui";
+
 export function isEmptyProfileValue(
   value: unknown
 ): boolean {
   if (
-    value === null ||
-    value === undefined ||
-    value === ""
+    value ===
+      null ||
+    value ===
+      undefined ||
+    value ===
+      ""
   ) {
     return true;
   }
 
   if (
-    Array.isArray(value)
+    Array.isArray(
+      value
+    )
   ) {
     return (
-      value.length === 0
+      value.length ===
+      0
     );
   }
 
   if (
-    isRecord(value)
+    isRecord(
+      value
+    )
   ) {
     return Object
-      .values(value)
+      .values(
+        value
+      )
       .every(
         isEmptyProfileValue
       );
@@ -46,8 +62,11 @@ function isRecord(
   return (
     typeof value ===
       "object" &&
-    value !== null &&
-    !Array.isArray(value)
+    value !==
+      null &&
+    !Array.isArray(
+      value
+    )
   );
 }
 
@@ -77,15 +96,25 @@ export function humanizeProfileEnum(
 ) {
   return value
     .toLowerCase()
-    .split("_")
-    .map(
-      (part) =>
-        part
-          .charAt(0)
-          .toUpperCase() +
-        part.slice(1)
+    .split(
+      "_"
     )
-    .join(" ");
+    .map(
+      (
+        part
+      ) =>
+        part
+          .charAt(
+            0
+          )
+          .toUpperCase() +
+        part.slice(
+          1
+        )
+    )
+    .join(
+      " "
+    );
 }
 
 export function formatProfileDate(
@@ -117,7 +146,8 @@ export function formatProfileDate(
   }
 
   return new Intl.DateTimeFormat(
-    locale === "vi"
+    locale ===
+      "vi"
       ? "vi-VN"
       : "en-US",
     {
@@ -135,9 +165,12 @@ export function formatProfileDate(
           ? undefined
           : "short",
 
-      year: "numeric"
+      year:
+        "numeric"
     }
-  ).format(date);
+  ).format(
+    date
+  );
 }
 
 function looksLikeDateKey(
@@ -150,30 +183,60 @@ function looksLikeDateKey(
     key.endsWith(
       "At"
     ) ||
-    key === "startDate" ||
-    key === "endDate"
+    key ===
+      "startDate" ||
+    key ===
+      "endDate"
   );
 }
 
 function looksLikeUrlKey(
   key: string
 ) {
+  return key
+    .toLowerCase()
+    .includes(
+      "url"
+    );
+}
+
+function ExternalIcon() {
   return (
-    key
-      .toLowerCase()
-      .includes("url")
+    <svg
+      viewBox="0 0 18 18"
+      fill="none"
+      className="size-3.5"
+      aria-hidden="true"
+    >
+      <path
+        d="M7.25 4.25H4.8A1.55 1.55 0 0 0 3.25 5.8v7.4a1.55 1.55 0 0 0 1.55 1.55h7.4a1.55 1.55 0 0 0 1.55-1.55v-2.45M10 3.25h4.75V8M14.25 3.75 8 10"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
 export function ProfileSectionTitle({
-  children
-}: {
-  children:
-    React.ReactNode;
-}) {
+  children,
+  index
+}: ProfileSectionTitleProps) {
   return (
-    <div className="mb-4 flex items-center gap-3">
-      <h3 className="text-[15px] font-bold tracking-[-0.03em] text-[#292927]">
+    <div className="mb-5 flex items-center gap-3">
+      {index ? (
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-[9px] bg-[#1d1d1b] font-mono text-[8px] font-bold text-[#d9ff75]">
+          {String(
+            index
+          ).padStart(
+            2,
+            "0"
+          )}
+        </span>
+      ) : null}
+
+      <h3 className="text-[16px] font-bold tracking-[-0.035em] text-[#292927]">
         {children}
       </h3>
 
@@ -184,17 +247,16 @@ export function ProfileSectionTitle({
 
 export function ProfileTags({
   values
-}: {
-  values: string[];
-}) {
+}: ProfileTagsProps) {
   if (
-    values.length === 0
+    values.length ===
+    0
   ) {
     return null;
   }
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-2">
       {values.map(
         (
           value,
@@ -202,7 +264,7 @@ export function ProfileTags({
         ) => (
           <span
             key={`${value}-${index}`}
-            className="rounded-[8px] bg-[#f0f0ec] px-2.5 py-1 text-[9px] font-semibold text-[#5c5c56]"
+            className="rounded-full border border-black/[0.055] bg-white px-3 py-1.5 text-[9px] font-semibold text-[#55554f] shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
           >
             {value}
           </span>
@@ -215,10 +277,7 @@ export function ProfileTags({
 export function StructuredProfileValue({
   fieldKey,
   value
-}: {
-  fieldKey: string;
-  value: unknown;
-}) {
+}: StructuredProfileValueProps) {
   const t =
     useTranslations(
       "user.cv"
@@ -240,7 +299,15 @@ export function StructuredProfileValue({
     "boolean"
   ) {
     return (
-      <>
+      <span className="inline-flex items-center gap-2">
+        <span
+          className={`size-1.5 rounded-full ${
+            value
+              ? "bg-[#9fbe3f]"
+              : "bg-black/20"
+          }`}
+        />
+
         {value
           ? t(
               "profile.yes"
@@ -248,7 +315,7 @@ export function StructuredProfileValue({
           : t(
               "profile.no"
             )}
-      </>
+      </span>
     );
   }
 
@@ -259,20 +326,47 @@ export function StructuredProfileValue({
     if (
       fieldKey
         .toLowerCase()
-        .includes("score")
+        .includes(
+          "score"
+        )
     ) {
       const percent =
-        value <= 1
-          ? value * 100
+        value <=
+        1
+          ? value *
+            100
           : value;
 
+      const normalized =
+        Math.round(
+          Math.min(
+            Math.max(
+              percent,
+              0
+            ),
+            100
+          )
+        );
+
       return (
-        <>
-          {Math.round(
-            percent
-          )}
-          %
-        </>
+        <div className="flex items-center gap-3">
+          <span className="text-[15px] font-bold tracking-[-0.03em] text-[#2b2b28]">
+            {
+              normalized
+            }
+            %
+          </span>
+
+          <span className="h-1.5 min-w-20 flex-1 overflow-hidden rounded-full bg-black/[0.055]">
+            <span
+              className="block h-full rounded-full bg-[#a9c84a]"
+              style={{
+                width:
+                  `${normalized}%`
+              }}
+            />
+          </span>
+        </div>
       );
     }
 
@@ -297,12 +391,20 @@ export function StructuredProfileValue({
     ) {
       return (
         <a
-          href={value}
+          href={
+            value
+          }
           target="_blank"
           rel="noreferrer"
-          className="break-all font-semibold underline decoration-black/15 underline-offset-4 hover:text-black"
+          className="inline-flex max-w-full items-center gap-1.5 font-semibold text-[#3e4b18] underline decoration-[#a9c84a]/45 underline-offset-4 transition-colors hover:text-black"
         >
-          {value}
+          <span className="truncate">
+            {value}
+          </span>
+
+          <span className="shrink-0">
+            <ExternalIcon />
+          </span>
         </a>
       );
     }
@@ -328,11 +430,11 @@ export function StructuredProfileValue({
       )
     ) {
       return (
-        <>
+        <span className="inline-flex rounded-full border border-black/[0.055] bg-white px-3 py-1.5 text-[9px] font-semibold text-black/52">
           {humanizeProfileEnum(
             value
           )}
-        </>
+        </span>
       );
     }
 
@@ -367,7 +469,9 @@ export function StructuredProfileValue({
 
     const allPrimitive =
       visible.every(
-        (item) =>
+        (
+          item
+        ) =>
           typeof item ===
             "string" ||
           typeof item ===
@@ -381,43 +485,61 @@ export function StructuredProfileValue({
     ) {
       return (
         <ProfileTags
-          values={visible.map(
-            (item) => {
-              if (
-                typeof item ===
-                  "string" &&
-                /^[A-Z][A-Z0-9_]+$/.test(
-                  item
-                )
-              ) {
-                return humanizeProfileEnum(
+          values={
+            visible.map(
+              (
+                item
+              ) => {
+                if (
+                  typeof item ===
+                    "string" &&
+                  /^[A-Z][A-Z0-9_]+$/.test(
+                    item
+                  )
+                ) {
+                  return humanizeProfileEnum(
+                    item
+                  );
+                }
+
+                return String(
                   item
                 );
               }
-
-              return String(
-                item
-              );
-            }
-          )}
+            )
+          }
         />
       );
     }
 
     return (
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid gap-3 xl:grid-cols-2">
         {visible.map(
           (
             item,
             index
           ) => (
             <div
-              key={index}
-              className="rounded-[16px] border border-black/[0.05] bg-[#fafaf7] p-4"
+              key={
+                index
+              }
+              className="relative overflow-hidden rounded-[17px] border border-black/[0.05] bg-white p-4 shadow-[0_3px_12px_rgba(0,0,0,0.018)]"
             >
+              <span className="absolute right-3 top-3 font-mono text-[7px] font-bold tracking-[0.08em] text-black/18">
+                {String(
+                  index +
+                    1
+                ).padStart(
+                  2,
+                  "0"
+                )}
+              </span>
+
               <StructuredProfileValue
                 fieldKey={`${fieldKey}.${index}`}
-                value={item}
+                value={
+                  item
+                }
               />
             </div>
           )
@@ -427,11 +549,15 @@ export function StructuredProfileValue({
   }
 
   if (
-    isRecord(value)
+    isRecord(
+      value
+    )
   ) {
     const entries =
       Object
-        .entries(value)
+        .entries(
+          value
+        )
         .filter(
           ([
             ,
@@ -450,7 +576,7 @@ export function StructuredProfileValue({
     }
 
     return (
-      <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+      <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
         {entries.map(
           ([
             key,
@@ -470,25 +596,30 @@ export function StructuredProfileValue({
                     key
                   );
 
+            const isWide =
+              Array.isArray(
+                itemValue
+              ) ||
+              isRecord(
+                itemValue
+              );
+
             return (
               <div
-                key={key}
-                className={
-                  Array.isArray(
-                    itemValue
-                  ) ||
-                  isRecord(
-                    itemValue
-                  )
+                key={
+                  key
+                }
+                className={`min-w-0 ${
+                  isWide
                     ? "sm:col-span-2"
                     : ""
-                }
+                }`}
               >
-                <p className="font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-black/28">
+                <p className="font-mono text-[7px] font-semibold uppercase tracking-[0.12em] text-black/25">
                   {label}
                 </p>
 
-                <div className="mt-1.5 text-[11px] font-medium leading-5 text-black/55">
+                <div className="mt-1.5 text-[10px] font-medium leading-5 text-black/54">
                   <StructuredProfileValue
                     fieldKey={
                       key

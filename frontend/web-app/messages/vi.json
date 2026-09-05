@@ -865,6 +865,92 @@
         "yes": "Có",
         "no": "Không"
       }
+    },
+    "matches": {
+      "eyebrow": "AI Matching / Gợi ý việc làm",
+      "title": "Việc làm phù hợp với bạn.",
+      "description": "AutoJob đối chiếu candidate profile với các công việc đã chuẩn hóa để xếp hạng cơ hội phù hợp theo ngữ nghĩa, kỹ năng, cấp bậc, địa điểm và độ mới.",
+      "matchedJobs": "Công việc phù hợp",
+      "searchPlaceholder": "Tìm theo vị trí, công ty, kỹ năng...",
+      "resultsCount": "{count} kết quả đang hiển thị",
+      "actions": {
+        "run": "Tìm việc phù hợp",
+        "running": "Đang phân tích...",
+        "refresh": "Cập nhật kết quả",
+        "tryAgain": "Thử lại",
+        "goToCv": "Đi tới hồ sơ CV",
+        "viewJob": "Xem chi tiết"
+      },
+      "filters": {
+        "all": "Tất cả"
+      },
+      "tiers": {
+        "STRONG": "Rất phù hợp",
+        "STRETCH": "Có thử thách",
+        "POSSIBLE": "Có tiềm năng",
+        "EXPLORE": "Nên khám phá"
+      },
+      "labels": {
+        "rank": "Hạng #{rank}",
+        "matchedSkills": "Kỹ năng khớp",
+        "missingSkills": "Kỹ năng còn thiếu",
+        "moreSkills": "+{count} kỹ năng",
+        "whyMatch": "Vì sao phù hợp"
+      },
+      "score": {
+        "label": "Match",
+        "overall": "Mức độ phù hợp",
+        "semantic": "Ngữ nghĩa",
+        "skills": "Kỹ năng",
+        "seniority": "Cấp bậc",
+        "location": "Địa điểm",
+        "freshness": "Độ mới"
+      },
+      "summary": {
+        "eyebrow": "Matching snapshot",
+        "title": "Tổng quan kết quả",
+        "topScore": "Điểm cao nhất",
+        "strongMatches": "Rất phù hợp",
+        "averageScore": "Điểm trung bình",
+        "updatedAt": "Cập nhật",
+        "cached": "Đang sử dụng kết quả matching đã lưu gần nhất của hồ sơ này.",
+        "fresh": "Kết quả vừa được AutoJob tính lại từ dữ liệu hiện tại."
+      },
+      "states": {
+        "noCv": {
+          "eyebrow": "Cần hồ sơ CV",
+          "title": "Tải CV lên trước khi bắt đầu matching",
+          "description": "AutoJob cần candidate profile đã được phân tích để hiểu kỹ năng, kinh nghiệm và mục tiêu của bạn trước khi xếp hạng công việc."
+        },
+        "firstRun": {
+          "eyebrow": "Sẵn sàng matching",
+          "title": "Tìm những công việc phù hợp nhất với hồ sơ của bạn",
+          "description": "Candidate profile đã sẵn sàng. Chạy matching để AutoJob so sánh hồ sơ với kho việc làm hiện tại và tạo danh sách xếp hạng."
+        },
+        "error": {
+          "eyebrow": "Matching chưa sẵn sàng",
+          "title": "Không thể tải kết quả lúc này"
+        },
+        "empty": {
+          "eyebrow": "Đã hoàn tất",
+          "title": "Chưa có công việc nào vượt ngưỡng phù hợp",
+          "description": "Bạn có thể cập nhật CV hoặc chạy lại matching sau khi hệ thống có thêm công việc mới."
+        },
+        "noFiltered": {
+          "title": "Không có kết quả trong bộ lọc này",
+          "description": "Thử chọn mức độ phù hợp khác hoặc xóa từ khóa tìm kiếm hiện tại."
+        }
+      },
+      "errors": {
+        "profileMissing": "Không tìm thấy candidate profile hiện tại. Hãy mở trang CV và phân tích lại hồ sơ.",
+        "embeddingNotReady": "AI vẫn đang chuẩn bị embedding cho CV. Hãy thử lại sau một lúc.",
+        "embeddingStale": "Embedding hiện tại không còn đồng bộ với CV. Hãy cập nhật lại hồ sơ CV rồi thử lại.",
+        "embeddingInvalid": "Embedding của CV không hợp lệ nên chưa thể matching. Hãy cập nhật lại hồ sơ CV.",
+        "vectorStore": "Dịch vụ tìm kiếm vector đang tạm thời không khả dụng. Hãy thử lại.",
+        "authentication": "Phiên đăng nhập không còn hợp lệ. Hãy đăng nhập lại.",
+        "invalidRequest": "Yêu cầu matching không hợp lệ. Hãy kiểm tra lại hồ sơ CV.",
+        "generic": "Đã xảy ra lỗi khi xử lý matching. Hãy thử lại."
+      }
     }
   }
 }

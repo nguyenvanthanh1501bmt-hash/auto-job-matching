@@ -4,16 +4,26 @@ import {
   useMemo,
   useState
 } from "react";
+
 import {
   useTranslations
 } from "next-intl";
 
-import {JobCard} from "@/components/jobs/job-card";
-import {JobDetailDrawer} from "@/components/jobs/job-detail-drawer";
+import {
+  JobCard
+} from "@/components/jobs/job-card";
+
+import {
+  JobDetailDrawer
+} from "@/components/jobs/job-detail-drawer";
 
 import {
   WorkspacePageHeader
 } from "@/components/user/workspace-page-header";
+
+import {
+  WorkspaceSearchInput
+} from "@/components/user/workspace-search-input";
 
 import {
   useNormalizedJobs
@@ -23,9 +33,10 @@ import {
   getApiErrorMessage
 } from "@/lib/api-error";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE =
+  12;
 
-function SearchIcon() {
+function EmptySearchIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -92,7 +103,9 @@ function JobsSkeleton() {
           index
         ) => (
           <div
-            key={index}
+            key={
+              index
+            }
             className="h-[310px] animate-pulse rounded-[20px] border border-black/[0.04] bg-white/70"
           />
         )
@@ -110,12 +123,14 @@ export function JobsWorkspace() {
   const [
     page,
     setPage
-  ] = useState(0);
+  ] =
+    useState(0);
 
   const [
     searchValue,
     setSearchValue
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     selectedJobId,
@@ -128,12 +143,14 @@ export function JobsWorkspace() {
   const jobsQuery =
     useNormalizedJobs({
       page,
-      size: PAGE_SIZE
+      size:
+        PAGE_SIZE
     });
 
   const jobs =
     jobsQuery.data
-      ?.content ?? [];
+      ?.content ??
+    [];
 
   const visibleJobs =
     useMemo(() => {
@@ -157,8 +174,12 @@ export function JobsWorkspace() {
               ...job.locations,
               ...job.skills
             ]
-              .filter(Boolean)
-              .join(" ")
+              .filter(
+                Boolean
+              )
+              .join(
+                " "
+              )
               .toLowerCase();
 
           return searchable.includes(
@@ -173,15 +194,18 @@ export function JobsWorkspace() {
 
   const totalElements =
     jobsQuery.data
-      ?.totalElements ?? 0;
+      ?.totalElements ??
+    0;
 
   const totalPages =
     jobsQuery.data
-      ?.totalPages ?? 0;
+      ?.totalPages ??
+    0;
 
   const currentPage =
     jobsQuery.data
-      ?.page ?? page;
+      ?.page ??
+    page;
 
   return (
     <>
@@ -207,29 +231,18 @@ export function JobsWorkspace() {
       />
 
       <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-[430px]">
-          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-black/30">
-            <SearchIcon />
-          </span>
-
-          <input
-            value={
-              searchValue
-            }
-            onChange={(
-              event
-            ) =>
-              setSearchValue(
-                event.target
-                  .value
-              )
-            }
-            placeholder={t(
-              "searchPlaceholder"
-            )}
-            className="h-11 w-full rounded-[13px] border border-black/[0.065] bg-white pl-11 pr-4 text-[11px] font-medium text-[#333] outline-none transition-[border-color,box-shadow] placeholder:text-black/25 focus:border-black/[0.13] focus:shadow-[0_0_0_3px_rgba(0,0,0,0.025)]"
-          />
-        </div>
+        <WorkspaceSearchInput
+          value={
+            searchValue
+          }
+          placeholder={t(
+            "searchPlaceholder"
+          )}
+          onValueChange={
+            setSearchValue
+          }
+          className="w-full sm:max-w-[430px]"
+        />
 
         <div className="flex items-center gap-2 text-[10px] text-black/35">
           <span className="size-1.5 rounded-full bg-[#d9ff75] ring-1 ring-black/[0.05]" />
@@ -296,8 +309,8 @@ export function JobsWorkspace() {
       visibleJobs.length ===
         0 ? (
         <div className="mt-6 flex min-h-[340px] flex-col items-center justify-center rounded-[20px] border border-dashed border-black/[0.08] bg-white/45 px-6 text-center">
-          <div className="flex size-11 items-center justify-center rounded-[14px] bg-white shadow-[0_3px_16px_rgba(0,0,0,0.035)]">
-            <SearchIcon />
+          <div className="flex size-11 items-center justify-center rounded-[14px] bg-white text-black/35 shadow-[0_3px_16px_rgba(0,0,0,0.035)]">
+            <EmptySearchIcon />
           </div>
 
           <h2 className="mt-4 text-[15px] font-bold tracking-[-0.03em] text-[#333]">
@@ -346,8 +359,12 @@ export function JobsWorkspace() {
           {visibleJobs.map(
             (job) => (
               <JobCard
-                key={job.id}
-                job={job}
+                key={
+                  job.id
+                }
+                job={
+                  job
+                }
                 onOpen={
                   setSelectedJobId
                 }
@@ -359,12 +376,14 @@ export function JobsWorkspace() {
 
       {!jobsQuery.isLoading &&
       !jobsQuery.isError &&
-      totalPages > 1 ? (
+      totalPages >
+        1 ? (
         <div className="mt-8 flex items-center justify-between border-t border-black/[0.05] pt-6">
           <button
             type="button"
             disabled={
-              currentPage <= 0 ||
+              currentPage <=
+                0 ||
               jobsQuery.isFetching
             }
             onClick={() =>
@@ -388,7 +407,8 @@ export function JobsWorkspace() {
           <div className="flex items-center gap-2">
             <span className="font-mono text-[9px] text-black/35">
               {String(
-                currentPage + 1
+                currentPage +
+                  1
               ).padStart(
                 2,
                 "0"
@@ -411,7 +431,8 @@ export function JobsWorkspace() {
             type="button"
             disabled={
               currentPage >=
-                totalPages - 1 ||
+                totalPages -
+                  1 ||
               jobsQuery.isFetching
             }
             onClick={() =>
