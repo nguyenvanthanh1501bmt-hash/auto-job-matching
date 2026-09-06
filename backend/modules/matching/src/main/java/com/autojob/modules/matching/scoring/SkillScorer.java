@@ -21,7 +21,13 @@ import java.util.stream.Collectors;
 @Component
 public class SkillScorer {
 
-    private static final double NO_JOB_SKILLS_SCORE =
+    /*
+     * Numeric placeholder khi professional skill signal
+     * không đủ để đánh giá.
+     *
+     * known flag mới là source of truth.
+     */
+    private static final double UNKNOWN_SCORE =
             0.50d;
 
     private static final Pattern DIACRITICS =
@@ -33,8 +39,19 @@ public class SkillScorer {
     private final Map<String, SkillMetadata>
             skillByAlias;
 
+    /*
+     * SECONDARY theo taxonomy ID.
+     */
     private final Set<String>
             genericSkillIds;
+
+    /*
+     * SECONDARY theo taxonomy category.
+     *
+     * Hiện config dùng LANGUAGE.
+     */
+    private final Set<String>
+            genericSkillCategories;
 
     private final MatchingProperties.SkillScoring
             config;
@@ -43,13 +60,26 @@ public class SkillScorer {
             SharedSkillTaxonomyProperties taxonomy,
             MatchingProperties properties
     ) {
+        Objects.requireNonNull(
+                taxonomy,
+                "taxonomy must not be null"
+        );
+
+        Objects.requireNonNull(
+                properties,
+                "properties must not be null"
+        );
+
         this.skillByAlias =
                 buildAliasMap(
                         taxonomy.getItems()
                 );
 
         this.config =
-                properties.getSkillScoring();
+                Objects.requireNonNull(
+                        properties.getSkillScoring(),
+                        "skillScoring config must not be null"
+                );
 
         this.genericSkillIds =
                 config
@@ -63,6 +93,22 @@ public class SkillScorer {
                                                 .toLowerCase(
                                                         Locale.ROOT
                                                 )
+                        )
+                        .filter(
+                                value ->
+                                        !value.isBlank()
+                        )
+                        .collect(
+                                Collectors.toUnmodifiableSet()
+                        );
+
+        this.genericSkillCategories =
+                config
+                        .getGenericSkillCategories()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(
+                                this::normalizeCategory
                         )
                         .filter(
                                 value ->
@@ -90,19 +136,18 @@ public class SkillScorer {
         List<String> jobSkills =
                 job.getSkills();
 
+        /*
+         * JD không có skill data.
+         */
         if (jobSkills == null
                 || jobSkills.isEmpty()) {
 
-            return new Result(
-                    NO_JOB_SKILLS_SCORE,
+            return Result.unknown(
                     List.of(),
                     List.of()
             );
         }
 
-        /*
-         * key -> confidence [0..1]
-         */
         Map<String, Double> candidateSkills =
                 candidateSkillConfidence(
                         candidate
@@ -111,22 +156,30 @@ public class SkillScorer {
         List<String> matchedSkills =
                 new ArrayList<>();
 
+        /*
+         * missingSkills chỉ chứa PRIMARY/domain skills.
+         *
+         * SECONDARY skill thiếu không phải professional gap.
+         */
         List<String> missingSkills =
                 new ArrayList<>();
 
         Set<String> seenJobSkills =
                 new LinkedHashSet<>();
 
-        double totalWeight =
+        int primarySkillCount =
+                0;
+
+        int secondarySkillCount =
+                0;
+
+        double matchedPrimaryConfidence =
                 0.0d;
 
-        double matchedWeight =
+        double matchedSecondaryConfidence =
                 0.0d;
 
-        boolean hasCoreSkill =
-                false;
-
-        boolean matchedCoreSkill =
+        boolean matchedPrimarySkill =
                 false;
 
         for (String rawJobSkill : jobSkills) {
@@ -150,21 +203,25 @@ public class SkillScorer {
                 continue;
             }
 
-            boolean generic =
-                    isGeneric(
+            boolean secondary =
+                    isSecondary(
                             resolution.metadata()
                     );
 
-            double jobSkillWeight =
-                    generic
-                            ? config.getGenericWeight()
-                            : config.getCoreWeight();
+            if (secondary) {
 
-            totalWeight +=
-                    jobSkillWeight;
+                secondarySkillCount++;
 
-            if (!generic) {
-                hasCoreSkill = true;
+            } else {
+
+                /*
+                 * Mọi skill không bị classifier đánh dấu
+                 * SECONDARY đều mặc định PRIMARY.
+                 *
+                 * Điều này rất quan trọng cho skill mới,
+                 * nghề mới hoặc taxonomy chưa biết.
+                 */
+                primarySkillCount++;
             }
 
             double candidateConfidence =
@@ -179,60 +236,132 @@ public class SkillScorer {
                         rawJobSkill
                 );
 
-                /*
-                 * Match strength =
-                 *
-                 * job importance
-                 * ×
-                 * confidence that candidate really owns skill
-                 */
-                matchedWeight +=
-                        jobSkillWeight
-                                * candidateConfidence;
+                if (secondary) {
 
-                if (!generic) {
-                    matchedCoreSkill = true;
+                    matchedSecondaryConfidence +=
+                            candidateConfidence;
+
+                } else {
+
+                    matchedPrimaryConfidence +=
+                            candidateConfidence;
+
+                    matchedPrimarySkill =
+                            true;
                 }
 
             } else {
 
-                missingSkills.add(
-                        rawJobSkill
-                );
+                /*
+                 * Chỉ PRIMARY skill mới được báo thiếu.
+                 */
+                if (!secondary) {
+
+                    missingSkills.add(
+                            rawJobSkill
+                    );
+                }
             }
         }
 
-        if (totalWeight <= 0.0d) {
+        /*
+         * Không có skill hợp lệ sau normalize.
+         */
+        if (primarySkillCount == 0
+                && secondarySkillCount == 0) {
 
-            return new Result(
-                    NO_JOB_SKILLS_SCORE,
-                    List.copyOf(
-                            matchedSkills
-                    ),
-                    List.copyOf(
-                            missingSkills
-                    )
+            return Result.unknown(
+                    matchedSkills,
+                    missingSkills
             );
         }
 
-        double score =
-                clamp01(
-                        matchedWeight
-                                / totalWeight
-                );
-
         /*
-         * Nếu job có core skills nhưng candidate
-         * chỉ match generic transferable skills:
+         * =====================================================
+         * JD chỉ có SECONDARY skills
+         * =====================================================
+         *
+         * Ví dụ:
          *
          * Communication
          * Teamwork
-         * Problem Solving
+         * English
          *
-         * thì không được xem là strong fit.
+         * Đây không phải professional/domain evidence đủ mạnh.
+         *
+         * Skill component UNKNOWN.
+         *
+         * Semantic + các structured signals khác sẽ quyết định.
          */
-        if (hasCoreSkill
-                && !matchedCoreSkill) {
+        if (primarySkillCount == 0) {
+
+            return Result.unknown(
+                    matchedSkills,
+                    missingSkills
+            );
+        }
+
+        /*
+         * =====================================================
+         * PRIMARY score
+         * =====================================================
+         *
+         * Chỉ denominator PRIMARY skill.
+         *
+         * Secondary skill thiếu không làm giảm primary coverage.
+         */
+        double primaryScore =
+                clamp01(
+                        matchedPrimaryConfidence
+                                / primarySkillCount
+                );
+
+        /*
+         * =====================================================
+         * SECONDARY score
+         * =====================================================
+         */
+        double secondaryScore =
+                secondarySkillCount > 0
+                        ? clamp01(
+                        matchedSecondaryConfidence
+                                / secondarySkillCount
+                )
+                        : 0.0d;
+
+        /*
+         * PRIMARY quyết định phần lớn skill score.
+         *
+         * SECONDARY chỉ bonus nhỏ.
+         */
+        double score =
+                primaryScore
+                        * config.getCoreWeight()
+                        + secondaryScore
+                        * config.getGenericWeight();
+
+        score =
+                clamp01(
+                        score
+                );
+
+        /*
+         * =====================================================
+         * Candidate chỉ match SECONDARY
+         * =====================================================
+         *
+         * JD có professional PRIMARY skills,
+         * nhưng candidate chỉ match:
+         *
+         * English
+         * Communication
+         * Teamwork
+         *
+         * => không được coi là professional fit.
+         *
+         * Hard cap về genericOnlyCap.
+         */
+        if (!matchedPrimarySkill) {
 
             score =
                     Math.min(
@@ -241,37 +370,13 @@ public class SkillScorer {
                     );
         }
 
-        return new Result(
+        return Result.known(
                 score,
-                List.copyOf(
-                        matchedSkills
-                ),
-                List.copyOf(
-                        missingSkills
-                )
+                matchedSkills,
+                missingSkills
         );
     }
 
-    /**
-     * Build confidence map của candidate.
-     *
-     * Nhiều evidence cho cùng skill:
-     *
-     * lấy confidence mạnh nhất.
-     *
-     * Ví dụ React:
-     *
-     * SKILLS_SECTION = 1.0
-     * PROJECTS       = 0.65
-     *
-     * => React confidence = 1.0
-     *
-     * Artificial Intelligence:
-     *
-     * PROJECTS only
-     *
-     * => confidence = 0.65
-     */
     private Map<String, Double>
     candidateSkillConfidence(
             CandidateProfile candidate
@@ -280,9 +385,9 @@ public class SkillScorer {
                 new LinkedHashMap<>();
 
         /*
-         * -------------------------------------------------
-         * Structured CandidateProfile.skills
-         * -------------------------------------------------
+         * =====================================================
+         * CandidateProfile.skills
+         * =====================================================
          */
         if (candidate.getSkills() != null) {
 
@@ -315,20 +420,14 @@ public class SkillScorer {
         }
 
         /*
-         * -------------------------------------------------
-         * WorkExperience embedded skill/tool evidence
-         * -------------------------------------------------
-         *
-         * Đây là direct professional evidence.
+         * =====================================================
+         * Work experience
+         * =====================================================
          */
-        if (
-                candidate.getWorkExperiences()
-                        != null
-        ) {
+        if (candidate.getWorkExperiences() != null) {
 
             for (
-                    CandidateProfile.WorkExperience
-                            experience
+                    CandidateProfile.WorkExperience experience
                     : candidate.getWorkExperiences()
             ) {
 
@@ -357,20 +456,14 @@ public class SkillScorer {
         }
 
         /*
-         * -------------------------------------------------
-         * Project evidence
-         * -------------------------------------------------
-         *
-         * Project skills rất hữu ích cho fresher/student,
-         * nhưng confidence thấp hơn explicit skill section
-         * để tránh một concept xuất hiện trong project
-         * trở thành "expert skill".
+         * =====================================================
+         * Projects
+         * =====================================================
          */
         if (candidate.getProjects() != null) {
 
             for (
-                    CandidateProfile.ProjectExperience
-                            project
+                    CandidateProfile.ProjectExperience project
                     : candidate.getProjects()
             ) {
 
@@ -472,7 +565,9 @@ public class SkillScorer {
                     .getUnknownEvidenceConfidence();
         }
 
-        return clamp01(best);
+        return clamp01(
+                best
+        );
     }
 
     private void addAll(
@@ -508,14 +603,11 @@ public class SkillScorer {
             return;
         }
 
-        double safeConfidence =
-                clamp01(
-                        confidence
-                );
-
         target.merge(
                 resolution.key(),
-                safeConfidence,
+                clamp01(
+                        confidence
+                ),
                 Math::max
         );
     }
@@ -541,6 +633,11 @@ public class SkillScorer {
                         aliasKey
                 );
 
+        /*
+         * Taxonomy chưa biết skill này.
+         *
+         * Giữ riêng raw key và mặc định PRIMARY.
+         */
         if (metadata == null) {
 
             return new SkillResolution(
@@ -555,12 +652,39 @@ public class SkillScorer {
         );
     }
 
-    private boolean isGeneric(
+    /*
+     * =========================================================
+     * PRIMARY / SECONDARY classifier
+     * =========================================================
+     *
+     * SECONDARY nếu:
+     *
+     * 1. taxonomy ID nằm genericSkillIds
+     *
+     * HOẶC
+     *
+     * 2. taxonomy category nằm genericSkillCategories
+     *
+     * Nếu metadata=null:
+     * => mặc định PRIMARY.
+     */
+    private boolean isSecondary(
             SkillMetadata metadata
     ) {
-        return metadata != null
-                && genericSkillIds.contains(
+        if (metadata == null) {
+            return false;
+        }
+
+        if (genericSkillIds.contains(
                 metadata.id()
+        )) {
+
+            return true;
+        }
+
+        return metadata.category() != null
+                && genericSkillCategories.contains(
+                metadata.category()
         );
     }
 
@@ -569,24 +693,21 @@ public class SkillScorer {
             List<SharedSkillTaxonomyProperties.SkillDefinition>
                     definitions
     ) {
-        Map<String, SkillMetadata> result =
-                new LinkedHashMap<>();
-
         if (definitions == null) {
             return Map.of();
         }
 
+        Map<String, SkillMetadata> result =
+                new LinkedHashMap<>();
+
         for (
-                SharedSkillTaxonomyProperties.SkillDefinition
-                        definition
+                SharedSkillTaxonomyProperties.SkillDefinition definition
                 : definitions
         ) {
 
             if (definition == null
                     || definition.getId() == null
-                    || definition
-                    .getId()
-                    .isBlank()) {
+                    || definition.getId().isBlank()) {
 
                 continue;
             }
@@ -599,8 +720,10 @@ public class SkillScorer {
                                     .toLowerCase(
                                             Locale.ROOT
                                     ),
-                            definition.getCanonical(),
-                            definition.getCategory()
+
+                            normalizeCategory(
+                                    definition.getCategory()
+                            )
                     );
 
             registerAlias(
@@ -631,7 +754,9 @@ public class SkillScorer {
             }
         }
 
-        return Map.copyOf(result);
+        return Map.copyOf(
+                result
+        );
     }
 
     private void registerAlias(
@@ -653,6 +778,22 @@ public class SkillScorer {
         }
     }
 
+    private String normalizeCategory(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+
+            return "";
+        }
+
+        return value
+                .trim()
+                .toUpperCase(
+                        Locale.ROOT
+                );
+    }
+
     private String compact(
             String value
     ) {
@@ -670,7 +811,9 @@ public class SkillScorer {
 
         String folded =
                 DIACRITICS
-                        .matcher(decomposed)
+                        .matcher(
+                                decomposed
+                        )
                         .replaceAll("")
                         .replace(
                                 'đ',
@@ -686,7 +829,9 @@ public class SkillScorer {
                         .trim();
 
         return NON_KEY
-                .matcher(folded)
+                .matcher(
+                        folded
+                )
                 .replaceAll("");
     }
 
@@ -704,14 +849,67 @@ public class SkillScorer {
 
     public record Result(
             double score,
+            boolean known,
             List<String> matchedSkills,
             List<String> missingSkills
     ) {
+
+        public Result {
+
+            if (!Double.isFinite(
+                    score
+            )
+                    || score < 0.0d
+                    || score > 1.0d) {
+
+                throw new IllegalArgumentException(
+                        "score must be between 0.0 and 1.0"
+                );
+            }
+
+            matchedSkills =
+                    matchedSkills == null
+                            ? List.of()
+                            : List.copyOf(
+                            matchedSkills
+                    );
+
+            missingSkills =
+                    missingSkills == null
+                            ? List.of()
+                            : List.copyOf(
+                            missingSkills
+                    );
+        }
+
+        public static Result known(
+                double score,
+                List<String> matchedSkills,
+                List<String> missingSkills
+        ) {
+            return new Result(
+                    score,
+                    true,
+                    matchedSkills,
+                    missingSkills
+            );
+        }
+
+        public static Result unknown(
+                List<String> matchedSkills,
+                List<String> missingSkills
+        ) {
+            return new Result(
+                    UNKNOWN_SCORE,
+                    false,
+                    matchedSkills,
+                    missingSkills
+            );
+        }
     }
 
     private record SkillMetadata(
             String id,
-            String canonical,
             String category
     ) {
     }

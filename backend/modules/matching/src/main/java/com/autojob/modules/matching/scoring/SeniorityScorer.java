@@ -30,7 +30,28 @@ public class SeniorityScorer {
         );
     }
 
+    /**
+     * Backward-compatible numeric API.
+     *
+     * Với ranking/filter mới, hãy dùng evaluate() để lấy cả cờ known.
+     */
     public double score(
+            CandidateProfile candidate,
+            NormalizedJob job
+    ) {
+        return evaluate(
+                candidate,
+                job
+        ).score();
+    }
+
+    /**
+     * Trả cả numeric score và việc score đó có evidence thật hay không.
+     *
+     * Không dùng 0.50 như sentinel nữa vì một score hợp lệ hoàn toàn
+     * có thể bằng đúng 0.50 sau khi tính experience/seniority.
+     */
+    public Result evaluate(
             CandidateProfile candidate,
             NormalizedJob job
     ) {
@@ -65,37 +86,32 @@ public class SeniorityScorer {
                         job.getExperienceMax()
                 );
 
-        /*
-         * Nếu có cả seniority + experience thì ưu tiên
-         * seniority level.
-         */
         if (levelScore != null
                 && experienceScore != null) {
 
-            return clamp01(
-                    levelScore * 0.75d
-                            + experienceScore * 0.25d
+            return Result.known(
+                    clamp01(
+                            levelScore * 0.75d
+                                    + experienceScore * 0.25d
+                    )
             );
         }
 
         if (levelScore != null) {
-            return levelScore;
+            return Result.known(
+                    levelScore
+            );
         }
 
         if (experienceScore != null) {
-            return experienceScore;
+            return Result.known(
+                    experienceScore
+            );
         }
 
-        return UNKNOWN_SCORE;
+        return Result.unknown();
     }
 
-    /**
-     * Candidate parser đôi khi trả UNKNOWN dù CV có tín hiệu
-     * rõ như "internship", "fresher", "junior".
-     *
-     * Matching dùng fallback này để không biến toàn bộ
-     * seniority score thành 0.5.
-     */
     private CandidateProfile.Seniority
     resolveCandidateSeniority(
             CandidateProfile candidate
@@ -107,9 +123,6 @@ public class SeniorityScorer {
             return candidate.getSeniority();
         }
 
-        /*
-         * Preferred employment type là tín hiệu mạnh nhất.
-         */
         if (candidate.getPreferredEmploymentTypes() != null
                 && candidate
                 .getPreferredEmploymentTypes()
@@ -126,13 +139,6 @@ public class SeniorityScorer {
                 candidate
         );
 
-        /*
-         * CV hiện tại của bạn có:
-         *
-         * "Seeking an internship opportunity"
-         *
-         * nên sẽ vào INTERN ở đây.
-         */
         if (containsAny(
                 text,
                 "internship",
@@ -179,9 +185,6 @@ public class SeniorityScorer {
             return CandidateProfile.Seniority.JUNIOR;
         }
 
-        /*
-         * Có experienceYears thì suy ra bằng taxonomy.
-         */
         Double years = validNonNegative(
                 candidate.getExperienceYears()
         );
@@ -226,10 +229,6 @@ public class SeniorityScorer {
                     .SENIOR;
         }
 
-        /*
-         * Đang học + chưa có work experience:
-         * ít nhất nên xem là entry-level thay vì UNKNOWN.
-         */
         if (isCurrentStudent(candidate)
                 && hasNoWorkExperience(candidate)) {
 
@@ -253,12 +252,6 @@ public class SeniorityScorer {
             return explicit;
         }
 
-        /*
-         * Không tự tính project thành professional experience.
-         *
-         * Current student + không có work experience
-         * => xem như 0 năm professional experience.
-         */
         if (isCurrentStudent(candidate)
                 && hasNoWorkExperience(candidate)) {
 
@@ -438,10 +431,6 @@ public class SeniorityScorer {
             return null;
         }
 
-        /*
-         * Candidate thiếu experience yêu cầu:
-         * penalty khá mạnh.
-         */
         if (min != null
                 && candidateYears < min) {
 
@@ -456,9 +445,6 @@ public class SeniorityScorer {
             );
         }
 
-        /*
-         * Overqualified nhẹ hơn underqualified.
-         */
         if (max != null
                 && candidateYears > max) {
 
@@ -529,5 +515,38 @@ public class SeniorityScorer {
                 0.0d,
                 Math.min(1.0d, value)
         );
+    }
+
+    public record Result(
+            double score,
+            boolean known
+    ) {
+
+        public Result {
+            if (!Double.isFinite(score)
+                    || score < 0.0d
+                    || score > 1.0d) {
+
+                throw new IllegalArgumentException(
+                        "score must be between 0.0 and 1.0"
+                );
+            }
+        }
+
+        public static Result known(
+                double score
+        ) {
+            return new Result(
+                    score,
+                    true
+            );
+        }
+
+        public static Result unknown() {
+            return new Result(
+                    UNKNOWN_SCORE,
+                    false
+            );
+        }
     }
 }

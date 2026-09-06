@@ -399,8 +399,10 @@ class CvControllerTest {
     @ParameterizedTest
     @MethodSource("parsingErrors")
     void shouldMapControlledParsingErrors(
-            HttpStatus httpStatus,
-            String code
+            HttpStatus exceptionStatus,
+            String exceptionCode,
+            HttpStatus expectedStatus,
+            String expectedCode
     ) throws Exception {
         when(
                 cvParsingService.parse(
@@ -409,9 +411,9 @@ class CvControllerTest {
                 )
         ).thenThrow(
                 new CvParsingException(
-                        httpStatus,
-                        code,
-                        publicMessage(code),
+                        exceptionStatus,
+                        exceptionCode,
+                        publicMessage(exceptionCode),
                         RAW_CV_ID
                 )
         );
@@ -423,19 +425,19 @@ class CvControllerTest {
                         )
                 )
                 .andExpect(
-                        status().is(httpStatus.value())
+                        status().is(expectedStatus.value())
                 )
                 .andExpect(
                         jsonPath("$.status")
-                                .value(httpStatus.value())
+                                .value(expectedStatus.value())
                 )
                 .andExpect(
                         jsonPath("$.error")
-                                .value(code)
+                                .value(expectedCode)
                 )
                 .andExpect(
                         jsonPath("$.message")
-                                .value(publicMessage(code))
+                                .value(publicMessage(expectedCode))
                 )
                 .andExpect(
                         jsonPath("$.path")
@@ -455,33 +457,49 @@ class CvControllerTest {
         return Stream.of(
                 Arguments.of(
                         HttpStatus.BAD_REQUEST,
+                        "RAW_CV_ID_REQUIRED",
+                        HttpStatus.BAD_REQUEST,
                         "RAW_CV_ID_REQUIRED"
                 ),
                 Arguments.of(
                         HttpStatus.FORBIDDEN,
-                        "CV_ACCESS_DENIED"
+                        "CV_ACCESS_DENIED",
+                        HttpStatus.NOT_FOUND,
+                        "RAW_CV_NOT_FOUND"
                 ),
                 Arguments.of(
+                        HttpStatus.NOT_FOUND,
+                        "RAW_CV_NOT_FOUND",
                         HttpStatus.NOT_FOUND,
                         "RAW_CV_NOT_FOUND"
                 ),
                 Arguments.of(
                         HttpStatus.CONFLICT,
+                        "CV_PARSE_IN_PROGRESS",
+                        HttpStatus.CONFLICT,
                         "CV_PARSE_IN_PROGRESS"
                 ),
                 Arguments.of(
+                        HttpStatus.PAYLOAD_TOO_LARGE,
+                        "CV_FILE_TOO_LARGE",
                         HttpStatus.PAYLOAD_TOO_LARGE,
                         "CV_FILE_TOO_LARGE"
                 ),
                 Arguments.of(
                         HttpStatus.UNPROCESSABLE_ENTITY,
+                        "CV_TEXT_NOT_EXTRACTABLE",
+                        HttpStatus.UNPROCESSABLE_ENTITY,
                         "CV_TEXT_NOT_EXTRACTABLE"
                 ),
                 Arguments.of(
                         HttpStatus.BAD_GATEWAY,
+                        "CV_PARSER_UNAVAILABLE",
+                        HttpStatus.BAD_GATEWAY,
                         "CV_PARSER_UNAVAILABLE"
                 ),
                 Arguments.of(
+                        HttpStatus.GATEWAY_TIMEOUT,
+                        "CV_PARSER_TIMEOUT",
                         HttpStatus.GATEWAY_TIMEOUT,
                         "CV_PARSER_TIMEOUT"
                 )

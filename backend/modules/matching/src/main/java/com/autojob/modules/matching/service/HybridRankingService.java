@@ -22,12 +22,6 @@ import java.util.Objects;
 @Service
 public class HybridRankingService {
 
-    private static final double UNKNOWN_SENTINEL =
-            0.50d;
-
-    private static final double EPSILON =
-            0.000000001d;
-
     private final SemanticScoreNormalizer semanticScoreNormalizer;
     private final SkillScorer skillScorer;
     private final SeniorityScorer seniorityScorer;
@@ -48,28 +42,52 @@ public class HybridRankingService {
             MatchingProperties properties
     ) {
         this.semanticScoreNormalizer =
-                semanticScoreNormalizer;
+                Objects.requireNonNull(
+                        semanticScoreNormalizer,
+                        "semanticScoreNormalizer must not be null"
+                );
 
         this.skillScorer =
-                skillScorer;
+                Objects.requireNonNull(
+                        skillScorer,
+                        "skillScorer must not be null"
+                );
 
         this.seniorityScorer =
-                seniorityScorer;
+                Objects.requireNonNull(
+                        seniorityScorer,
+                        "seniorityScorer must not be null"
+                );
 
         this.locationScorer =
-                locationScorer;
+                Objects.requireNonNull(
+                        locationScorer,
+                        "locationScorer must not be null"
+                );
 
         this.freshnessScorer =
-                freshnessScorer;
+                Objects.requireNonNull(
+                        freshnessScorer,
+                        "freshnessScorer must not be null"
+                );
 
         this.eligibilityFilter =
-                eligibilityFilter;
+                Objects.requireNonNull(
+                        eligibilityFilter,
+                        "eligibilityFilter must not be null"
+                );
 
         this.acceptanceFilter =
-                acceptanceFilter;
+                Objects.requireNonNull(
+                        acceptanceFilter,
+                        "acceptanceFilter must not be null"
+                );
 
         this.properties =
-                properties;
+                Objects.requireNonNull(
+                        properties,
+                        "properties must not be null"
+                );
     }
 
     public List<RankedJob> rank(
@@ -89,14 +107,6 @@ public class HybridRankingService {
             return List.of();
         }
 
-        /*
-         * -------------------------------------------------
-         * Stage 1: hard eligibility
-         * -------------------------------------------------
-         *
-         * Invalid/expired/incompatible jobs không được
-         * tham gia semantic calibration.
-         */
         List<JobCandidate> eligible =
                 candidates
                         .stream()
@@ -113,13 +123,7 @@ public class HybridRankingService {
             return List.of();
         }
 
-        /*
-         * -------------------------------------------------
-         * Stage 2: semantic calibration
-         * -------------------------------------------------
-         */
-        SemanticScoreNormalizer.Calibration
-                semanticCalibration =
+        SemanticScoreNormalizer.Calibration semanticCalibration =
                 semanticScoreNormalizer.calibrate(
                         eligible
                                 .stream()
@@ -132,11 +136,6 @@ public class HybridRankingService {
                                 .toList()
                 );
 
-        /*
-         * -------------------------------------------------
-         * Stage 3: hybrid scoring
-         * -------------------------------------------------
-         */
         List<ScoredJob> scored =
                 eligible
                         .stream()
@@ -150,18 +149,6 @@ public class HybridRankingService {
                         )
                         .toList();
 
-        /*
-         * -------------------------------------------------
-         * Stage 4: recommendation acceptance
-         * -------------------------------------------------
-         *
-         * Quan trọng:
-         *
-         * filter TRƯỚC limit.
-         *
-         * Nếu chỉ có 6 job đủ relevance thì trả 6,
-         * không lấy job #7..#20 yếu để lấp đủ quota.
-         */
         List<ScoredJob> accepted =
                 scored
                         .stream()
@@ -177,7 +164,9 @@ public class HybridRankingService {
                         .sorted(
                                 scoredComparator()
                         )
-                        .limit(limit)
+                        .limit(
+                                limit
+                        )
                         .toList();
 
         List<RankedJob> ranked =
@@ -190,28 +179,34 @@ public class HybridRankingService {
                 index < accepted.size();
                 index++
         ) {
-
             ScoredJob value =
                     accepted.get(index);
 
             ranked.add(
                     new RankedJob(
                             index + 1,
+
                             value
                                     .candidate()
                                     .job(),
+
                             value
                                     .candidate()
                                     .vectorHit()
                                     .pointId(),
+
                             value.score(),
+
                             value.matchedSkills(),
+
                             value.missingSkills()
                     )
             );
         }
 
-        return List.copyOf(ranked);
+        return List.copyOf(
+                ranked
+        );
     }
 
     private ScoredJob score(
@@ -236,55 +231,100 @@ public class HybridRankingService {
                         job
                 );
 
-        double seniorityScore =
-                seniorityScorer.score(
+        SeniorityScorer.Result seniorityResult =
+                seniorityScorer.evaluate(
                         candidate,
                         job
                 );
 
-        double locationScore =
-                locationScorer.score(
+        LocationScorer.Result locationResult =
+                locationScorer.evaluate(
                         candidate,
                         job
                 );
 
-        double freshnessScore =
-                freshnessScorer.score(
+        FreshnessScorer.Result freshnessResult =
+                freshnessScorer.evaluate(
                         job
                 );
+
+        /*
+         * Không còn suy skillKnown bằng:
+         *
+         * job.getSkills() != empty
+         *
+         * SkillScorer mới là nơi biết skill nào PRIMARY,
+         * skill nào SECONDARY.
+         *
+         * JD chỉ có Communication/Teamwork:
+         *
+         * skillResult.known() = false
+         */
+        boolean skillKnown =
+                skillResult.known();
 
         double finalScore =
                 combineKnownComponents(
-                        job,
                         semanticScore,
+
                         skillResult.score(),
-                        seniorityScore,
-                        locationScore,
-                        freshnessScore
+                        skillKnown,
+
+                        seniorityResult.score(),
+                        seniorityResult.known(),
+
+                        locationResult.score(),
+                        locationResult.known(),
+
+                        freshnessResult.score(),
+                        freshnessResult.known()
+                );
+
+        HybridScore hybridScore =
+                new HybridScore(
+                        finalScore,
+
+                        semanticScore,
+
+                        skillResult.score(),
+
+                        seniorityResult.score(),
+
+                        locationResult.score(),
+
+                        freshnessResult.score(),
+
+                        skillKnown,
+
+                        seniorityResult.known(),
+
+                        locationResult.known(),
+
+                        freshnessResult.known()
                 );
 
         return new ScoredJob(
                 jobCandidate,
-                new HybridScore(
-                        finalScore,
-                        semanticScore,
-                        skillResult.score(),
-                        seniorityScore,
-                        locationScore,
-                        freshnessScore
-                ),
+                hybridScore,
                 skillResult.matchedSkills(),
                 skillResult.missingSkills()
         );
     }
 
     private double combineKnownComponents(
-            NormalizedJob job,
             double semanticScore,
+
             double skillScore,
+            boolean skillKnown,
+
             double seniorityScore,
+            boolean seniorityKnown,
+
             double locationScore,
-            double freshnessScore
+            boolean locationKnown,
+
+            double freshnessScore,
+            boolean freshnessKnown
     ) {
         MatchingProperties.Weights weights =
                 properties.getWeights();
@@ -296,7 +336,7 @@ public class HybridRankingService {
                 0.0d;
 
         /*
-         * Semantic always available.
+         * Semantic luôn known.
          */
         weightedSum +=
                 semanticScore
@@ -306,10 +346,10 @@ public class HybridRankingService {
                 weights.getSemantic();
 
         /*
-         * Structured skills available.
+         * Skill chỉ active khi JD có ít nhất
+         * một PRIMARY/domain skill.
          */
-        if (job.getSkills() != null
-                && !job.getSkills().isEmpty()) {
+        if (skillKnown) {
 
             weightedSum +=
                     skillScore
@@ -319,12 +359,7 @@ public class HybridRankingService {
                     weights.getSkill();
         }
 
-        /*
-         * Unknown seniority does not receive weight.
-         */
-        if (isKnownStructuredScore(
-                seniorityScore
-        )) {
+        if (seniorityKnown) {
 
             weightedSum +=
                     seniorityScore
@@ -334,13 +369,7 @@ public class HybridRankingService {
                     weights.getSeniority();
         }
 
-        /*
-         * Unknown/no-decision location does not receive
-         * artificial neutral weight.
-         */
-        if (isKnownStructuredScore(
-                locationScore
-        )) {
+        if (locationKnown) {
 
             weightedSum +=
                     locationScore
@@ -350,11 +379,7 @@ public class HybridRankingService {
                     weights.getLocation();
         }
 
-        /*
-         * Freshness available when there is a timestamp.
-         */
-        if (job.getPostedAt() != null
-                || job.getNormalizedAt() != null) {
+        if (freshnessKnown) {
 
             weightedSum +=
                     freshnessScore
@@ -374,18 +399,18 @@ public class HybridRankingService {
         );
     }
 
-    private boolean isKnownStructuredScore(
-            double score
-    ) {
-        return Double.isFinite(score)
-                && Math.abs(
-                score - UNKNOWN_SENTINEL
-        ) > EPSILON;
-    }
-
     private Comparator<ScoredJob> scoredComparator() {
 
+        /*
+         * Component scores đã được tính vào finalScore
+         * khi chúng known.
+         *
+         * Không reuse chúng làm tie-breaker để tránh
+         * double-count và tránh numeric placeholder của
+         * UNKNOWN ảnh hưởng thứ tự.
+         */
         return Comparator
+
                 .comparingDouble(
                         (ScoredJob value) ->
                                 value
@@ -401,17 +426,6 @@ public class HybridRankingService {
                                                 value
                                                         .score()
                                                         .semanticScore()
-                                )
-                                .reversed()
-                )
-
-                .thenComparing(
-                        Comparator
-                                .comparingDouble(
-                                        (ScoredJob value) ->
-                                                value
-                                                        .score()
-                                                        .freshnessScore()
                                 )
                                 .reversed()
                 )
@@ -487,10 +501,6 @@ public class HybridRankingService {
         }
     }
 
-    /*
-     * Giữ pointId để backward-compatible với
-     * HybridMatchingService.rankResult.pointId().
-     */
     public record RankedJob(
             int rank,
             NormalizedJob job,

@@ -3,7 +3,14 @@ package com.autojob.modules.matching.domain;
 /**
  * Snapshot đầy đủ của hybrid score cho một candidate-job pair.
  *
- * Tất cả score luôn nằm trong khoảng [0, 1].
+ * Tất cả numeric score luôn nằm trong khoảng [0, 1].
+ *
+ * IMPORTANT:
+ * Không dùng một numeric value (ví dụ 0.50) để đại diện UNKNOWN.
+ * Một score thật hoàn toàn có thể bằng đúng giá trị đó.
+ *
+ * Vì vậy structured component có cờ *Known riêng để ranking/filter
+ * biết component có evidence thật hay chỉ đang dùng neutral display score.
  */
 public record HybridScore(
         double finalScore,
@@ -11,7 +18,11 @@ public record HybridScore(
         double skillScore,
         double seniorityScore,
         double locationScore,
-        double freshnessScore
+        double freshnessScore,
+        boolean skillKnown,
+        boolean seniorityKnown,
+        boolean locationKnown,
+        boolean freshnessKnown
 ) {
 
     public HybridScore {

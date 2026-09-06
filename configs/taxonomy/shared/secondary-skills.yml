@@ -1,0 +1,49 @@
+version: secondary-skills-v2
+
+autojob:
+  matching:
+    skill-scoring:
+
+      # ========================================================
+      # SECONDARY BY EXACT SKILL ID
+      # ========================================================
+      #
+      # Các skill mang tính transferable/supporting.
+      #
+      # Nếu JD có primary skills mà candidate chỉ match
+      # những skill này thì skill score bị hard-cap thấp.
+      generic-skill-ids:
+        - communication
+        - presentation
+        - problem-solving
+        - critical-thinking
+        - teamwork
+        - time-management
+
+      # ========================================================
+      # SECONDARY BY TAXONOMY CATEGORY
+      # ========================================================
+      #
+      # LANGUAGE mặc định là supporting skill.
+      #
+      # Ví dụ với Interior Designer:
+      #
+      # AutoCAD       -> PRIMARY
+      # Photoshop     -> PRIMARY
+      # SketchUp      -> PRIMARY
+      #
+      # English       -> SECONDARY
+      # Communication -> SECONDARY
+      #
+      # Candidate chỉ có English + Communication:
+      #
+      # matched primary = 0
+      # => skillScore <= 0.05
+      #
+      # Với job chỉ có English mà không có professional skill
+      # khác:
+      #
+      # skillKnown = false
+      # => semantic fallback xử lý.
+      generic-skill-categories:
+        - LANGUAGE

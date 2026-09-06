@@ -22,29 +22,11 @@ public record MatchingResponse(
 ) {
 
     /*
-     * =========================================================
-     * Presentation thresholds
-     * =========================================================
+     * Presentation threshold.
      *
-     * IMPORTANT:
-     *
-     * Các threshold này KHÔNG:
-     *
-     * - thay đổi finalScore
-     * - thay đổi ranking
-     * - loại job
-     * - ảnh hưởng Qdrant retrieval
-     *
-     * Chúng chỉ giúp frontend giải thích recommendation
-     * theo cách dễ hiểu hơn.
+     * Chỉ phục vụ explanation/tier.
+     * Không ảnh hưởng ranking.
      */
-
-    private static final double UNKNOWN_STRUCTURED_SCORE =
-            0.50d;
-
-    private static final double EPSILON =
-            0.000000001d;
-
     private static final double STRONG_SKILL_SCORE =
             0.55d;
 
@@ -86,7 +68,9 @@ public record MatchingResponse(
         results =
                 results == null
                         ? List.of()
-                        : List.copyOf(results);
+                        : List.copyOf(
+                        results
+                );
     }
 
     public static MatchingResponse from(
@@ -177,7 +161,23 @@ public record MatchingResponse(
                             document.getSkillScore(),
                             document.getSeniorityScore(),
                             document.getLocationScore(),
-                            document.getFreshnessScore()
+                            document.getFreshnessScore(),
+
+                            isTrue(
+                                    document.getSkillKnown()
+                            ),
+
+                            isTrue(
+                                    document.getSeniorityKnown()
+                            ),
+
+                            isTrue(
+                                    document.getLocationKnown()
+                            ),
+
+                            isTrue(
+                                    document.getFreshnessKnown()
+                            )
                     );
 
             MatchPresentation presentation =
@@ -235,36 +235,25 @@ public record MatchingResponse(
         }
     }
 
-    /*
-     * =========================================================
-     * Match presentation
-     * =========================================================
-     */
-
     public enum MatchTier {
 
-        /**
-         * Job có skill overlap mạnh và semantic relevance tốt.
-         *
-         * Không có nghĩa là candidate match 100%.
+        /*
+         * Skill overlap mạnh + semantic relevance tốt.
          */
         STRONG,
 
-        /**
-         * Job có technical/skill relevance đáng kể nhưng
-         * có gap rõ, thường là seniority.
+        /*
+         * Có skill relevance nhưng seniority gap lớn.
          */
         STRETCH,
 
-        /**
-         * Job có một số tín hiệu phù hợp và đáng để xem.
+        /*
+         * Có structured signal hoặc semantic signal tốt.
          */
         POSSIBLE,
 
-        /**
-         * Job được giữ chủ yếu vì semantic relevance.
-         *
-         * Đây là recommendation mang tính khám phá.
+        /*
+         * Chủ yếu là semantic exploration.
          */
         EXPLORE
     }
@@ -281,11 +270,23 @@ public record MatchingResponse(
         double seniority =
                 document.getSeniorityScore();
 
+        boolean skillKnown =
+                isTrue(
+                        document.getSkillKnown()
+                );
+
+        boolean seniorityKnown =
+                isTrue(
+                        document.getSeniorityKnown()
+                );
+
         MatchTier tier =
                 classifyTier(
                         semantic,
                         skill,
-                        seniority
+                        skillKnown,
+                        seniority,
+                        seniorityKnown
                 );
 
         List<String> explanations =
@@ -303,19 +304,26 @@ public record MatchingResponse(
     private static MatchTier classifyTier(
             double semantic,
             double skill,
-            double seniority
+            boolean skillKnown,
+            double seniority,
+            boolean seniorityKnown
     ) {
+
         /*
-         * -----------------------------------------------------
          * STRONG
-         * -----------------------------------------------------
          *
-         * Stack/skill overlap mạnh + semantic relevance tốt.
+         * Chỉ được dùng skill nếu skillKnown = true.
          *
-         * Seniority không biến một job thành "không phù hợp";
-         * tier này mô tả relevance tổng thể.
+         * Vì vậy:
+         *
+         * skillScore = 0.50
+         * skillKnown = false
+         *
+         * KHÔNG bị hiểu là 50% skill match.
          */
-        if (skill >= STRONG_SKILL_SCORE
+        if (skillKnown
+                && skill
+                >= STRONG_SKILL_SCORE
                 && semantic
                 >= STRONG_MATCH_SEMANTIC_SCORE) {
 
@@ -323,23 +331,12 @@ public record MatchingResponse(
         }
 
         /*
-         * -----------------------------------------------------
-         * STRETCH
-         * -----------------------------------------------------
-         *
-         * Có skill overlap thật nhưng seniority gap lớn.
-         *
-         * Ví dụ:
-         *
-         * candidate junior
-         * -> senior backend role
-         *
-         * Vẫn đáng xem, chỉ là stretch.
+         * STRETCH.
          */
-        if (skill >= STRETCH_SKILL_SCORE
-                && isKnownStructuredScore(
-                seniority
-        )
+        if (skillKnown
+                && skill
+                >= STRETCH_SKILL_SCORE
+                && seniorityKnown
                 && seniority
                 < SEVERE_SENIORITY_GAP) {
 
@@ -347,39 +344,31 @@ public record MatchingResponse(
         }
 
         /*
-         * -----------------------------------------------------
-         * POSSIBLE
-         * -----------------------------------------------------
-         *
-         * Có ít nhất một structured skill signal.
+         * POSSIBLE bởi structured skill evidence.
          */
-        if (skill >= SOME_SKILL_SCORE) {
+        if (skillKnown
+                && skill
+                >= SOME_SKILL_SCORE) {
 
             return MatchTier.POSSIBLE;
         }
 
         /*
-         * Không có direct skill overlap nhưng semantic rất cao
-         * và không có seniority contradiction cực mạnh.
+         * Semantic-only possible.
          *
-         * Vẫn có thể là một adjacent opportunity.
+         * Cho phép adjacent opportunity nếu semantic rất cao,
+         * miễn không có seniority contradiction thật sự.
          */
-        if (semantic >= HIGH_SEMANTIC_SCORE
+        if (semantic
+                >= HIGH_SEMANTIC_SCORE
                 && !isSevereSeniorityGap(
-                seniority
+                seniority,
+                seniorityKnown
         )) {
 
             return MatchTier.POSSIBLE;
         }
 
-        /*
-         * -----------------------------------------------------
-         * EXPLORE
-         * -----------------------------------------------------
-         *
-         * Semantic retrieval thấy có liên quan nhưng
-         * structured evidence còn yếu.
-         */
         return MatchTier.EXPLORE;
     }
 
@@ -412,12 +401,44 @@ public record MatchingResponse(
         double location =
                 document.getLocationScore();
 
+        boolean skillKnown =
+                isTrue(
+                        document.getSkillKnown()
+                );
+
+        boolean seniorityKnown =
+                isTrue(
+                        document.getSeniorityKnown()
+                );
+
+        boolean locationKnown =
+                isTrue(
+                        document.getLocationKnown()
+                );
+
         /*
-         * -----------------------------------------------------
+         * =====================================================
          * Skill explanation
-         * -----------------------------------------------------
+         * =====================================================
          */
-        if (skill >= STRONG_SKILL_SCORE) {
+        if (!skillKnown) {
+
+            /*
+             * Đây là khác biệt quan trọng.
+             *
+             * Job không có structured skill data
+             * không được nói:
+             *
+             * "50% skill compatibility"
+             *
+             * nữa.
+             */
+            explanations.add(
+                    "Job does not provide enough structured skill data"
+            );
+
+        } else if (skill
+                >= STRONG_SKILL_SCORE) {
 
             if (!matchedSkills.isEmpty()) {
 
@@ -435,7 +456,8 @@ public record MatchingResponse(
                 );
             }
 
-        } else if (skill >= 0.25d) {
+        } else if (skill
+                >= 0.25d) {
 
             if (!matchedSkills.isEmpty()) {
 
@@ -479,11 +501,12 @@ public record MatchingResponse(
         }
 
         /*
-         * -----------------------------------------------------
+         * =====================================================
          * Semantic explanation
-         * -----------------------------------------------------
+         * =====================================================
          */
-        if (semantic >= HIGH_SEMANTIC_SCORE) {
+        if (semantic
+                >= HIGH_SEMANTIC_SCORE) {
 
             explanations.add(
                     "High semantic relevance between CV and job"
@@ -504,13 +527,15 @@ public record MatchingResponse(
         }
 
         /*
-         * -----------------------------------------------------
+         * =====================================================
          * Seniority explanation
-         * -----------------------------------------------------
+         * =====================================================
+         *
+         * Không kiểm tra seniority == 0.50 nữa.
+         *
+         * Chỉ nhìn seniorityKnown.
          */
-        if (isKnownStructuredScore(
-                seniority
-        )) {
+        if (seniorityKnown) {
 
             if (seniority
                     < SEVERE_SENIORITY_GAP) {
@@ -536,13 +561,11 @@ public record MatchingResponse(
         }
 
         /*
-         * -----------------------------------------------------
+         * =====================================================
          * Location explanation
-         * -----------------------------------------------------
+         * =====================================================
          */
-        if (isKnownStructuredScore(
-                location
-        )) {
+        if (locationKnown) {
 
             if (location
                     >= GOOD_LOCATION_SCORE) {
@@ -561,16 +584,15 @@ public record MatchingResponse(
         }
 
         /*
-         * -----------------------------------------------------
-         * Missing skills
-         * -----------------------------------------------------
+         * Missing skill explanation.
          *
-         * Chỉ expose như informational explanation.
-         * Missing skill không đồng nghĩa candidate không thể
-         * apply.
+         * Nếu job không có structured skill data
+         * thì không tạo missing-skill explanation.
          */
-        if (!missingSkills.isEmpty()
-                && tier != MatchTier.EXPLORE) {
+        if (skillKnown
+                && !missingSkills.isEmpty()
+                && tier
+                != MatchTier.EXPLORE) {
 
             explanations.add(
                     "Additional job skills not found in CV: "
@@ -586,23 +608,23 @@ public record MatchingResponse(
     }
 
     private static boolean isSevereSeniorityGap(
-            double score
+            double score,
+            boolean known
     ) {
-        return isKnownStructuredScore(
+        return known
+                && Double.isFinite(
                 score
         )
                 && score
                 < SEVERE_SENIORITY_GAP;
     }
 
-    private static boolean isKnownStructuredScore(
-            double score
+    private static boolean isTrue(
+            Boolean value
     ) {
-        return Double.isFinite(score)
-                && Math.abs(
-                score
-                        - UNKNOWN_STRUCTURED_SCORE
-        ) > EPSILON;
+        return Boolean.TRUE.equals(
+                value
+        );
     }
 
     private static String summarizeSkills(
@@ -674,12 +696,6 @@ public record MatchingResponse(
         }
     }
 
-    /**
-     * Những field frontend cần để render job card.
-     *
-     * Đây là snapshot tại thời điểm matching,
-     * không phải live lookup từ normalized_jobs.
-     */
     public record JobSnapshot(
             String sourceCode,
             String sourceJobId,
@@ -712,13 +728,28 @@ public record MatchingResponse(
         }
     }
 
+    /*
+     * API trả luôn known flags.
+     *
+     * Frontend sau này có thể:
+     *
+     * known = false
+     * -> hiển thị "N/A"
+     *
+     * thay vì hiển thị 50%.
+     */
     public record ScoreBreakdown(
             double finalScore,
             double semanticScore,
             double skillScore,
             double seniorityScore,
             double locationScore,
-            double freshnessScore
+            double freshnessScore,
+
+            boolean skillKnown,
+            boolean seniorityKnown,
+            boolean locationKnown,
+            boolean freshnessKnown
     ) {
     }
 

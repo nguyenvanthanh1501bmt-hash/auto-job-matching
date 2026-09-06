@@ -1,7 +1,19 @@
 autojob:
   matching:
 
-    version: ${MATCHING_VERSION:hybrid-v6-balanced-r4}
+    # r7:
+    #
+    # - primary/secondary skill scoring
+    # - explicit known/unknown component state
+    # - secondary skills excluded from professional missingSkills
+    # - freshness only trusts crawler-derived postedAt
+    # - strong skill threshold = 0.70
+    # - strong semantic threshold = 0.70
+    # - component scores are not reused as ranking tie-breakers
+    #
+    # Version bump invalidates persisted results calculated
+    # with the previous ranking order.
+    version: ${MATCHING_VERSION:hybrid-v6-balanced-r7}
 
     retrieval:
       candidate-pool-size: ${MATCHING_CANDIDATE_POOL_SIZE:100}
@@ -32,17 +44,15 @@ autojob:
       relative-weight: ${MATCHING_SEMANTIC_RELATIVE_WEIGHT:0.65}
 
     skill-scoring:
-      core-weight: ${MATCHING_SKILL_CORE_WEIGHT:1.0}
-      generic-weight: ${MATCHING_SKILL_GENERIC_WEIGHT:0.20}
-      generic-only-cap: ${MATCHING_SKILL_GENERIC_ONLY_CAP:0.15}
 
-      generic-skill-ids:
-        - communication
-        - presentation
-        - problem-solving
-        - critical-thinking
-        - teamwork
-        - time-management
+      core-weight: ${MATCHING_SKILL_CORE_WEIGHT:1.0}
+
+      # SECONDARY skill chỉ cộng bonus nhỏ.
+      generic-weight: ${MATCHING_SKILL_GENERIC_WEIGHT:0.10}
+
+      # Chỉ match SECONDARY thì không được coi là
+      # professional skill fit.
+      generic-only-cap: ${MATCHING_SKILL_GENERIC_ONLY_CAP:0.05}
 
       skills-section-confidence: ${MATCHING_SKILL_EVIDENCE_SKILLS_SECTION:1.0}
       work-experience-confidence: ${MATCHING_SKILL_EVIDENCE_WORK_EXPERIENCE:1.0}
@@ -52,9 +62,17 @@ autojob:
       unknown-evidence-confidence: ${MATCHING_SKILL_EVIDENCE_UNKNOWN:0.50}
 
     acceptance:
+
       minimum-final-score: ${MATCHING_ACCEPT_MIN_FINAL:0.45}
+
       minimum-semantic-score: ${MATCHING_ACCEPT_MIN_SEMANTIC:0.50}
+
       minimum-skill-score: ${MATCHING_ACCEPT_MIN_SKILL:0.10}
-      strong-skill-score: ${MATCHING_ACCEPT_STRONG_SKILL:0.30}
-      strong-semantic-score: ${MATCHING_ACCEPT_STRONG_SEMANTIC:0.80}
+
+      # 70%+ skill fit được coi là strong.
+      strong-skill-score: ${MATCHING_ACCEPT_STRONG_SKILL:0.70}
+
+      # Semantic fallback cũng ở 70%.
+      strong-semantic-score: ${MATCHING_ACCEPT_STRONG_SEMANTIC:0.70}
+
       minimum-non-contradictory-structured-score: ${MATCHING_ACCEPT_MIN_STRUCTURED:0.10}

@@ -135,9 +135,17 @@ class SkillNormalizerTest {
                         )
                 );
 
+        /*
+         * "UI/UX" phải được giữ nguyên như một token,
+         * không bị split thành "UI" và "UX".
+         *
+         * Sau đó taxonomy canonicalize alias:
+         *
+         * UI/UX -> UI/UX Design
+         */
         assertThat(result)
                 .containsExactly(
-                        "UI/UX",
+                        "UI/UX Design",
                         "Import/Export",
                         "B2B/B2C",
                         "CI/CD"

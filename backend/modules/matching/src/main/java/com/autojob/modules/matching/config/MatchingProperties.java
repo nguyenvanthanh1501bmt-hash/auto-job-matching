@@ -20,15 +20,21 @@ import java.util.Set;
 @Setter
 @Component
 @Validated
-@ConfigurationProperties(prefix = "autojob.matching")
+@ConfigurationProperties(
+        prefix = "autojob.matching"
+)
 public class MatchingProperties {
 
     private static final double WEIGHT_SUM_TOLERANCE =
             0.000001d;
 
+    /*
+     * Chưa bump version trong batch thử LANGUAGE.
+     * Sau khi behavior thực tế ổn sẽ bump một lần cuối.
+     */
     @NotBlank
     private String version =
-            "hybrid-v6";
+            "hybrid-v6-balanced-r7";
 
     @Valid
     @NotNull
@@ -103,10 +109,12 @@ public class MatchingProperties {
     public static class Retrieval {
 
         @Min(1)
-        private int candidatePoolSize = 100;
+        private int candidatePoolSize =
+                100;
 
         @Min(1)
-        private int resultLimit = 20;
+        private int resultLimit =
+                20;
     }
 
     @Getter
@@ -115,7 +123,7 @@ public class MatchingProperties {
 
         @NotBlank
         private String normalizationVersion =
-                "rule-v3";
+                "rule-v4";
 
         @NotBlank
         private String candidateTextVersion =
@@ -132,23 +140,28 @@ public class MatchingProperties {
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double semantic = 0.50d;
+        private double semantic =
+                0.40d;
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double skill = 0.30d;
+        private double skill =
+                0.40d;
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double seniority = 0.10d;
+        private double seniority =
+                0.10d;
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double location = 0.05d;
+        private double location =
+                0.05d;
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double freshness = 0.05d;
+        private double freshness =
+                0.05d;
     }
 
     @Getter
@@ -156,10 +169,12 @@ public class MatchingProperties {
     public static class Freshness {
 
         @Min(0)
-        private int freshDays = 7;
+        private int freshDays =
+                7;
 
         @Min(1)
-        private int maxAgeDays = 30;
+        private int maxAgeDays =
+                30;
     }
 
     @Getter
@@ -168,31 +183,47 @@ public class MatchingProperties {
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double lowerPercentile = 0.10d;
+        private double lowerPercentile =
+                0.10d;
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double upperPercentile = 0.90d;
+        private double upperPercentile =
+                0.90d;
 
         @DecimalMin("0.000001")
-        private double minimumSpread = 0.04d;
+        private double minimumSpread =
+                0.04d;
 
-        private double rawFloor = 0.75d;
+        private double rawFloor =
+                0.75d;
 
-        private double rawCeiling = 0.95d;
+        private double rawCeiling =
+                0.95d;
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double relativeWeight = 0.65d;
+        private double relativeWeight =
+                0.65d;
 
-        @AssertTrue
+        @AssertTrue(
+                message =
+                        "lower-percentile must be < upper-percentile"
+        )
         public boolean isPercentileRangeValid() {
-            return lowerPercentile < upperPercentile;
+
+            return lowerPercentile
+                    < upperPercentile;
         }
 
-        @AssertTrue
+        @AssertTrue(
+                message =
+                        "raw-floor must be < raw-ceiling"
+        )
         public boolean isRawRangeValid() {
-            return rawFloor < rawCeiling;
+
+            return rawFloor
+                    < rawCeiling;
         }
     }
 
@@ -200,28 +231,63 @@ public class MatchingProperties {
     @Setter
     public static class SkillScoring {
 
-        @DecimalMin("0.0")
-        private double coreWeight = 1.0d;
-
-        @DecimalMin("0.0")
-        private double genericWeight = 0.20d;
-
+        /*
+         * PRIMARY/domain skill coverage.
+         */
         @DecimalMin("0.0")
         @DecimalMax("1.0")
-        private double genericOnlyCap = 0.15d;
+        private double coreWeight =
+                1.0d;
 
+        /*
+         * SECONDARY skill bonus.
+         */
+        @DecimalMin("0.0")
+        @DecimalMax("1.0")
+        private double genericWeight =
+                0.10d;
+
+        /*
+         * Nếu JD có PRIMARY skills nhưng candidate chỉ
+         * match SECONDARY skills thì hard-cap rất thấp.
+         */
+        @DecimalMin("0.0")
+        @DecimalMax("1.0")
+        private double genericOnlyCap =
+                0.05d;
+
+        /*
+         * SECONDARY theo exact taxonomy ID.
+         *
+         * Ví dụ:
+         * communication
+         * teamwork
+         */
         @NotNull
         private Set<String> genericSkillIds =
-                new LinkedHashSet<>(
-                        Set.of(
-                                "communication",
-                                "presentation",
-                                "problem-solving",
-                                "critical-thinking",
-                                "teamwork",
-                                "time-management"
-                        )
-                );
+                new LinkedHashSet<>();
+
+        /*
+         * SECONDARY theo taxonomy category.
+         *
+         * Ví dụ:
+         *
+         * LANGUAGE
+         *
+         * Điều này giúp toàn bộ:
+         *
+         * English
+         * Japanese
+         * Korean
+         * Chinese
+         * ...
+         *
+         * trở thành supporting skills mà không cần
+         * hard-code từng language ID trong Java.
+         */
+        @NotNull
+        private Set<String> genericSkillCategories =
+                new LinkedHashSet<>();
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
@@ -252,6 +318,16 @@ public class MatchingProperties {
         @DecimalMax("1.0")
         private double unknownEvidenceConfidence =
                 0.50d;
+
+        @AssertTrue(
+                message =
+                        "generic-only-cap should not exceed generic-weight"
+        )
+        public boolean isGenericCapValid() {
+
+            return genericOnlyCap
+                    <= genericWeight;
+        }
     }
 
     @Getter
@@ -261,51 +337,32 @@ public class MatchingProperties {
         @DecimalMin("0.0")
         @DecimalMax("1.0")
         private double minimumFinalScore =
-                0.50d;
+                0.45d;
 
         @DecimalMin("0.0")
         @DecimalMax("1.0")
         private double minimumSemanticScore =
-                0.55d;
+                0.50d;
 
-        /**
-         * Weak/moderate skill evidence.
-         *
-         * Nếu chỉ đạt mức này thì structured signals
-         * phải không contradiction.
-         */
         @DecimalMin("0.0")
         @DecimalMax("1.0")
         private double minimumSkillScore =
                 0.10d;
 
-        /**
-         * Skill overlap đủ mạnh để cho phép recommendation
-         * dù seniority/location chưa lý tưởng.
-         *
-         * Đây là rule tổng quát, không phụ thuộc ngành.
-         */
         @DecimalMin("0.0")
         @DecimalMax("1.0")
         private double strongSkillScore =
-                0.45d;
+                0.70d;
 
-        /**
-         * Semantic-only fallback.
-         */
         @DecimalMin("0.0")
         @DecimalMax("1.0")
         private double strongSemanticScore =
-                0.90d;
+                0.70d;
 
-        /**
-         * Structured score thấp hơn mức này được xem
-         * là contradiction rõ.
-         */
         @DecimalMin("0.0")
         @DecimalMax("1.0")
         private double minimumNonContradictoryStructuredScore =
-                0.35d;
+                0.10d;
 
         @AssertTrue(
                 message =

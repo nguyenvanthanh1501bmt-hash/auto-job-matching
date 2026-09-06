@@ -58,15 +58,7 @@ public class MatchResult {
     private String qdrantPointId;
 
     /*
-     * ---------------------------------------------------------
      * Job snapshot.
-     * ---------------------------------------------------------
-     *
-     * Không bắt frontend phải query normalized_jobs
-     * thêm một lần cho từng matching result.
-     *
-     * Đồng thời snapshot giúp ta biết chính xác user đã
-     * nhìn thấy thông tin job nào tại thời điểm ranking.
      */
     private String sourceCode;
     private String sourceJobId;
@@ -81,10 +73,6 @@ public class MatchResult {
     private String locationText;
     private String salaryText;
 
-    /*
-     * Lưu enum dưới dạng String để persistence snapshot
-     * ít coupling hơn với enum của job-normalizer.
-     */
     private String jobType;
     private String applyType;
 
@@ -95,9 +83,7 @@ public class MatchResult {
     private Instant deadlineAt;
 
     /*
-     * ---------------------------------------------------------
      * Version snapshot.
-     * ---------------------------------------------------------
      */
     private String parserVersion;
     private String normalizationVersion;
@@ -120,6 +106,30 @@ public class MatchResult {
     private double seniorityScore;
     private double locationScore;
     private double freshnessScore;
+
+    /*
+     * =========================================================
+     * Score knowledge metadata
+     * =========================================================
+     *
+     * Dùng Boolean thay vì primitive boolean có chủ đích:
+     *
+     * true
+     * -> component có evidence thật.
+     *
+     * false
+     * -> component không đủ dữ liệu.
+     *    Numeric score chỉ là neutral/display value.
+     *
+     * null
+     * -> document cũ được tạo trước khi schema này tồn tại.
+     *
+     * Nhờ vậy không cần dùng magic number 0.50 để đoán UNKNOWN.
+     */
+    private Boolean skillKnown;
+    private Boolean seniorityKnown;
+    private Boolean locationKnown;
+    private Boolean freshnessKnown;
 
     /*
      * Explainability.

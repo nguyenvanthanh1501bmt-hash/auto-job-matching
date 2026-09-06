@@ -6,6 +6,7 @@
     import:
       # Shared taxonomy.
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/skills.yml"
+      - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/secondary-skills.yml"
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/locations.yml"
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/seniority.yml"
 

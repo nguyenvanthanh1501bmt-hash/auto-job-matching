@@ -55,16 +55,24 @@ autojob:
             aliases:
               - Java Core
               - Java SE
+              - Java Programming
+              - Lập trình Java
+              - Java Development
           - id: python
             canonical: Python
             category: TECHNICAL
             aliases:
               - Python 3
+              - Python Programming
+              - Lập trình Python
+              - Python Development
           - id: spring-boot
             canonical: Spring Boot
             category: TECHNICAL
             aliases:
               - Spring Boot Framework
+              - Spring Boot Development
+              - Java Spring Boot
           - id: javascript
             canonical: JavaScript
             category: TECHNICAL
@@ -108,6 +116,8 @@ autojob:
             category: TECHNICAL
             aliases:
               - mongo db
+              - Mongo Database
+              - MongoDB Database
           - id: docker
             canonical: Docker
             category: TOOL
@@ -140,23 +150,34 @@ autojob:
             category: TECHNICAL
             aliases:
               - golang
+              - Go Language
+              - Go Programming
+              - Lập trình Go
           - id: artificial-intelligence
             canonical: Artificial Intelligence
             category: TECHNICAL
             aliases:
               - ai
+              - Artificial Intelligence AI
+              - Trí tuệ nhân tạo
           - id: misa
             canonical: MISA
             category: SOFTWARE
             aliases:
               - MISA SME
               - MISA AMIS
+              - Phần mềm MISA
+              - MISA Accounting
+              - MISA Kế toán
           - id: ke-toan-tong-hop
             canonical: Kế toán tổng hợp
             category: ACCOUNTING
             aliases:
               - General Accounting
               - Kế toán tổng quát
+              - General Ledger Accounting
+              - Kế toán tổng hợp doanh nghiệp
+              - Nghiệp vụ kế toán tổng hợp
           - id: tax-accounting
             canonical: Kế toán thuế
             category: ACCOUNTING
@@ -166,6 +187,10 @@ autojob:
               - Tax Declaration
               - Khai báo thuế
               - Quyết toán thuế
+              - Kê khai thuế
+              - Báo cáo thuế
+              - Tax Reporting
+              - Tax Filing
           - id: financial-reporting
             canonical: Lập báo cáo tài chính
             category: ACCOUNTING
@@ -176,21 +201,32 @@ autojob:
               - BCTC
               - Lập BCTC
               - Financial Statement Preparation
+              - Financial Report Preparation
+              - Financial Reports
+              - Lập báo cáo tài chính doanh nghiệp
           - id: vas
             canonical: VAS
             category: COMPLIANCE
             aliases:
               - vietnamese accounting standards
+              - Vietnam Accounting Standards
+              - Chuẩn mực kế toán Việt Nam
+              - Chuẩn mực VAS
           - id: ifrs
             canonical: IFRS
             category: COMPLIANCE
             aliases:
               - international financial reporting standards
+              - IFRS Standards
+              - Chuẩn mực IFRS
+              - Chuẩn mực báo cáo tài chính quốc tế
           - id: financial-analysis
             canonical: Financial Analysis
             category: FINANCE
             aliases:
               - phan tich tai chinh
+              - Financial Statement Analysis
+              - Phân tích báo cáo tài chính
           - id: b2b-sales
             canonical: B2B Sales
             category: SALES
@@ -199,11 +235,18 @@ autojob:
               - ban hang b2b
               - Business-to-Business Sales
               - Bán hàng doanh nghiệp
+              - B2B Selling
+              - Corporate Sales
+              - Enterprise Sales
           - id: telesales
             canonical: Telesales
             category: SALES
             aliases:
               - tele sales
+              - Telephone Sales
+              - Bán hàng qua điện thoại
+              - Tư vấn bán hàng qua điện thoại
+              - Outbound Sales
           - id: negotiation
             canonical: Negotiation
             category: BUSINESS
@@ -222,6 +265,9 @@ autojob:
               - Quản lý quan hệ khách hàng
               - CRM Management
               - Quản trị quan hệ khách hàng
+              - Customer Relationship
+              - Quản lý khách hàng CRM
+              - Customer Relationship Management CRM
           - id: lead-generation
             canonical: Lead Generation
             category: SALES
@@ -233,6 +279,9 @@ autojob:
               - Lead Prospecting
               - Tìm kiếm lead
               - Khai thác khách hàng tiềm năng
+              - Customer Prospecting
+              - Sales Prospecting
+              - Tạo khách hàng tiềm năng
           - id: customer-service
             canonical: Customer Service
             category: BUSINESS
@@ -244,28 +293,52 @@ autojob:
               - Hỗ trợ khách hàng
               - Customer Support
               - Customer Service Skills
+              - Customer Care Service
+              - Customer Support Service
+              - Client Service
+              - Client Support
+              - Dịch vụ chăm sóc khách hàng
+              - Hỗ trợ và chăm sóc khách hàng
+              - Kỹ năng chăm sóc khách hàng
+              - Customer Service Support
           - id: search-engine-optimization
             canonical: Search Engine Optimization
             category: MARKETING
             aliases:
               - seo
               - Tối ưu hóa công cụ tìm kiếm
+              - SEO Optimization
+              - Organic Search Optimization
+              - Tối ưu SEO
+              - Tối ưu tìm kiếm
           - id: google-ads
             canonical: Google Ads
             category: MARKETING
             aliases:
               - google adwords
               - adwords
+              - Google Advertising
+              - Google PPC
+              - Paid Search
+              - Quảng cáo Google
           - id: facebook-ads
             canonical: Facebook Ads
             category: MARKETING
             aliases:
               - meta ads
+              - Facebook Advertising
+              - Meta Advertising
+              - Quảng cáo Facebook
+              - Quảng cáo Meta
           - id: content-marketing
             canonical: Content Marketing
             category: MARKETING
             aliases:
               - Tiếp thị nội dung
+              - Marketing Content
+              - Content Strategy
+              - Tiếp thị bằng nội dung
+              - Chiến lược nội dung
           - id: brand-management
             canonical: Branding
             category: MARKETING
@@ -273,12 +346,18 @@ autojob:
               - brand management
               - Quản lý thương hiệu
               - Xây dựng thương hiệu
+              - Brand Strategy
+              - Brand Development
+              - Quản trị thương hiệu
+              - Phát triển thương hiệu
           - id: market-research
             canonical: Market Research
             category: MARKETING
             aliases:
               - nghien cuu thi truong
               - Marketing Research
+              - Consumer Research
+              - Nghiên cứu người tiêu dùng
           - id: recruitment
             canonical: Recruitment
             category: BUSINESS
@@ -288,12 +367,18 @@ autojob:
               - Hiring
               - Tuyển dụng nhân sự
               - Talent Recruitment
+              - Candidate Sourcing
+              - Tìm kiếm ứng viên
+              - Sàng lọc ứng viên
           - id: c-and-b
             canonical: C&B
             category: BUSINESS
             aliases:
               - compensation and benefits
               - compensation & benefits
+              - C and B
+              - Lương thưởng và phúc lợi
+              - Chính sách C&B
           - id: payroll
             canonical: Payroll
             category: ACCOUNTING
@@ -303,38 +388,59 @@ autojob:
               - Bảng lương
               - Salary Calculation
               - Tính lương nhân viên
+              - Payroll Calculation
+              - Payroll Management
+              - Quản lý tiền lương
           - id: labor-law
             canonical: Labor Law
             category: COMPLIANCE
             aliases:
               - labour law
               - luat lao dong
+              - Employment Law
+              - Luật lao động Việt Nam
+              - Pháp luật lao động
           - id: hris
             canonical: HRIS
             category: SOFTWARE
             aliases:
               - human resources information system
+              - HR Information System
+              - HR Management System
+              - Hệ thống thông tin nhân sự
           - id: dieu-duong
             canonical: Điều dưỡng
             category: HEALTHCARE
             aliases:
               - nursing
+              - Nursing Care
+              - Nghiệp vụ điều dưỡng
+              - Chăm sóc điều dưỡng
           - id: patient-care
             canonical: Chăm sóc bệnh nhân
             category: HEALTHCARE
             aliases:
               - patient care
               - Chăm sóc người bệnh
+              - Patient Support
+              - Clinical Patient Care
+              - Chăm sóc người bệnh trực tiếp
           - id: duoc-lam-sang
             canonical: Dược lâm sàng
             category: HEALTHCARE
             aliases:
               - clinical pharmacy
+              - Clinical Pharmacy Practice
+              - Nghiệp vụ dược lâm sàng
+              - Tư vấn sử dụng thuốc
           - id: gpp
             canonical: GPP
             category: COMPLIANCE
             aliases:
               - good pharmacy practice
+              - Good Pharmacy Practices
+              - Thực hành tốt nhà thuốc
+              - Tiêu chuẩn GPP
           - id: computer-numerical-control
             canonical: CNC
             category: MACHINERY
@@ -350,26 +456,42 @@ autojob:
             aliases:
               - AutoCAD 2D
               - AutoCAD 3D
+              - Autodesk AutoCAD
+              - AutoCAD Design
+              - AutoCAD Drafting
           - id: solidworks
             canonical: SolidWorks
             category: SOFTWARE
             aliases:
               - SolidWorks 3D
               - SolidWorks CAD
+              - Dassault SolidWorks
+              - SolidWorks Design
           - id: lean-manufacturing
             canonical: Lean Manufacturing
             category: DOMAIN_KNOWLEDGE
             aliases:
               - san xuat tinh gon
               - Lean Production
+              - Lean Production System
+              - Lean Operations
           - id: 5s
             canonical: 5S
             category: DOMAIN_KNOWLEDGE
-            aliases: []
+            aliases:
+              - Five S
+              - 5S Methodology
+              - 5S Workplace
+              - Phương pháp 5S
+              - Thực hành 5S
           - id: kaizen
             canonical: Kaizen
             category: DOMAIN_KNOWLEDGE
-            aliases: []
+            aliases:
+              - Kaizen Methodology
+              - Kaizen Improvement
+              - Cải tiến Kaizen
+              - Phương pháp Kaizen
           - id: reading-technical-drawings
             canonical: Đọc bản vẽ kỹ thuật
             category: ENGINEERING
@@ -383,6 +505,10 @@ autojob:
             aliases:
               - kiem soat chat luong
               - qc
+              - QC Inspection
+              - Quality Inspection
+              - Kiểm tra chất lượng
+              - Quản lý chất lượng QC
           - id: import-export
             canonical: Import/Export
             category: DOMAIN_KNOWLEDGE
@@ -392,12 +518,18 @@ autojob:
           - id: incoterms
             canonical: Incoterms
             category: DOMAIN_KNOWLEDGE
-            aliases: []
+            aliases:
+              - International Commercial Terms
+              - Điều kiện Incoterms
+              - Điều kiện thương mại quốc tế
           - id: customs-declaration
             canonical: Customs Declaration
             category: DOMAIN_KNOWLEDGE
             aliases:
               - khai bao hai quan
+              - Customs Filing
+              - Khai hải quan
+              - Kê khai hải quan
           - id: warehouse-management
             canonical: Warehouse Management
             category: DOMAIN_KNOWLEDGE
@@ -407,6 +539,9 @@ autojob:
               - Vận hành kho
               - Quản trị kho
               - Warehouse Control
+              - Warehouse Administration
+              - Kho vận
+              - Điều hành kho
           - id: supply-chain
             canonical: Supply Chain
             category: DOMAIN_KNOWLEDGE
@@ -416,6 +551,8 @@ autojob:
               - Quản lý chuỗi cung ứng
               - Supply Chain Operations
               - Vận hành chuỗi cung ứng
+              - Supply Chain Operations Management
+              - Supply Chain Planning
           - id: teaching
             canonical: Teaching
             category: EDUCATION
@@ -430,7 +567,11 @@ autojob:
           - id: ielts
             canonical: IELTS
             category: LANGUAGE
-            aliases: []
+            aliases:
+              - IELTS English
+              - IELTS Preparation
+              - Luyện thi IELTS
+              - Tiếng Anh IELTS
           - id: lesson-planning
             canonical: Lesson Planning
             category: EDUCATION
@@ -438,11 +579,18 @@ autojob:
               - soan giao an
               - Lesson Preparation
               - Lập kế hoạch bài giảng
+              - Teaching Plan
+              - Lesson Plan Development
+              - Soạn bài giảng
           - id: classroom-management
             canonical: Classroom Management
             category: EDUCATION
             aliases:
               - quan ly lop hoc
+              - Class Management
+              - Classroom Control
+              - Quản lý lớp
+              - Điều hành lớp học
           - id: food-safety
             canonical: Food Safety
             category: SAFETY
@@ -450,10 +598,16 @@ autojob:
               - an toan thuc pham
               - Food Hygiene
               - Vệ sinh thực phẩm
+              - Food Safety Management
+              - Food Sanitation
+              - Quản lý an toàn thực phẩm
           - id: haccp
             canonical: HACCP
             category: COMPLIANCE
-            aliases: []
+            aliases:
+              - Hazard Analysis and Critical Control Points
+              - HACCP System
+              - Hệ thống HACCP
           - id: front-office
             canonical: Front Office
             category: DOMAIN_KNOWLEDGE
@@ -466,6 +620,9 @@ autojob:
               - Front Desk
               - Reception Operations
               - Nghiệp vụ tiền sảnh
+              - Reception
+              - Front Desk Service
+              - Lễ tân khách sạn
           - id: housekeeping
             canonical: Housekeeping
             category: DOMAIN_KNOWLEDGE
@@ -476,6 +633,9 @@ autojob:
               - Dọn phòng
               - Hotel Housekeeping
               - Room Attendant Operations
+              - Housekeeping Operations
+              - Room Service Cleaning
+              - Nghiệp vụ housekeeping
           - id: operations-management
             canonical: Operations Management
             category: MANAGEMENT
@@ -484,6 +644,9 @@ autojob:
               - Quản lý điều hành
               - Operational Management
               - Quản trị vận hành
+              - Business Operations Management
+              - Operations Administration
+              - Điều hành vận hành
           - id: microsoft-excel
             canonical: Microsoft Excel
             category: SOFTWARE
@@ -514,11 +677,16 @@ autojob:
             category: SOFTWARE
             aliases:
               - photoshop
+              - Adobe Photoshop CC
+              - Photoshop CC
+              - Photoshop Design
           - id: adobe-illustrator
             canonical: Adobe Illustrator
             category: SOFTWARE
             aliases:
               - illustrator
+              - Adobe Illustrator CC
+              - Illustrator CC
           - id: html
             canonical: HTML
             category: TECHNICAL
@@ -556,19 +724,30 @@ autojob:
           - id: supabase
             canonical: Supabase
             category: TECHNICAL
-            aliases: []
+            aliases:
+              - Supabase Database
+              - Supabase Backend
+              - Supabase Platform
           - id: github
             canonical: GitHub
             category: TOOL
-            aliases: []
+            aliases:
+              - GitHub Platform
+              - GitHub Repository
           - id: postman
             canonical: Postman
             category: TOOL
-            aliases: []
+            aliases:
+              - Postman API
+              - Postman API Testing
+              - API Testing with Postman
           - id: notion
             canonical: Notion
             category: TOOL
-            aliases: []
+            aliases:
+              - Notion Workspace
+              - Notion App
+              - Notion Documentation
           - id: draw-io
             canonical: Draw.io
             category: TOOL
@@ -602,6 +781,9 @@ autojob:
             aliases:
               - Ghi sổ kế toán
               - Sổ sách kế toán
+              - Accounting Records
+              - Ghi chép sổ sách kế toán
+              - Quản lý sổ sách kế toán
           - id: accounts-payable
             canonical: Accounts Payable
             category: ACCOUNTING
@@ -609,6 +791,8 @@ autojob:
               - AP Accounting
               - Công nợ phải trả
               - Kế toán phải trả
+              - Accounts Payable Accounting
+              - Quản lý công nợ phải trả
           - id: accounts-receivable
             canonical: Accounts Receivable
             category: ACCOUNTING
@@ -616,12 +800,18 @@ autojob:
               - AR Accounting
               - Công nợ phải thu
               - Kế toán phải thu
+              - Accounts Receivable Accounting
+              - Quản lý công nợ phải thu
           - id: auditing
             canonical: Auditing
             category: ACCOUNTING
             aliases:
               - Audit
               - Kiểm toán
+              - Internal Audit
+              - External Audit
+              - Kiểm toán nội bộ
+              - Kiểm toán độc lập
           - id: budgeting
             canonical: Budgeting
             category: FINANCE
@@ -629,6 +819,9 @@ autojob:
               - Budget Planning
               - Lập ngân sách
               - Quản lý ngân sách
+              - Budget Management
+              - Budget Preparation
+              - Hoạch định ngân sách
           - id: cost-accounting
             canonical: Cost Accounting
             category: ACCOUNTING
@@ -636,17 +829,23 @@ autojob:
               - Product Costing
               - Kế toán giá thành
               - Tính giá thành
+              - Costing
+              - Cost Analysis
+              - Phân tích giá thành
           - id: gaap
             canonical: GAAP
             category: COMPLIANCE
             aliases:
               - Generally Accepted Accounting Principles
+              - US GAAP
+              - Generally Accepted Accounting Standards
           - id: cash-flow-management
             canonical: Cash Flow Management
             category: FINANCE
             aliases:
               - Cash Flow Forecasting
               - Quản lý dòng tiền
+              - Quản trị dòng tiền
           - id: credit-analysis
             canonical: Credit Analysis
             category: FINANCE
@@ -654,12 +853,19 @@ autojob:
               - Credit Assessment
               - Phân tích tín dụng
               - Thẩm định tín dụng
+              - Credit Risk Assessment
+              - Đánh giá tín dụng
+              - Phân tích rủi ro tín dụng
           - id: b2c-sales
             canonical: B2C Sales
             category: SALES
             aliases:
               - Business-to-Consumer Sales
               - Bán hàng cá nhân
+              - B2C Selling
+              - Consumer Sales
+              - Bán hàng B2C
+              - Bán hàng tiêu dùng
           - id: account-management
             canonical: Account Management
             category: SALES
@@ -669,34 +875,55 @@ autojob:
               - Quản lý khách hàng trọng điểm
               - Key Account
               - KAM
+              - Client Account Management
+              - Customer Account Management
+              - Quản trị khách hàng
+              - Key Account Handling
           - id: search-engine-marketing
             canonical: Search Engine Marketing
             category: MARKETING
             aliases:
               - SEM
               - Quảng cáo tìm kiếm
+              - Paid Search Marketing
+              - SEM Marketing
+              - Tiếp thị công cụ tìm kiếm
           - id: social-media-marketing
             canonical: Social Media Marketing
             category: MARKETING
             aliases:
               - Social Marketing
               - Tiếp thị mạng xã hội
+              - Social Media Management
+              - Social Media Advertising
+              - Marketing mạng xã hội
+              - Quản trị mạng xã hội
           - id: email-marketing
             canonical: Email Marketing
             category: MARKETING
             aliases:
               - Tiếp thị qua email
+              - Email Campaigns
+              - Email Campaign Marketing
+              - Marketing qua email
           - id: campaign-management
             canonical: Campaign Management
             category: MARKETING
             aliases:
               - Marketing Campaign Management
               - Quản lý chiến dịch
+              - Campaign Planning
+              - Marketing Campaigns
+              - Điều phối chiến dịch
+              - Lập kế hoạch chiến dịch
           - id: talent-acquisition
             canonical: Talent Acquisition
             category: BUSINESS
             aliases:
               - Thu hút nhân tài
+              - Talent Sourcing
+              - Thu hút và tuyển dụng nhân tài
+              - Talent Hiring
           - id: payroll-administration
             canonical: Payroll Administration
             category: BUSINESS
@@ -709,12 +936,18 @@ autojob:
             aliases:
               - Quan hệ lao động
               - Quan hệ nhân viên
+              - Employee Relationship Management
+              - Labor Relations
+              - Quản lý quan hệ lao động
           - id: performance-management
             canonical: Performance Management
             category: MANAGEMENT
             aliases:
               - Quản lý hiệu suất
               - Đánh giá hiệu suất
+              - Performance Appraisal
+              - Employee Performance Management
+              - Quản trị hiệu suất
           - id: training-and-development
             canonical: Training and Development
             category: MANAGEMENT
@@ -722,6 +955,10 @@ autojob:
               - Learning and Development
               - L&D
               - Đào tạo và phát triển
+              - Training Development
+              - Employee Development
+              - Đào tạo phát triển
+              - Phát triển nhân sự
           - id: office-administration
             canonical: Office Administration
             category: BUSINESS
@@ -729,6 +966,9 @@ autojob:
               - Administrative Management
               - Quản trị văn phòng
               - Hành chính văn phòng
+              - Office Management
+              - Administrative Operations
+              - Quản lý hành chính văn phòng
           - id: document-management
             canonical: Document Management
             category: BUSINESS
@@ -736,6 +976,9 @@ autojob:
               - Records Management
               - Quản lý tài liệu
               - Quản lý hồ sơ
+              - Document Control
+              - Document Administration
+              - Kiểm soát tài liệu
           - id: inventory-management
             canonical: Inventory Management
             category: DOMAIN_KNOWLEDGE
@@ -743,6 +986,8 @@ autojob:
               - Stock Management
               - Quản lý tồn kho
               - Quản lý hàng tồn
+              - Inventory Operations
+              - Quản trị tồn kho
           - id: procurement
             canonical: Procurement
             category: BUSINESS
@@ -750,12 +995,19 @@ autojob:
               - Purchasing
               - Thu mua
               - Mua hàng
+              - Procurement Management
+              - Purchasing Management
+              - Quản lý mua hàng
+              - Quản lý thu mua
           - id: demand-planning
             canonical: Demand Planning
             category: DOMAIN_KNOWLEDGE
             aliases:
               - Forecast Planning
               - Lập kế hoạch nhu cầu
+              - Demand Forecasting
+              - Demand Management
+              - Dự báo nhu cầu
           - id: transportation-management
             canonical: Transportation Management
             category: DOMAIN_KNOWLEDGE
@@ -763,6 +1015,9 @@ autojob:
               - Fleet Management
               - Quản lý vận tải
               - Quản lý đội xe
+              - Transport Management
+              - Logistics Transportation
+              - Điều phối vận tải
           - id: order-fulfillment
             canonical: Order Fulfillment
             category: DOMAIN_KNOWLEDGE
@@ -770,6 +1025,9 @@ autojob:
               - Order Processing
               - Xử lý đơn hàng
               - Hoàn tất đơn hàng
+              - Order Management
+              - Order Handling
+              - Thực hiện đơn hàng
           - id: quality-assurance
             canonical: Quality Assurance
             category: COMPLIANCE
@@ -778,11 +1036,17 @@ autojob:
               - Đảm bảo chất lượng
               - Quality Assurance Process
               - Kiểm soát đảm bảo chất lượng
+              - QA Process
+              - Quality Assurance Management
+              - Quản lý đảm bảo chất lượng
           - id: six-sigma
             canonical: Six Sigma
             category: DOMAIN_KNOWLEDGE
             aliases:
               - 6 Sigma
+              - Six Sigma Methodology
+              - Lean Six Sigma
+              - Phương pháp Six Sigma
           - id: forklift-operation
             canonical: Forklift Operation
             category: EQUIPMENT
@@ -822,12 +1086,18 @@ autojob:
             aliases:
               - Bảo trì điện
               - Bảo dưỡng hệ thống điện
+              - Electrical Equipment Maintenance
+              - Maintenance Electrical
+              - Bảo trì hệ thống điện
           - id: mechanical-maintenance
             canonical: Mechanical Maintenance
             category: ENGINEERING
             aliases:
               - Bảo trì cơ khí
               - Bảo dưỡng cơ khí
+              - Mechanical Equipment Maintenance
+              - Maintenance Mechanical
+              - Bảo trì máy móc cơ khí
           - id: civil-engineering
             canonical: Civil Engineering
             category: ENGINEERING
@@ -870,6 +1140,9 @@ autojob:
               - Drug Administration
               - Cấp phát thuốc
               - Thực hiện thuốc
+              - Medication Management
+              - Administering Medication
+              - Quản lý và cấp phát thuốc
           - id: clinical-assessment
             canonical: Clinical Assessment
             category: HEALTHCARE
@@ -877,6 +1150,9 @@ autojob:
               - Patient Assessment
               - Đánh giá lâm sàng
               - Đánh giá bệnh nhân
+              - Clinical Evaluation
+              - Patient Evaluation
+              - Thăm khám đánh giá bệnh nhân
           - id: emergency-care
             canonical: Emergency Care
             category: HEALTHCARE
@@ -884,6 +1160,9 @@ autojob:
               - Emergency Response
               - Cấp cứu
               - Chăm sóc cấp cứu
+              - Emergency Treatment
+              - Emergency Medical Care
+              - Xử trí cấp cứu
           - id: medical-records
             canonical: Medical Records
             category: HEALTHCARE
@@ -899,6 +1178,9 @@ autojob:
               - Pharmacy Management
               - Vận hành nhà thuốc
               - Quản lý nhà thuốc
+              - Retail Pharmacy Operations
+              - Pharmacy Workflow
+              - Nghiệp vụ nhà thuốc
           - id: laboratory-techniques
             canonical: Laboratory Techniques
             category: HEALTHCARE
@@ -906,6 +1188,9 @@ autojob:
               - Lab Techniques
               - Kỹ thuật xét nghiệm
               - Kỹ thuật phòng thí nghiệm
+              - Laboratory Methods
+              - Lab Methods
+              - Kỹ thuật phòng lab
           - id: infection-control
             canonical: Infection Control
             category: SAFETY
@@ -913,12 +1198,17 @@ autojob:
               - Infection Prevention
               - Kiểm soát nhiễm khuẩn
               - Phòng chống nhiễm khuẩn
+              - Infection Prevention and Control
+              - Kiểm soát lây nhiễm
           - id: vital-signs-monitoring
             canonical: Vital Signs Monitoring
             category: HEALTHCARE
             aliases:
               - Monitor Vital Signs
               - Theo dõi dấu hiệu sinh tồn
+              - Vital Signs
+              - Vital Sign Monitoring
+              - Theo dõi sinh hiệu
           - id: curriculum-development
             canonical: Curriculum Development
             category: EDUCATION
@@ -926,6 +1216,9 @@ autojob:
               - Curriculum Design
               - Phát triển chương trình học
               - Thiết kế chương trình đào tạo
+              - Curriculum Planning
+              - Curriculum Development Process
+              - Xây dựng chương trình đào tạo
           - id: student-assessment
             canonical: Student Assessment
             category: EDUCATION
@@ -933,12 +1226,18 @@ autojob:
               - Learning Assessment
               - Đánh giá học sinh
               - Đánh giá kết quả học tập
+              - Student Evaluation
+              - Academic Assessment
+              - Đánh giá người học
           - id: educational-technology
             canonical: Educational Technology
             category: EDUCATION
             aliases:
               - EdTech
               - Công nghệ giáo dục
+              - Education Technology
+              - Technology in Education
+              - Ứng dụng công nghệ giáo dục
           - id: food-preparation
             canonical: Food Preparation
             category: DOMAIN_KNOWLEDGE
@@ -946,6 +1245,9 @@ autojob:
               - Meal Preparation
               - Chuẩn bị thực phẩm
               - Sơ chế thực phẩm
+              - Food Processing Preparation
+              - Kitchen Preparation
+              - Chuẩn bị nguyên liệu
           - id: restaurant-operations
             canonical: Restaurant Operations
             category: DOMAIN_KNOWLEDGE
@@ -953,6 +1255,9 @@ autojob:
               - Restaurant Management
               - Vận hành nhà hàng
               - Quản lý nhà hàng
+              - Restaurant Operation Management
+              - F&B Restaurant Operations
+              - Điều hành nhà hàng
           - id: complaint-resolution
             canonical: Complaint Resolution
             category: BUSINESS
@@ -960,6 +1265,9 @@ autojob:
               - Complaint Handling
               - Xử lý khiếu nại
               - Giải quyết khiếu nại
+              - Customer Complaint Handling
+              - Complaint Management
+              - Xử lý phàn nàn
           - id: welding
             canonical: Welding
             category: TRADE
@@ -1041,11 +1349,17 @@ autojob:
               - People Management
               - Quản lý đội nhóm
               - Quản lý nhân viên
+              - Staff Management
+              - Quản trị đội nhóm
           - id: project-management
             canonical: Project Management
             category: MANAGEMENT
             aliases:
               - Quản lý dự án
+              - Project Coordination
+              - Project Planning
+              - Quản trị dự án
+              - Điều phối dự án
           - id: leadership
             canonical: Leadership
             category: LEADERSHIP
@@ -1053,6 +1367,9 @@ autojob:
               - Team Leadership
               - Lãnh đạo
               - Dẫn dắt đội nhóm
+              - Leadership Skills
+              - People Leadership
+              - Kỹ năng lãnh đạo
           - id: communication
             canonical: Communication
             category: COMMUNICATION
@@ -1084,6 +1401,9 @@ autojob:
             category: BUSINESS
             aliases:
               - Tư duy phản biện
+              - Critical Thinking Skills
+              - Kỹ năng tư duy phản biện
+              - Analytical Thinking
           - id: teamwork
             canonical: Teamwork
             category: COMMUNICATION
@@ -1097,6 +1417,9 @@ autojob:
             category: BUSINESS
             aliases:
               - Quản lý thời gian
+              - Time Management Skills
+              - Kỹ năng quản lý thời gian
+              - Work Prioritization
           - id: process-improvement
             canonical: Process Improvement
             category: BUSINESS
@@ -1104,6 +1427,9 @@ autojob:
               - Continuous Improvement
               - Cải tiến quy trình
               - Cải tiến liên tục
+              - Business Process Improvement
+              - Process Optimization
+              - Tối ưu quy trình
           - id: data-analysis
             canonical: Data Analysis
             category: TECHNICAL
@@ -1128,11 +1454,16 @@ autojob:
               - Research Methods
               - Nghiên cứu
               - Phương pháp nghiên cứu
+              - Research Skills
+              - Research Methodology
+              - Kỹ năng nghiên cứu
           - id: legal-research
             canonical: Legal Research
             category: DOMAIN_KNOWLEDGE
             aliases:
               - Nghiên cứu pháp lý
+              - Legal Research Skills
+              - Nghiên cứu luật
           - id: contract-review
             canonical: Contract Review
             category: COMPLIANCE
@@ -1140,20 +1471,34 @@ autojob:
               - Contract Administration
               - Rà soát hợp đồng
               - Quản lý hợp đồng
+              - Contract Checking
+              - Contract Analysis
+              - Kiểm tra hợp đồng
+              - Phân tích hợp đồng
           - id: graphic-design
             canonical: Graphic Design
             category: TECHNICAL
             aliases:
               - Thiết kế đồ họa
+              - Graphic Designing
+              - Digital Graphic Design
+              - Thiết kế đồ họa kỹ thuật số
           - id: adobe-premiere-pro
             canonical: Adobe Premiere Pro
             category: SOFTWARE
             aliases:
               - Premiere Pro
+              - Premiere
+              - Adobe Premiere
+              - Premiere Video Editing
           - id: figma
             canonical: Figma
             category: SOFTWARE
-            aliases: []
+            aliases:
+              - Figma Design
+              - Figma UI
+              - Figma UX
+              - Figma UI/UX
           - id: photography
             canonical: Photography
             category: TECHNICAL
@@ -1546,6 +1891,8 @@ autojob:
             category: TOOL
             aliases:
               - Atlassian Confluence
+              - Confluence Wiki
+              - Confluence Documentation
           - id: apache-maven
             canonical: Apache Maven
             category: TOOL
@@ -1557,6 +1904,7 @@ autojob:
             category: TOOL
             aliases:
               - Gradle Build Tool
+              - Gradle Build System
           - id: machine-learning
             canonical: Machine Learning
             category: TECHNICAL
@@ -1763,6 +2111,9 @@ autojob:
               - Retail Selling
               - Bán hàng bán lẻ
               - Kỹ năng bán lẻ
+              - Retail Selling Skills
+              - Bán lẻ
+              - Tư vấn bán hàng bán lẻ
           - id: consultative-selling
             canonical: Consultative Selling
             category: SALES
@@ -1770,6 +2121,7 @@ autojob:
               - Solution Selling
               - Tư vấn bán hàng
               - Bán hàng tư vấn
+              - Advisory Selling
           - id: sales-planning
             canonical: Sales Planning
             category: SALES
@@ -1812,12 +2164,15 @@ autojob:
               - Up-selling
               - Bán gia tăng
               - Bán nâng cấp
+              - Bán thêm
+              - Tăng giá trị đơn hàng
           - id: cross-selling
             canonical: Cross-selling
             category: SALES
             aliases:
               - Cross Selling
               - Bán chéo
+              - Bán hàng chéo
           - id: customer-retention
             canonical: Customer Retention
             category: SALES
@@ -1832,6 +2187,8 @@ autojob:
               - CX Management
               - Trải nghiệm khách hàng
               - Quản trị trải nghiệm khách hàng
+              - Customer Experience Management
+              - Quản lý trải nghiệm khách hàng
           - id: call-center-operations
             canonical: Call Center Operations
             category: BUSINESS
@@ -1839,6 +2196,9 @@ autojob:
               - Contact Center Operations
               - Vận hành call center
               - Vận hành tổng đài
+              - Call Center Management
+              - Contact Center Management
+              - Vận hành trung tâm cuộc gọi
           - id: ticket-management
             canonical: Ticket Management
             category: BUSINESS
@@ -1846,6 +2206,10 @@ autojob:
               - Support Ticket Management
               - Quản lý ticket
               - Quản lý yêu cầu hỗ trợ
+              - Support Ticketing
+              - Ticket Handling
+              - Xử lý ticket
+              - Xử lý yêu cầu hỗ trợ
           - id: sales-management
             canonical: Sales Management
             category: SALES
@@ -1853,6 +2217,7 @@ autojob:
               - Sales Team Management
               - Quản lý bán hàng
               - Quản lý đội ngũ kinh doanh
+              - Quản lý đội ngũ bán hàng
           - id: bank-reconciliation
             canonical: Bank Reconciliation
             category: ACCOUNTING
@@ -1931,6 +2296,8 @@ autojob:
               - Onboarding
               - Tiếp nhận nhân viên mới
               - Hội nhập nhân viên
+              - New Hire Onboarding
+              - Tiếp nhận nhân sự mới
           - id: workforce-planning
             canonical: Workforce Planning
             category: MANAGEMENT
@@ -1938,6 +2305,7 @@ autojob:
               - Manpower Planning
               - Hoạch định nhân sự
               - Lập kế hoạch nhân lực
+              - Human Resource Planning
           - id: attendance-management
             canonical: Attendance Management
             category: BUSINESS
@@ -1945,6 +2313,8 @@ autojob:
               - Time and Attendance
               - Quản lý chấm công
               - Theo dõi chấm công
+              - Time Attendance
+              - Timesheet Management
           - id: benefits-administration
             canonical: Benefits Administration
             category: BUSINESS
@@ -1952,6 +2322,8 @@ autojob:
               - Employee Benefits Administration
               - Quản lý phúc lợi
               - Quản trị phúc lợi
+              - Employee Benefits
+              - Benefits Management
           - id: hr-reporting
             canonical: HR Reporting
             category: BUSINESS
@@ -1959,6 +2331,7 @@ autojob:
               - Human Resources Reporting
               - Báo cáo nhân sự
               - Lập báo cáo nhân sự
+              - HR Reports
           - id: employer-branding
             canonical: Employer Branding
             category: MARKETING
@@ -1966,6 +2339,8 @@ autojob:
               - Employment Branding
               - Thương hiệu nhà tuyển dụng
               - Xây dựng thương hiệu tuyển dụng
+              - Employer Brand
+              - Thương hiệu tuyển dụng
           - id: hr-analytics
             canonical: HR Analytics
             category: BUSINESS
@@ -1973,6 +2348,7 @@ autojob:
               - People Analytics
               - Phân tích nhân sự
               - Phân tích dữ liệu nhân sự
+              - Human Resources Analytics
           - id: copywriting
             canonical: Copywriting
             category: MARKETING
@@ -1980,6 +2356,8 @@ autojob:
               - Content Copywriting
               - Viết nội dung quảng cáo
               - Viết copy
+              - Advertising Copywriting
+              - Viết content
           - id: marketing-analytics
             canonical: Marketing Analytics
             category: MARKETING
@@ -2006,6 +2384,8 @@ autojob:
               - Ecommerce Marketing
               - Digital Commerce Marketing
               - Marketing thương mại điện tử
+              - Online Store Marketing
+              - Tiếp thị thương mại điện tử
           - id: event-marketing
             canonical: Event Marketing
             category: MARKETING
@@ -2013,6 +2393,7 @@ autojob:
               - Event Promotion
               - Marketing sự kiện
               - Tiếp thị sự kiện
+              - Truyền thông sự kiện
           - id: public-relations
             canonical: Public Relations
             category: MARKETING
@@ -2020,18 +2401,22 @@ autojob:
               - PR
               - Quan hệ công chúng
               - Truyền thông đối ngoại
+              - PR Management
+              - Truyền thông PR
           - id: affiliate-marketing
             canonical: Affiliate Marketing
             category: MARKETING
             aliases:
               - Performance Affiliate Marketing
               - Tiếp thị liên kết
+              - Affiliate Management
           - id: marketing-automation
             canonical: Marketing Automation
             category: MARKETING
             aliases:
               - Automated Marketing
               - Tự động hóa marketing
+              - Marketing Automation Platform
           - id: production-planning
             canonical: Production Planning
             category: DOMAIN_KNOWLEDGE
@@ -2053,12 +2438,17 @@ autojob:
               - Machinery Operation
               - Vận hành máy
               - Vận hành máy móc
+              - Machine Operating
+              - Industrial Machine Operation
           - id: industrial-engineering
             canonical: Industrial Engineering
             category: ENGINEERING
             aliases:
               - IE Engineering
               - Kỹ thuật công nghiệp
+              - Industrial Engineering Methods
+              - Kỹ thuật sản xuất công nghiệp
+              - Công nghiệp kỹ thuật
           - id: root-cause-analysis
             canonical: Root Cause Analysis
             category: DOMAIN_KNOWLEDGE
@@ -2066,12 +2456,16 @@ autojob:
               - RCA
               - Phân tích nguyên nhân gốc rễ
               - Phân tích nguyên nhân
+              - Root Cause Investigation
+              - Phân tích nguyên nhân gốc
+              - Phân tích nguyên nhân cốt lõi
           - id: fmea
             canonical: FMEA
             category: COMPLIANCE
             aliases:
               - Failure Mode and Effects Analysis
               - Phân tích FMEA
+              - Failure Mode Effect Analysis
           - id: statistical-process-control
             canonical: Statistical Process Control
             category: COMPLIANCE
@@ -2079,6 +2473,7 @@ autojob:
               - SPC
               - Kiểm soát quá trình bằng thống kê
               - Kiểm soát quá trình thống kê
+              - Process Statistical Control
           - id: iso-9001
             canonical: ISO 9001
             category: COMPLIANCE
@@ -2086,6 +2481,7 @@ autojob:
               - ISO9001
               - Quality Management System ISO 9001
               - Hệ thống quản lý chất lượng ISO 9001
+              - ISO 9001 Quality Management
           - id: cnc-programming
             canonical: CNC Programming
             category: MACHINERY
@@ -2184,6 +2580,7 @@ autojob:
               - Freight Forwarder Operations
               - Giao nhận vận tải
               - Nghiệp vụ giao nhận
+              - Forwarding Operations
           - id: shipping-documentation
             canonical: Shipping Documentation
             category: DOMAIN_KNOWLEDGE
@@ -2191,6 +2588,7 @@ autojob:
               - Shipping Documents
               - Chứng từ xuất nhập khẩu
               - Chứng từ vận tải
+              - Export Shipping Documents
           - id: route-planning
             canonical: Route Planning
             category: DOMAIN_KNOWLEDGE
@@ -2198,6 +2596,8 @@ autojob:
               - Delivery Route Planning
               - Lập kế hoạch tuyến đường
               - Tối ưu tuyến giao hàng
+              - Transport Route Planning
+              - Lập tuyến vận chuyển
           - id: logistics-operations
             canonical: Logistics Operations
             category: DOMAIN_KNOWLEDGE
@@ -2205,6 +2605,7 @@ autojob:
               - Logistics Management Operations
               - Vận hành logistics
               - Nghiệp vụ logistics
+              - Logistics Management
           - id: inventory-control
             canonical: Inventory Control
             category: DOMAIN_KNOWLEDGE
@@ -2212,6 +2613,7 @@ autojob:
               - Stock Control
               - Kiểm soát tồn kho
               - Kiểm soát hàng tồn
+              - Inventory Monitoring
           - id: customs-clearance
             canonical: Customs Clearance
             category: DOMAIN_KNOWLEDGE
@@ -2219,6 +2621,8 @@ autojob:
               - Customs Procedures
               - Thông quan
               - Thủ tục hải quan
+              - Customs Processing
+              - Thông quan hải quan
           - id: prescription-dispensing
             canonical: Prescription Dispensing
             category: HEALTHCARE
@@ -2267,6 +2671,9 @@ autojob:
               - Coffee Making
               - Pha chế cà phê
               - Nghiệp vụ barista
+              - Coffee Preparation
+              - Coffee Brewing
+              - Kỹ thuật pha cà phê
           - id: bartending
             canonical: Bartending
             category: DOMAIN_KNOWLEDGE
@@ -2274,6 +2681,9 @@ autojob:
               - Bartender Skills
               - Pha chế đồ uống
               - Nghiệp vụ bartender
+              - Beverage Mixing
+              - Cocktail Mixing
+              - Pha chế cocktail
           - id: cash-handling
             canonical: Cash Handling
             category: BUSINESS
@@ -2288,6 +2698,7 @@ autojob:
               - Booking Management
               - Quản lý đặt phòng
               - Quản lý đặt chỗ
+              - Reservation Handling
           - id: banquet-operations
             canonical: Banquet Operations
             category: DOMAIN_KNOWLEDGE
@@ -2295,6 +2706,7 @@ autojob:
               - Banquet Service
               - Vận hành tiệc
               - Phục vụ tiệc
+              - Event Banquet Operations
           - id: food-beverage-service
             canonical: Food and Beverage Service
             category: DOMAIN_KNOWLEDGE
@@ -2303,6 +2715,7 @@ autojob:
               - Food & Beverage Service
               - Phục vụ nhà hàng
               - Nghiệp vụ F&B
+              - Phục vụ ăn uống
           - id: ui-ux-design
             canonical: UI/UX Design
             category: TECHNICAL
@@ -2370,6 +2783,7 @@ autojob:
               - Business Analyst Skills
               - Phân tích nghiệp vụ
               - Phân tích kinh doanh
+              - Business Process Analysis
           - id: requirements-analysis
             canonical: Requirements Analysis
             category: BUSINESS
@@ -2378,6 +2792,8 @@ autojob:
               - Requirements Gathering
               - Phân tích yêu cầu
               - Thu thập yêu cầu
+              - Business Requirements Analysis
+              - Phân tích yêu cầu nghiệp vụ
           - id: process-mapping
             canonical: Process Mapping
             category: BUSINESS
@@ -2385,6 +2801,8 @@ autojob:
               - Business Process Mapping
               - Vẽ quy trình
               - Mô hình hóa quy trình
+              - Process Flow Mapping
+              - Lập sơ đồ quy trình
           - id: risk-management
             canonical: Risk Management
             category: MANAGEMENT
@@ -2392,6 +2810,8 @@ autojob:
               - Risk Assessment and Management
               - Quản lý rủi ro
               - Quản trị rủi ro
+              - Risk Assessment Management
+              - Enterprise Risk Management
           - id: kpi-management
             canonical: KPI Management
             category: MANAGEMENT
@@ -2399,6 +2819,9 @@ autojob:
               - Performance KPI Management
               - Quản lý KPI
               - Xây dựng KPI
+              - KPI Tracking
+              - KPI Monitoring
+              - Quản lý chỉ số KPI
           - id: strategic-planning
             canonical: Strategic Planning
             category: MANAGEMENT
@@ -2406,6 +2829,7 @@ autojob:
               - Strategy Planning
               - Hoạch định chiến lược
               - Lập kế hoạch chiến lược
+              - Business Strategic Planning
           - id: stakeholder-management
             canonical: Stakeholder Management
             category: MANAGEMENT
@@ -2413,6 +2837,8 @@ autojob:
               - Stakeholder Engagement
               - Quản lý các bên liên quan
               - Quản trị stakeholder
+              - Stakeholder Relations
+              - Quản lý bên liên quan
           - id: product-management
             canonical: Product Management
             category: MANAGEMENT
@@ -2443,6 +2869,7 @@ autojob:
               - Supplier Management
               - Quản lý nhà cung cấp
               - Quản trị nhà cung cấp
+              - Vendor Relationship Management
           - id: banking-operations
             canonical: Banking Operations
             category: FINANCE
@@ -2523,6 +2950,10 @@ autojob:
               - Tiếng Anh
               - Anh văn
               - English Communication
+              - English Skills
+              - English Proficiency
+              - Kỹ năng tiếng Anh
+              - Giao tiếp tiếng Anh
           - id: japanese-language
             canonical: Japanese
             category: LANGUAGE
@@ -2530,6 +2961,10 @@ autojob:
               - Japanese Language
               - Tiếng Nhật
               - Nhật ngữ
+              - Japanese Skills
+              - Japanese Proficiency
+              - Kỹ năng tiếng Nhật
+              - Giao tiếp tiếng Nhật
           - id: korean-language
             canonical: Korean
             category: LANGUAGE
@@ -2537,6 +2972,10 @@ autojob:
               - Korean Language
               - Tiếng Hàn
               - Hàn ngữ
+              - Korean Skills
+              - Korean Proficiency
+              - Kỹ năng tiếng Hàn
+              - Giao tiếp tiếng Hàn
           - id: mandarin-chinese
             canonical: Mandarin Chinese
             category: LANGUAGE
@@ -2546,6 +2985,11 @@ autojob:
               - Tiếng Trung
               - Tiếng Hoa
               - Tiếng Trung Quốc
+              - Chinese Language
+              - Chinese Skills
+              - Mandarin Skills
+              - Kỹ năng tiếng Trung
+              - Giao tiếp tiếng Trung
           - id: german-language
             canonical: German
             category: LANGUAGE
@@ -2553,6 +2997,9 @@ autojob:
               - German Language
               - Tiếng Đức
               - Đức ngữ
+              - German Skills
+              - German Proficiency
+              - Kỹ năng tiếng Đức
           - id: french-language
             canonical: French
             category: LANGUAGE
@@ -2560,6 +3007,9 @@ autojob:
               - French Language
               - Tiếng Pháp
               - Pháp ngữ
+              - French Skills
+              - French Proficiency
+              - Kỹ năng tiếng Pháp
           - id: animal-husbandry
             canonical: Animal Husbandry
             category: DOMAIN_KNOWLEDGE

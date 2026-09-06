@@ -21,12 +21,6 @@ public class LocationScorer {
     private static final double UNKNOWN_SCORE =
             0.50d;
 
-    /*
-     * Candidate chỉ đang sống ở cùng thành phố,
-     * nhưng không nói đó là preferred location.
-     *
-     * Vì vậy không cho full 1.0.
-     */
     private static final double
             CURRENT_LOCATION_MATCH_SCORE =
             0.85d;
@@ -62,6 +56,16 @@ public class LocationScorer {
             CandidateProfile candidate,
             NormalizedJob job
     ) {
+        return evaluate(
+                candidate,
+                job
+        ).score();
+    }
+
+    public Result evaluate(
+            CandidateProfile candidate,
+            NormalizedJob job
+    ) {
         Objects.requireNonNull(
                 candidate,
                 "candidate must not be null"
@@ -72,11 +76,6 @@ public class LocationScorer {
                 "job must not be null"
         );
 
-        /*
-         * -------------------------------------------------
-         * 1. Explicit remote preference.
-         * -------------------------------------------------
-         */
         boolean acceptsRemote =
                 candidate.getPreferredWorkModes() != null
                         && candidate
@@ -91,31 +90,18 @@ public class LocationScorer {
                 && containsRemoteSignal(
                 job.getLocationText()
         )) {
-            return 1.0d;
+            return Result.known(1.0d);
         }
 
-        /*
-         * -------------------------------------------------
-         * 2. Job locations.
-         * -------------------------------------------------
-         */
         Set<String> jobLocations =
                 normalizeLocations(
                         job.getLocations()
                 );
 
         if (jobLocations.isEmpty()) {
-            return UNKNOWN_SCORE;
+            return Result.unknown();
         }
 
-        /*
-         * -------------------------------------------------
-         * 3. Explicit preferred locations.
-         *
-         * Nếu candidate thật sự khai preferred location
-         * thì đây là signal mạnh.
-         * -------------------------------------------------
-         */
         Set<String> preferredLocations =
                 normalizeLocations(
                         candidate
@@ -128,52 +114,31 @@ public class LocationScorer {
                     preferredLocations,
                     jobLocations
             )) {
-                return 1.0d;
+                return Result.known(1.0d);
             }
 
-            /*
-             * Candidate nói rõ preference nhưng job
-             * nằm chỗ khác.
-             */
-            return 0.20d;
+            return Result.known(0.20d);
         }
 
-        /*
-         * -------------------------------------------------
-         * 4. Fallback về current/home location.
-         *
-         * CV parser của bạn:
-         *
-         * preferredLocations = []
-         * contact.city = Hồ Chí Minh
-         *
-         * Không nên mất hoàn toàn location signal.
-         * -------------------------------------------------
-         */
         Set<String> currentLocations =
                 candidateCurrentLocations(
                         candidate
                 );
 
         if (currentLocations.isEmpty()) {
-            return UNKNOWN_SCORE;
+            return Result.unknown();
         }
 
         if (intersects(
                 currentLocations,
                 jobLocations
         )) {
-            return CURRENT_LOCATION_MATCH_SCORE;
+            return Result.known(
+                    CURRENT_LOCATION_MATCH_SCORE
+            );
         }
 
-        /*
-         * Candidate chỉ đang sống ở HCM,
-         * không tuyên bố "chỉ muốn HCM".
-         *
-         * Vì vậy job Hà Nội/Đà Nẵng không bị phạt
-         * nặng như explicit preference mismatch.
-         */
-        return UNKNOWN_SCORE;
+        return Result.unknown();
     }
 
     private Set<String> candidateCurrentLocations(
@@ -199,12 +164,6 @@ public class LocationScorer {
                 contact.provinceOrState()
         );
 
-        /*
-         * addressText là fallback cuối.
-         *
-         * Ví dụ:
-         * "Thu Duc, Ho Chi Minh City"
-         */
         addLocation(
                 result,
                 contact.addressText()
@@ -257,9 +216,6 @@ public class LocationScorer {
             return "";
         }
 
-        /*
-         * Exact taxonomy alias.
-         */
         String exact =
                 aliasToLocationId.get(key);
 
@@ -267,15 +223,6 @@ public class LocationScorer {
             return exact;
         }
 
-        /*
-         * addressText có thể là:
-         *
-         * "Thu Duc, Ho Chi Minh City"
-         *
-         * nên exact key sẽ không match.
-         *
-         * Tìm taxonomy alias nằm trong full address.
-         */
         String bestMatch = null;
         int longestAlias = -1;
 
@@ -285,11 +232,6 @@ public class LocationScorer {
             String alias =
                     entry.getKey();
 
-            /*
-             * Bỏ alias quá ngắn để tránh false positive:
-             * HCM được phép vì 3 chars,
-             * nhưng những alias 1-2 chars dễ match nhầm.
-             */
             if (alias.length() < 3) {
                 continue;
             }
@@ -474,5 +416,38 @@ public class LocationScorer {
         return NON_KEY
                 .matcher(folded)
                 .replaceAll("");
+    }
+
+    public record Result(
+            double score,
+            boolean known
+    ) {
+
+        public Result {
+            if (!Double.isFinite(score)
+                    || score < 0.0d
+                    || score > 1.0d) {
+
+                throw new IllegalArgumentException(
+                        "score must be between 0.0 and 1.0"
+                );
+            }
+        }
+
+        public static Result known(
+                double score
+        ) {
+            return new Result(
+                    score,
+                    true
+            );
+        }
+
+        public static Result unknown() {
+            return new Result(
+                    UNKNOWN_SCORE,
+                    false
+            );
+        }
     }
 }
