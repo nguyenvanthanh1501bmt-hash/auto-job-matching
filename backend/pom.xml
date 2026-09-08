@@ -24,6 +24,7 @@
         <module>modules/candidate-embedding</module>
 
         <module>modules/matching</module>
+        <module>modules/cv-tailoring</module>
 
         <module>autojob-app</module>
     </modules>

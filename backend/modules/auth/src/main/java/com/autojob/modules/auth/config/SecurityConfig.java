@@ -166,6 +166,7 @@ public class SecurityConfig {
                                         "/api/auth/me",
                                         "/api/cvs",
                                         "/api/cvs/**",
+                                        "/api/cv-tailoring/**",
                                         "/api/matching/**",
                                         "/api/normalized-jobs",
                                         "/api/normalized-jobs/**"
