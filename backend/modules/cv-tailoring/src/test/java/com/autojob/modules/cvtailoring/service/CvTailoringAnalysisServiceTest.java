@@ -8,6 +8,8 @@ import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.Evide
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.Section;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionItem;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionType;
+import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
+import com.autojob.modules.jobnormalizer.repository.NormalizedJobRepository;
 import com.autojob.modules.matching.contract.MatchingRunResult;
 import com.autojob.modules.matching.domain.MatchResult;
 import com.autojob.modules.matching.service.HybridMatchingService;
@@ -25,6 +27,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +53,14 @@ class CvTailoringAnalysisServiceTest {
     private CvTailoringAnalysisStore
             analysisStore;
 
+    @Mock
+    private NormalizedJobRepository
+            normalizedJobRepository;
+
+    @Mock
+    private CvSuggestionService
+            cvSuggestionService;
+
     private CvTailoringAnalysisService
             service;
 
@@ -61,12 +72,14 @@ class CvTailoringAnalysisServiceTest {
                         candidateProfileRepository,
                         cvEvidenceService,
                         suggestionValidator,
-                        analysisStore
+                        analysisStore,
+                        normalizedJobRepository,
+                        cvSuggestionService
                 );
     }
 
     @Test
-    void analyzeCreatesValidatedEmphasizeAndGapAndStoresContext() {
+    void analyzeKeepsRuleBasedSuggestionsWhenAiReturnsNoRewrite() {
 
         String candidateId =
                 "candidate-1";
@@ -200,6 +213,30 @@ class CvTailoringAnalysisServiceTest {
                         )
                 );
 
+        NormalizedJob normalizedJob =
+                NormalizedJob
+                        .builder()
+                        .id(
+                                jobId
+                        )
+                        .title(
+                                "Backend Developer"
+                        )
+                        .skills(
+                                List.of(
+                                        "Java",
+                                        "PostgreSQL",
+                                        "Docker"
+                                )
+                        )
+                        .requirementsText(
+                                "Java, PostgreSQL and Docker"
+                        )
+                        .descriptionText(
+                                "Develop backend applications."
+                        )
+                        .build();
+
         CvTailoringAnalysisStore.AnalysisContext storedContext =
                 new CvTailoringAnalysisStore.AnalysisContext(
                         "analysis-1",
@@ -251,6 +288,17 @@ class CvTailoringAnalysisServiceTest {
         );
 
         when(
+                normalizedJobRepository
+                        .findById(
+                                jobId
+                        )
+        ).thenReturn(
+                Optional.of(
+                        normalizedJob
+                )
+        );
+
+        when(
                 cvEvidenceService
                         .canonicalSkillKey(
                                 "Java"
@@ -275,6 +323,27 @@ class CvTailoringAnalysisServiceTest {
                         )
         ).thenReturn(
                 "docker"
+        );
+
+        /*
+         * Represents:
+         * - both providers disabled
+         * - both providers unavailable
+         * - both providers rate-limited
+         * - or no truthful rewrite needed
+         *
+         * Analyze must still work.
+         */
+        when(
+                cvSuggestionService
+                        .generateRewrites(
+                                profile,
+                                normalizedJob,
+                                match,
+                                evidenceMap
+                        )
+        ).thenReturn(
+                List.of()
         );
 
         when(
@@ -366,6 +435,10 @@ class CvTailoringAnalysisServiceTest {
                 0.67d
         );
 
+        /*
+         * PostgreSQL exists in Project evidence but not
+         * top-level Skills -> EMPHASIZE still works.
+         */
         assertThat(
                 response.suggestions()
         ).hasSize(
@@ -399,6 +472,10 @@ class CvTailoringAnalysisServiceTest {
                 "project:0:skill:0"
         );
 
+        /*
+         * Docker is missing -> GAP_WARNING still works
+         * independently of LLM availability.
+         */
         assertThat(
                 response.gaps()
         ).hasSize(
@@ -421,6 +498,19 @@ class CvTailoringAnalysisServiceTest {
                 Set.of(
                         "java"
                 )
+        );
+
+        /*
+         * Most important Phase 5 integration invariant:
+         * AI received the actual NormalizedJob/JD.
+         */
+        verify(
+                cvSuggestionService
+        ).generateRewrites(
+                profile,
+                normalizedJob,
+                match,
+                evidenceMap
         );
     }
 }

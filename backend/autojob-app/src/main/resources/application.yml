@@ -136,6 +136,40 @@ autojob:
       max-error-length: ${CV_PARSER_MAX_ERROR_LENGTH:1000}
       max-response-size-bytes: ${CV_PARSER_MAX_RESPONSE_SIZE_BYTES:16777216}
 
+  cv-tailoring:
+    ai:
+      enabled: ${CV_TAILORING_AI_ENABLED:true}
+
+      prompt-version: ${CV_TAILORING_AI_PROMPT_VERSION:cv-rewrite-v1}
+
+      connect-timeout: ${CV_TAILORING_AI_CONNECT_TIMEOUT:3s}
+      request-timeout: ${CV_TAILORING_AI_REQUEST_TIMEOUT:18s}
+      provider-cooldown: ${CV_TAILORING_AI_PROVIDER_COOLDOWN:2m}
+      cache-ttl: ${CV_TAILORING_AI_CACHE_TTL:15m}
+
+      # Free-tier optimization:
+      # send only the most relevant editable CV nodes.
+      max-rewrite-candidates: ${CV_TAILORING_AI_MAX_REWRITE_CANDIDATES:6}
+      max-evidence-per-candidate: ${CV_TAILORING_AI_MAX_EVIDENCE_PER_CANDIDATE:10}
+
+      max-evidence-text-chars: ${CV_TAILORING_AI_MAX_EVIDENCE_TEXT_CHARS:240}
+      max-job-description-chars: ${CV_TAILORING_AI_MAX_JOB_DESCRIPTION_CHARS:1200}
+      max-job-requirements-chars: ${CV_TAILORING_AI_MAX_JOB_REQUIREMENTS_CHARS:2400}
+
+      max-output-tokens: ${CV_TAILORING_AI_MAX_OUTPUT_TOKENS:1400}
+
+      gemini:
+        enabled: ${GEMINI_ENABLED:true}
+        base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+        model: ${GEMINI_MODEL:gemini-3.8-flash}
+        api-key: ${GEMINI_API_KEY:}
+
+      groq:
+        enabled: ${GROQ_ENABLED:true}
+        base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
+        model: ${GROQ_MODEL:openai/gpt-oss-120b}
+        api-key: ${GROQ_API_KEY:}
+
 management:
   endpoints:
     web:

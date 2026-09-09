@@ -10,6 +10,8 @@ import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.JobSn
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.Section;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionItem;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionType;
+import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
+import com.autojob.modules.jobnormalizer.repository.NormalizedJobRepository;
 import com.autojob.modules.matching.contract.MatchingRunResult;
 import com.autojob.modules.matching.domain.MatchResult;
 import com.autojob.modules.matching.service.HybridMatchingService;
@@ -42,12 +44,20 @@ public class CvTailoringAnalysisService {
     private final CvTailoringAnalysisStore
             analysisStore;
 
+    private final NormalizedJobRepository
+            normalizedJobRepository;
+
+    private final CvSuggestionService
+            cvSuggestionService;
+
     public CvTailoringAnalysisService(
             HybridMatchingService hybridMatchingService,
             CandidateProfileRepository candidateProfileRepository,
             CvEvidenceService cvEvidenceService,
             CvSuggestionValidator suggestionValidator,
-            CvTailoringAnalysisStore analysisStore
+            CvTailoringAnalysisStore analysisStore,
+            NormalizedJobRepository normalizedJobRepository,
+            CvSuggestionService cvSuggestionService
     ) {
         this.hybridMatchingService =
                 Objects.requireNonNull(
@@ -77,6 +87,18 @@ public class CvTailoringAnalysisService {
                 Objects.requireNonNull(
                         analysisStore,
                         "analysisStore must not be null"
+                );
+
+        this.normalizedJobRepository =
+                Objects.requireNonNull(
+                        normalizedJobRepository,
+                        "normalizedJobRepository must not be null"
+                );
+
+        this.cvSuggestionService =
+                Objects.requireNonNull(
+                        cvSuggestionService,
+                        "cvSuggestionService must not be null"
                 );
     }
 
@@ -168,19 +190,59 @@ public class CvTailoringAnalysisService {
                 );
 
         /*
-         * Phase 1:
-         * deterministic EMPHASIZE.
+         * REWRITE phải dựa vào JD thật chứ không chỉ MatchResult snapshot.
+         */
+        NormalizedJob targetJob =
+                normalizedJobRepository
+                        .findById(
+                                normalizedJobId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.CONFLICT,
+                                                "Selected job is no longer available. "
+                                                        + "Run matching again before "
+                                                        + "tailoring this CV."
+                                        )
+                        );
+
+        /*
+         * Deterministic suggestions remain available even when
+         * every AI provider is disabled, rate-limited or down.
          */
         List<SuggestionItem> generatedSuggestions =
-                buildEmphasizeSuggestions(
-                        targetMatch,
-                        evidenceMap
+                new ArrayList<>(
+                        buildEmphasizeSuggestions(
+                                targetMatch,
+                                evidenceMap
+                        )
                 );
 
         /*
-         * Phase 2:
-         * suggestion không được đưa ra client
-         * trước khi backend validator accept.
+         * Phase 5:
+         *
+         * AI reads the real JD but may only rewrite backend-selected
+         * editable nodes using evidence explicitly whitelisted
+         * for that source scope.
+         *
+         * Gemini = primary.
+         * Groq = fallback.
+         */
+        generatedSuggestions.addAll(
+                cvSuggestionService.generateRewrites(
+                        profile,
+                        targetJob,
+                        targetMatch,
+                        evidenceMap
+                )
+        );
+
+        /*
+         * Backend still owns truth.
+         *
+         * AI suggestions must pass the existing validator before
+         * they are stored or returned to the client.
          */
         List<SuggestionItem> validatedSuggestions =
                 suggestionValidator
@@ -196,9 +258,7 @@ public class CvTailoringAnalysisService {
                 );
 
         /*
-         * analysisId giờ có context thật.
-         *
-         * Không còn là UUID decorative.
+         * analysisId has a real server-side context.
          */
         CvTailoringAnalysisStore.AnalysisContext context =
                 analysisStore.save(
