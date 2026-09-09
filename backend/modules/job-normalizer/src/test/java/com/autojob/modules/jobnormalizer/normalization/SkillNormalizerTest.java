@@ -102,7 +102,7 @@ class SkillNormalizerTest {
                         "Kế toán tổng hợp",
                         "Điều dưỡng nội khoa",
                         "Kỹ thuật hàn TIG",
-                        "Phần mềm MISA",
+                        "MISA",
                         "Nghiệp vụ xuất nhập khẩu"
                 );
     }
@@ -186,7 +186,7 @@ class SkillNormalizerTest {
                 .containsExactly(
                         "Vận hành máy CNC",
                         "Kỹ thuật hàn TIG",
-                        "Phần mềm MISA"
+                        "MISA"
                 );
     }
 
