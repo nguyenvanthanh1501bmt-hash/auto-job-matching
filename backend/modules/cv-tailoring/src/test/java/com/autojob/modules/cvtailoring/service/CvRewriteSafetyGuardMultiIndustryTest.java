@@ -19,7 +19,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class CvRewriteSafetyGuardTest {
+class CvRewriteSafetyGuardMultiIndustryTest {
 
     private CvRewriteSafetyGuard guard;
     private CvEvidenceService.EvidenceMap evidenceMap;
@@ -33,25 +33,20 @@ class CvRewriteSafetyGuardTest {
                 );
 
         when(
-                evidenceService
-                        .canonicalSkillKey(
-                                anyString()
-                        )
+                evidenceService.canonicalSkillKey(
+                        anyString()
+                )
         ).thenAnswer(
-                invocation -> {
-
-                    String value =
-                            invocation.getArgument(
-                                    0,
-                                    String.class
-                            );
-
-                    return value
-                            .trim()
-                            .toLowerCase(
-                                    Locale.ROOT
-                            );
-                }
+                invocation ->
+                        invocation
+                                .getArgument(
+                                        0,
+                                        String.class
+                                )
+                                .trim()
+                                .toLowerCase(
+                                        Locale.ROOT
+                                )
         );
 
         CvRewriteSafetyTaxonomyProperties taxonomy =
@@ -59,9 +54,14 @@ class CvRewriteSafetyGuardTest {
 
         taxonomy.setHighRiskClaimGroups(
                 Map.of(
-                        "leadership",
+                        "test-claims",
                         List.of(
-                                "led"
+                                "licensed",
+                                "certification",
+                                "bachelor's degree",
+                                "fluent",
+                                "supervised",
+                                "budget responsibility"
                         )
                 )
         );
@@ -80,7 +80,7 @@ class CvRewriteSafetyGuardTest {
                                         Section.WORK_EXPERIENCE,
                                         "work:0",
                                         EvidenceKind.TEXT,
-                                        "Developed backend services.",
+                                        "Provided patient care and supported clinical procedures.",
                                         null
                                 ),
                                 new EvidenceItem(
@@ -88,8 +88,8 @@ class CvRewriteSafetyGuardTest {
                                         Section.WORK_EXPERIENCE,
                                         "work:0",
                                         EvidenceKind.SKILL,
-                                        "Java",
-                                        "java"
+                                        "Patient Care",
+                                        "patient care"
                                 )
                         )
                 );
@@ -98,24 +98,107 @@ class CvRewriteSafetyGuardTest {
                 NormalizedJob
                         .builder()
                         .id(
-                                "job-1"
+                                "job-healthcare-1"
                         )
                         .skills(
                                 List.of(
-                                        "Java",
-                                        "AWS"
+                                        "Patient Care"
                                 )
                         )
                         .build();
     }
 
     @Test
-    void allowsTruthfulRewriteUsingSupportedSkill() {
+    void rejectsFabricatedProfessionalLicense() {
+        assertThat(
+                guard.isSafe(
+                        suggestion(
+                                "Provided patient care as a licensed registered nurse."
+                        ),
+                        evidenceMap,
+                        job
+                )
+        ).isFalse();
+    }
+
+    @Test
+    void rejectsFabricatedCertification() {
+        assertThat(
+                guard.isSafe(
+                        suggestion(
+                                "Provided certification-based patient care and supported clinical procedures."
+                        ),
+                        evidenceMap,
+                        job
+                )
+        ).isFalse();
+    }
+
+    @Test
+    void rejectsFabricatedDegree() {
+        assertThat(
+                guard.isSafe(
+                        suggestion(
+                                "Provided patient care with a bachelor's degree in nursing."
+                        ),
+                        evidenceMap,
+                        job
+                )
+        ).isFalse();
+    }
+
+    @Test
+    void rejectsFabricatedLanguageProficiency() {
+        assertThat(
+                guard.isSafe(
+                        suggestion(
+                                "Provided fluent English support while delivering patient care."
+                        ),
+                        evidenceMap,
+                        job
+                )
+        ).isFalse();
+    }
+
+    @Test
+    void rejectsFabricatedManagementResponsibility() {
+        assertThat(
+                guard.isSafe(
+                        suggestion(
+                                "Supervised clinical staff while providing patient care."
+                        ),
+                        evidenceMap,
+                        job
+                )
+        ).isFalse();
+    }
+
+    @Test
+    void rejectsFabricatedBudgetResponsibility() {
+        assertThat(
+                guard.isSafe(
+                        suggestion(
+                                "Held budget responsibility while providing patient care."
+                        ),
+                        evidenceMap,
+                        job
+                )
+        ).isFalse();
+    }
+
+    @Test
+    void stillAllowsOrdinaryEvidenceGroundedHealthcareRewrite() {
         SuggestionItem suggestion =
-                suggestion(
-                        "Developed backend services using Java.",
+                new SuggestionItem(
+                        "rewrite-ai-0",
+                        SuggestionType.REWRITE,
+                        Section.WORK_EXPERIENCE,
+                        "work:0:responsibility:0",
+                        "Provided patient care and supported clinical procedures.",
+                        "Supported clinical procedures while providing patient care.",
+                        "Makes existing evidence clearer.",
                         List.of(
-                                "Java"
+                                "Patient Care"
                         ),
                         List.of(
                                 "work:0:responsibility:0",
@@ -132,90 +215,24 @@ class CvRewriteSafetyGuardTest {
         ).isTrue();
     }
 
-    @Test
-    void rejectsNewUnsupportedNumber() {
-        SuggestionItem suggestion =
-                suggestion(
-                        "Developed 40 backend services using Java.",
-                        List.of(
-                                "Java"
-                        ),
-                        List.of(
-                                "work:0:responsibility:0",
-                                "work:0:skill:0"
-                        )
-                );
-
-        assertThat(
-                guard.isSafe(
-                        suggestion,
-                        evidenceMap,
-                        job
-                )
-        ).isFalse();
-    }
-
-    @Test
-    void rejectsUnsupportedLeadershipClaim() {
-        SuggestionItem suggestion =
-                suggestion(
-                        "Led backend development using Java.",
-                        List.of(
-                                "Java"
-                        ),
-                        List.of(
-                                "work:0:responsibility:0",
-                                "work:0:skill:0"
-                        )
-                );
-
-        assertThat(
-                guard.isSafe(
-                        suggestion,
-                        evidenceMap,
-                        job
-                )
-        ).isFalse();
-    }
-
-    @Test
-    void rejectsJobSkillIntroducedWithoutBeingTrackedAsTargetSkill() {
-        SuggestionItem suggestion =
-                suggestion(
-                        "Developed backend services using Java and AWS.",
-                        List.of(
-                                "Java"
-                        ),
-                        List.of(
-                                "work:0:responsibility:0",
-                                "work:0:skill:0"
-                        )
-                );
-
-        assertThat(
-                guard.isSafe(
-                        suggestion,
-                        evidenceMap,
-                        job
-                )
-        ).isFalse();
-    }
-
     private SuggestionItem suggestion(
-            String suggested,
-            List<String> targetSkills,
-            List<String> evidenceIds
+            String suggested
     ) {
         return new SuggestionItem(
                 "rewrite-ai-0",
                 SuggestionType.REWRITE,
                 Section.WORK_EXPERIENCE,
                 "work:0:responsibility:0",
-                "Developed backend services.",
+                "Provided patient care and supported clinical procedures.",
                 suggested,
                 "Makes existing evidence clearer.",
-                targetSkills,
-                evidenceIds
+                List.of(
+                        "Patient Care"
+                ),
+                List.of(
+                        "work:0:responsibility:0",
+                        "work:0:skill:0"
+                )
         );
     }
 }

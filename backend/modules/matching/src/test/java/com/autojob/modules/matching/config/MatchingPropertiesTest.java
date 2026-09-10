@@ -205,7 +205,7 @@ class MatchingPropertiesTest {
                         .getCompatibility()
                         .getCandidateTextVersion()
         ).isEqualTo(
-                "candidate-text-v1"
+                "candidate-text-v2"
         );
 
         assertThat(

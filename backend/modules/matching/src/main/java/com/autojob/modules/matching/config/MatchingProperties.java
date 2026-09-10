@@ -29,8 +29,8 @@ public class MatchingProperties {
             0.000001d;
 
     /*
-     * Chưa bump version trong batch thử LANGUAGE.
-     * Sau khi behavior thực tế ổn sẽ bump một lần cuối.
+     * Ranking algorithm remains r7. Candidate text compatibility
+     * is versioned independently below.
      */
     @NotBlank
     private String version =
@@ -127,7 +127,7 @@ public class MatchingProperties {
 
         @NotBlank
         private String candidateTextVersion =
-                "candidate-text-v1";
+                "candidate-text-v2";
 
         @NotBlank
         private String jobTextVersion =

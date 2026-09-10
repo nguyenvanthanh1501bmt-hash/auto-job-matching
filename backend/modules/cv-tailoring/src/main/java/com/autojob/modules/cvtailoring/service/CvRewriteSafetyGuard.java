@@ -1,5 +1,6 @@
 package com.autojob.modules.cvtailoring.service;
 
+import com.autojob.modules.cvtailoring.config.CvRewriteSafetyTaxonomyProperties;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.EvidenceItem;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.EvidenceKind;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionItem;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -24,35 +26,9 @@ public class CvRewriteSafetyGuard {
     private static final Pattern DIACRITICS =
             Pattern.compile("\\p{M}+");
 
-    /*
-     * Keep characters that can legitimately be part of
-     * technology names:
-     *
-     * C++
-     * C#
-     * .NET
-     * Node.js
-     *
-     * Sentence-ending dots are removed separately below.
-     */
     private static final Pattern NON_WORD =
             Pattern.compile("[^a-z0-9%+.#]+");
 
-    /*
-     * Remove a period when it behaves like punctuation rather
-     * than part of a technology token.
-     *
-     * Examples:
-     *
-     * AWS.       -> AWS
-     * C++.       -> C++
-     * C#.        -> C#
-     *
-     * But:
-     *
-     * Node.js    -> Node.js
-     * .NET       -> .NET
-     */
     private static final Pattern TRAILING_DOT =
             Pattern.compile("\\.(?=\\s|$)");
 
@@ -62,40 +38,62 @@ public class CvRewriteSafetyGuard {
                     Pattern.CASE_INSENSITIVE
             );
 
-    private static final List<String> HIGH_RISK_CLAIMS =
-            List.of(
-                    "architected",
-                    "architecture",
-                    "led",
-                    "managed",
-                    "mentored",
-                    "owned",
-                    "optimized",
-                    "increased",
-                    "reduced",
-                    "improved",
-                    "scaled",
-                    "scalable",
-                    "highly scalable",
-                    "microservices",
-                    "distributed systems",
-                    "expert",
-                    "expertise",
-                    "advanced proficiency",
-                    "proficient",
-                    "senior",
-                    "leadership"
-            );
-
     private final CvEvidenceService evidenceService;
 
+    private final Map<String, List<String>>
+            highRiskClaimGroups;
+
+    private final Map<String, Set<EvidenceKind>>
+            requiredEvidenceKindsByGroup;
+
+    private final Map<String, Set<String>>
+            genericTokensByGroup;
+
+    private final Set<String>
+            companionIdentityRequiredGroups;
+
     public CvRewriteSafetyGuard(
-            CvEvidenceService evidenceService
+            CvEvidenceService evidenceService,
+            CvRewriteSafetyTaxonomyProperties safetyTaxonomy
     ) {
         this.evidenceService =
                 Objects.requireNonNull(
                         evidenceService,
                         "evidenceService must not be null"
+                );
+
+        Objects.requireNonNull(
+                safetyTaxonomy,
+                "safetyTaxonomy must not be null"
+        );
+
+        this.highRiskClaimGroups =
+                normalizeClaimGroups(
+                        safetyTaxonomy
+                                .getHighRiskClaimGroups()
+                );
+
+        if (highRiskClaimGroups.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "CV rewrite safety taxonomy "
+                            + "must contain at least one "
+                            + "high-risk claim group"
+            );
+        }
+
+        this.requiredEvidenceKindsByGroup =
+                normalizeEvidenceKindRequirements(
+                        safetyTaxonomy
+                );
+
+        this.genericTokensByGroup =
+                normalizeGenericTokens(
+                        safetyTaxonomy
+                );
+
+        this.companionIdentityRequiredGroups =
+                normalizeCompanionIdentityGroups(
+                        safetyTaxonomy
                 );
     }
 
@@ -105,10 +103,12 @@ public class CvRewriteSafetyGuard {
             NormalizedJob job
     ) {
         if (suggestion == null
+                || evidenceMap == null
                 || suggestion.suggested() == null
                 || suggestion.suggested().isBlank()
                 || suggestion.original() == null
                 || suggestion.original().isBlank()) {
+
             return false;
         }
 
@@ -126,6 +126,7 @@ public class CvRewriteSafetyGuard {
                 || suggested.equals(
                 original
         )) {
+
             return false;
         }
 
@@ -137,9 +138,11 @@ public class CvRewriteSafetyGuard {
         List<EvidenceItem> citedEvidence =
                 new ArrayList<>();
 
-        for (String evidenceId : safeList(
-                suggestion.evidenceIds()
-        )) {
+        for (String evidenceId :
+                safeList(
+                        suggestion.evidenceIds()
+                )) {
+
             EvidenceItem item =
                     evidenceById.get(
                             evidenceId
@@ -164,6 +167,7 @@ public class CvRewriteSafetyGuard {
                 suggestion.suggested(),
                 evidenceCorpus
         )) {
+
             return false;
         }
 
@@ -171,8 +175,10 @@ public class CvRewriteSafetyGuard {
                 suggested,
                 compact(
                         evidenceCorpus
-                )
+                ),
+                citedEvidence
         )) {
+
             return false;
         }
 
@@ -192,12 +198,15 @@ public class CvRewriteSafetyGuard {
                         evidenceCorpus
                 );
 
-        for (String number : numbers(
-                suggested
-        )) {
+        for (String number :
+                numbers(
+                        suggested
+                )) {
+
             if (!supportedNumbers.contains(
                     number
             )) {
+
                 return true;
             }
         }
@@ -207,28 +216,397 @@ public class CvRewriteSafetyGuard {
 
     private boolean introducesUnsupportedHighRiskClaim(
             String suggested,
-            String evidenceCorpus
+            String evidenceCorpus,
+            List<EvidenceItem> citedEvidence
     ) {
-        for (String claim : HIGH_RISK_CLAIMS) {
+        for (
+                Map.Entry<String, List<String>> entry
+                : highRiskClaimGroups.entrySet()
+        ) {
+            String group =
+                    entry.getKey();
 
-            String normalizedClaim =
+            List<String> phrases =
+                    entry.getValue();
+
+            Set<EvidenceKind> requiredKinds =
+                    requiredEvidenceKindsByGroup
+                            .getOrDefault(
+                                    group,
+                                    Set.of()
+                            );
+
+            for (String phrase : phrases) {
+
+                if (!containsPhrase(
+                        suggested,
+                        phrase
+                )) {
+
+                    continue;
+                }
+
+                if (!requiredKinds.isEmpty()) {
+
+                    if (!supportsTypedClaim(
+                            group,
+                            suggested,
+                            citedEvidence,
+                            requiredKinds
+                    )) {
+
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (!containsPhrase(
+                        evidenceCorpus,
+                        phrase
+                )) {
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean supportsTypedClaim(
+            String group,
+            String suggested,
+            List<EvidenceItem> citedEvidence,
+            Set<EvidenceKind> requiredKinds
+    ) {
+        List<EvidenceItem> typedEvidence =
+                citedEvidence
+                        .stream()
+                        .filter(
+                                Objects::nonNull
+                        )
+                        .filter(
+                                item ->
+                                        item.kind() != null
+                                                && requiredKinds
+                                                .contains(
+                                                        item.kind()
+                                                )
+                        )
+                        .toList();
+
+        if (typedEvidence.isEmpty()) {
+            return false;
+        }
+
+        Set<String> genericTokens =
+                genericTokensByGroup
+                        .getOrDefault(
+                                group,
+                                Set.of()
+                        );
+
+        if (companionIdentityRequiredGroups
+                .contains(
+                        group
+                )) {
+
+            return supportsCompanionIdentityClaim(
+                    group,
+                    suggested,
+                    typedEvidence,
+                    citedEvidence,
+                    genericTokens
+            );
+        }
+
+        for (EvidenceItem item : typedEvidence) {
+
+            String evidenceText =
                     compact(
-                            claim
+                            item.text()
                     );
 
+            if (evidenceText.isBlank()) {
+                continue;
+            }
+
+            /*
+             * Exact qualification name is strongest evidence.
+             *
+             * Example:
+             *
+             * Basic Life Support
+             * Bachelor of Nursing
+             */
             if (containsPhrase(
                     suggested,
-                    normalizedClaim
-            )
-                    && !containsPhrase(
-                    evidenceCorpus,
-                    normalizedClaim
+                    evidenceText
             )) {
+
+                return true;
+            }
+
+            Set<String> identityTokens =
+                    identityTokens(
+                            evidenceText,
+                            genericTokens
+                    );
+
+            /*
+             * Supports morphological wording changes:
+             *
+             * evidence:
+             *   Registered Nurse License
+             *
+             * suggested:
+             *   licensed registered nurse
+             */
+            if (!identityTokens.isEmpty()
+                    && containsAllTokens(
+                    suggested,
+                    identityTokens
+            )) {
+
                 return true;
             }
         }
 
         return false;
+    }
+
+    private boolean supportsCompanionIdentityClaim(
+            String group,
+            String suggested,
+            List<EvidenceItem> typedEvidence,
+            List<EvidenceItem> citedEvidence,
+            Set<String> genericTokens
+    ) {
+        List<String> claimPhrases =
+                highRiskClaimGroups
+                        .getOrDefault(
+                                group,
+                                List.of()
+                        );
+
+        for (EvidenceItem claimEvidence :
+                typedEvidence) {
+
+            String evidenceText =
+                    compact(
+                            claimEvidence.text()
+                    );
+
+            if (evidenceText.isBlank()) {
+                continue;
+            }
+
+            /*
+             * A companion-rule evidence item must itself
+             * describe the claimed property.
+             *
+             * For language proficiency:
+             *
+             * "Fluent"               -> yes
+             * "Native proficiency"   -> yes
+             * "English"              -> no
+             */
+            if (!containsAnyClaimPhrase(
+                    evidenceText,
+                    claimPhrases
+            )) {
+
+                continue;
+            }
+
+            Set<String> ownIdentity =
+                    identityTokens(
+                            evidenceText,
+                            genericTokens
+                    );
+
+            /*
+             * One evidence value may already contain both
+             * property + identity, e.g. "Fluent English".
+             */
+            if (!ownIdentity.isEmpty()
+                    && containsPhrase(
+                    suggested,
+                    evidenceText
+            )) {
+
+                return true;
+            }
+
+            /*
+             * Otherwise the property evidence itself must be
+             * visible in the proposed wording.
+             *
+             * "Fluent" evidence cannot silently justify
+             * "native proficiency".
+             */
+            if (!containsPhrase(
+                    suggested,
+                    evidenceText
+            )) {
+
+                continue;
+            }
+
+            /*
+             * Property-only evidence needs a companion from
+             * the same deterministic evidence scope.
+             *
+             * language:0:proficiency = Fluent
+             * language:0:name        = English
+             */
+            if (hasMatchingCompanionEvidence(
+                    claimEvidence,
+                    citedEvidence,
+                    suggested,
+                    genericTokens
+            )) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean containsAnyClaimPhrase(
+            String evidenceText,
+            List<String> claimPhrases
+    ) {
+        for (String phrase :
+                claimPhrases) {
+
+            if (containsPhrase(
+                    evidenceText,
+                    phrase
+            )) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean hasMatchingCompanionEvidence(
+            EvidenceItem source,
+            List<EvidenceItem> citedEvidence,
+            String suggested,
+            Set<String> genericTokens
+    ) {
+        if (source.scopeId() == null
+                || source.scopeId().isBlank()) {
+
+            return false;
+        }
+
+        for (EvidenceItem companion :
+                citedEvidence) {
+
+            if (companion == null
+                    || companion == source
+                    || !Objects.equals(
+                    source.scopeId(),
+                    companion.scopeId()
+            )) {
+
+                continue;
+            }
+
+            String companionText =
+                    compact(
+                            companion.text()
+                    );
+
+            if (companionText.isBlank()) {
+                continue;
+            }
+
+            Set<String> companionIdentity =
+                    identityTokens(
+                            companionText,
+                            genericTokens
+                    );
+
+            if (!companionIdentity.isEmpty()
+                    && containsAllTokens(
+                    suggested,
+                    companionIdentity
+            )) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Set<String> identityTokens(
+            String compactEvidence,
+            Set<String> genericTokens
+    ) {
+        if (compactEvidence == null
+                || compactEvidence.isBlank()) {
+
+            return Set.of();
+        }
+
+        Set<String> result =
+                new LinkedHashSet<>();
+
+        for (String token :
+                compactEvidence.split(
+                        " "
+                )) {
+
+            if (token.isBlank()
+                    || genericTokens.contains(
+                    token
+            )) {
+
+                continue;
+            }
+
+            result.add(
+                    token
+            );
+        }
+
+        return Set.copyOf(
+                result
+        );
+    }
+
+    private boolean containsAllTokens(
+            String compactText,
+            Set<String> tokens
+    ) {
+        if (compactText == null
+                || compactText.isBlank()
+                || tokens == null
+                || tokens.isEmpty()) {
+
+            return false;
+        }
+
+        Set<String> textTokens =
+                new LinkedHashSet<>(
+                        List.of(
+                                compactText.split(
+                                        " "
+                                )
+                        )
+                );
+
+        return textTokens.containsAll(
+                tokens
+        );
     }
 
     private boolean newlyExplicitSkillsAreTracked(
@@ -239,17 +617,14 @@ public class CvRewriteSafetyGuard {
         Set<String> targetSkillKeys =
                 new LinkedHashSet<>();
 
-        /*
-         * targetSkills is not merely display metadata.
-         *
-         * It is the explicit declaration of which skills the
-         * rewrite claims to surface.
-         */
-        for (String targetSkill : safeList(
-                suggestion.targetSkills()
-        )) {
+        for (String targetSkill :
+                safeList(
+                        suggestion.targetSkills()
+                )) {
+
             if (targetSkill == null
                     || targetSkill.isBlank()) {
+
                 return false;
             }
 
@@ -261,6 +636,7 @@ public class CvRewriteSafetyGuard {
 
             if (key == null
                     || key.isBlank()) {
+
                 return false;
             }
 
@@ -269,20 +645,10 @@ public class CvRewriteSafetyGuard {
             );
         }
 
-        /*
-         * Skills that backend knows about and therefore must
-         * not silently appear inside suggested wording.
-         *
-         * Sources:
-         *
-         * 1. Candidate evidence
-         * 2. Target JD skills
-         */
         Map<String, String> watchedSkills =
                 new HashMap<>();
 
-        if (evidenceMap != null
-                && evidenceMap.items() != null) {
+        if (evidenceMap.items() != null) {
 
             for (EvidenceItem item :
                     evidenceMap.items()) {
@@ -293,7 +659,8 @@ public class CvRewriteSafetyGuard {
                 )
                         && item.canonicalSkillKey()
                         != null
-                        && !item.canonicalSkillKey()
+                        && !item
+                        .canonicalSkillKey()
                         .isBlank()
                         && item.text() != null
                         && !item.text().isBlank()) {
@@ -304,6 +671,7 @@ public class CvRewriteSafetyGuard {
                             );
 
                     if (!phrase.isBlank()) {
+
                         watchedSkills.putIfAbsent(
                                 phrase,
                                 item.canonicalSkillKey()
@@ -314,11 +682,15 @@ public class CvRewriteSafetyGuard {
         }
 
         if (job != null) {
-            for (String jobSkill : safeList(
-                    job.getSkills()
-            )) {
+
+            for (String jobSkill :
+                    safeList(
+                            job.getSkills()
+                    )) {
+
                 if (jobSkill == null
                         || jobSkill.isBlank()) {
+
                     continue;
                 }
 
@@ -355,24 +727,6 @@ public class CvRewriteSafetyGuard {
                         suggestion.suggested()
                 );
 
-        /*
-         * Example:
-         *
-         * original:
-         *   Developed backend services.
-         *
-         * suggested:
-         *   Developed backend services using Java and AWS.
-         *
-         * targetSkills:
-         *   Java
-         *
-         * AWS is newly introduced but not declared as a target
-         * skill. Reject immediately.
-         *
-         * Later CvSuggestionValidator performs the stronger
-         * evidence/scope validation for every declared target.
-         */
         for (Map.Entry<String, String> watched :
                 watchedSkills.entrySet()) {
 
@@ -407,6 +761,201 @@ public class CvRewriteSafetyGuard {
         return true;
     }
 
+    private Map<String, List<String>>
+    normalizeClaimGroups(
+            Map<String, List<String>> configured
+    ) {
+        Map<String, List<String>> result =
+                new LinkedHashMap<>();
+
+        if (configured == null) {
+            return Map.of();
+        }
+
+        for (
+                Map.Entry<String, List<String>> entry
+                : configured.entrySet()
+        ) {
+            if (entry.getKey() == null
+                    || entry.getKey().isBlank()) {
+
+                continue;
+            }
+
+            Set<String> normalized =
+                    new LinkedHashSet<>();
+
+            for (String phrase :
+                    safeList(
+                            entry.getValue()
+                    )) {
+
+                String value =
+                        compact(
+                                phrase
+                        );
+
+                if (!value.isBlank()) {
+
+                    normalized.add(
+                            value
+                    );
+                }
+            }
+
+            if (!normalized.isEmpty()) {
+
+                result.put(
+                        entry
+                                .getKey()
+                                .trim(),
+
+                        List.copyOf(
+                                normalized
+                        )
+                );
+            }
+        }
+
+        return Map.copyOf(
+                result
+        );
+    }
+
+    private Map<String, Set<EvidenceKind>>
+    normalizeEvidenceKindRequirements(
+            CvRewriteSafetyTaxonomyProperties taxonomy
+    ) {
+        Map<String, Set<EvidenceKind>> result =
+                new LinkedHashMap<>();
+
+        for (String group :
+                highRiskClaimGroups.keySet()) {
+
+            Set<EvidenceKind> kinds =
+                    taxonomy
+                            .getRequiredEvidenceKinds(
+                                    group
+                            );
+
+            if (!kinds.isEmpty()) {
+
+                result.put(
+                        group,
+                        Set.copyOf(
+                                kinds
+                        )
+                );
+            }
+        }
+
+        return Map.copyOf(
+                result
+        );
+    }
+
+    private Map<String, Set<String>>
+    normalizeGenericTokens(
+            CvRewriteSafetyTaxonomyProperties taxonomy
+    ) {
+        Map<String, Set<String>> result =
+                new LinkedHashMap<>();
+
+        for (String group :
+                highRiskClaimGroups.keySet()) {
+
+            Set<String> configured =
+                    taxonomy
+                            .getGenericTokens(
+                                    group
+                            );
+
+            if (configured.isEmpty()) {
+                continue;
+            }
+
+            Set<String> normalized =
+                    new LinkedHashSet<>();
+
+            for (String token : configured) {
+
+                String compact =
+                        compact(
+                                token
+                        );
+
+                if (compact.isBlank()) {
+                    continue;
+                }
+
+                for (String part :
+                        compact.split(
+                                " "
+                        )) {
+
+                    if (!part.isBlank()) {
+
+                        normalized.add(
+                                part
+                        );
+                    }
+                }
+            }
+
+            if (!normalized.isEmpty()) {
+
+                result.put(
+                        group,
+                        Set.copyOf(
+                                normalized
+                        )
+                );
+            }
+        }
+
+        return Map.copyOf(
+                result
+        );
+    }
+
+    private Set<String> normalizeCompanionIdentityGroups(
+            CvRewriteSafetyTaxonomyProperties taxonomy
+    ) {
+        Set<String> result =
+                new LinkedHashSet<>();
+
+        for (String group :
+                taxonomy
+                        .getCompanionIdentityRequiredGroups()) {
+
+            if (group == null
+                    || group.isBlank()) {
+
+                continue;
+            }
+
+            String normalized =
+                    group.trim();
+
+            if (highRiskClaimGroups.containsKey(
+                    normalized
+            )
+                    && requiredEvidenceKindsByGroup
+                    .containsKey(
+                            normalized
+                    )) {
+
+                result.add(
+                        normalized
+                );
+            }
+        }
+
+        return Set.copyOf(
+                result
+        );
+    }
+
     private boolean isSkillEvidence(
             EvidenceItem item
     ) {
@@ -430,6 +979,7 @@ public class CvRewriteSafetyGuard {
                 );
 
         for (EvidenceItem item : evidence) {
+
             if (item != null
                     && item.text() != null
                     && !item.text().isBlank()) {
@@ -456,6 +1006,7 @@ public class CvRewriteSafetyGuard {
         }
 
         for (EvidenceItem item : items) {
+
             if (item != null
                     && item.id() != null
                     && !item.id().isBlank()) {
@@ -478,6 +1029,7 @@ public class CvRewriteSafetyGuard {
 
         if (value == null
                 || value.isBlank()) {
+
             return result;
         }
 
@@ -489,6 +1041,7 @@ public class CvRewriteSafetyGuard {
                 );
 
         while (matcher.find()) {
+
             result.add(
                     matcher.group()
             );
@@ -505,6 +1058,7 @@ public class CvRewriteSafetyGuard {
                 || compactText.isBlank()
                 || compactPhrase == null
                 || compactPhrase.isBlank()) {
+
             return false;
         }
 
@@ -521,6 +1075,7 @@ public class CvRewriteSafetyGuard {
     ) {
         if (value == null
                 || value.isBlank()) {
+
             return "";
         }
 
@@ -556,16 +1111,6 @@ public class CvRewriteSafetyGuard {
                                 " "
                         );
 
-        /*
-         * After NON_WORD normalization:
-         *
-         * "AWS."     -> "aws."
-         * "C++."     -> "c++."
-         * "Node.js"  -> "node.js"
-         * ".NET"     -> ".net"
-         *
-         * Remove only period-as-punctuation.
-         */
         normalized =
                 TRAILING_DOT
                         .matcher(

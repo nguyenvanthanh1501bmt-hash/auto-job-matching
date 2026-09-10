@@ -75,7 +75,6 @@ class CvRewriteCandidateSelectorTest {
 
     @Test
     void selectsJobRelevantNodesAndKeepsEvidenceInsideSourceScope() {
-
         CandidateProfile profile =
                 CandidateProfile
                         .builder()
@@ -150,7 +149,6 @@ class CvRewriteCandidateSelectorTest {
                                         "Backend developer building business applications.",
                                         null
                                 ),
-
                                 new EvidenceItem(
                                         "work:0:responsibility:0",
                                         Section.WORK_EXPERIENCE,
@@ -159,7 +157,6 @@ class CvRewriteCandidateSelectorTest {
                                         "Developed backend services.",
                                         null
                                 ),
-
                                 new EvidenceItem(
                                         "work:0:skill:0",
                                         Section.WORK_EXPERIENCE,
@@ -168,7 +165,6 @@ class CvRewriteCandidateSelectorTest {
                                         "Java",
                                         "java"
                                 ),
-
                                 new EvidenceItem(
                                         "work:0:skill:1",
                                         Section.WORK_EXPERIENCE,
@@ -177,7 +173,6 @@ class CvRewriteCandidateSelectorTest {
                                         "Spring Boot",
                                         "spring boot"
                                 ),
-
                                 new EvidenceItem(
                                         "project:0:description",
                                         Section.PROJECT,
@@ -186,7 +181,6 @@ class CvRewriteCandidateSelectorTest {
                                         "Built reporting database features.",
                                         null
                                 ),
-
                                 new EvidenceItem(
                                         "project:0:skill:0",
                                         Section.PROJECT,
@@ -273,9 +267,6 @@ class CvRewriteCandidateSelectorTest {
                         .findFirst()
                         .orElseThrow();
 
-        /*
-         * Work #0 may use Work #0 evidence only.
-         */
         assertThat(
                 workNode.allowedEvidenceIds()
         )
@@ -302,10 +293,6 @@ class CvRewriteCandidateSelectorTest {
                         .findFirst()
                         .orElseThrow();
 
-        /*
-         * Project #0 cannot borrow Java/Spring evidence
-         * from Work #0.
-         */
         assertThat(
                 projectNode.allowedEvidenceIds()
         )
@@ -318,10 +305,6 @@ class CvRewriteCandidateSelectorTest {
                         "work:0:skill:1"
                 );
 
-        /*
-         * AWS is missing, therefore it must not magically
-         * appear in the allowed evidence catalog.
-         */
         assertThat(
                 request.evidenceCatalog()
         )
@@ -331,6 +314,209 @@ class CvRewriteCandidateSelectorTest {
                 )
                 .doesNotContain(
                         "AWS"
+                );
+    }
+
+    @Test
+    void professionalSummaryMayUseRelevantQualificationEvidenceButWorkMayNot() {
+        CandidateProfile profile =
+                CandidateProfile
+                        .builder()
+                        .professionalSummary(
+                                "Clinical assistant supporting patient care."
+                        )
+                        .workExperiences(
+                                List.of(
+                                        new CandidateProfile.WorkExperience(
+                                                "Example Clinic",
+                                                "Healthcare",
+                                                "Clinical Assistant",
+                                                null,
+                                                CandidateProfile
+                                                        .EmploymentType
+                                                        .FULL_TIME,
+                                                null,
+                                                CandidateProfile
+                                                        .WorkMode
+                                                        .ONSITE,
+                                                null,
+                                                null,
+                                                true,
+                                                null,
+                                                null,
+                                                List.of(
+                                                        "Supported patient care."
+                                                ),
+                                                List.of(),
+                                                List.of(
+                                                        "Patient Care"
+                                                ),
+                                                List.of(),
+                                                List.of()
+                                        )
+                                )
+                        )
+                        .build();
+
+        CvEvidenceService.EvidenceMap evidenceMap =
+                new CvEvidenceService.EvidenceMap(
+                        List.of(
+                                new EvidenceItem(
+                                        "professionalSummary",
+                                        Section.PROFESSIONAL_SUMMARY,
+                                        "professionalSummary",
+                                        EvidenceKind.TEXT,
+                                        "Clinical assistant supporting patient care.",
+                                        null
+                                ),
+                                new EvidenceItem(
+                                        "work:0:responsibility:0",
+                                        Section.WORK_EXPERIENCE,
+                                        "work:0",
+                                        EvidenceKind.TEXT,
+                                        "Supported patient care.",
+                                        null
+                                ),
+                                new EvidenceItem(
+                                        "work:0:skill:0",
+                                        Section.WORK_EXPERIENCE,
+                                        "work:0",
+                                        EvidenceKind.SKILL,
+                                        "Patient Care",
+                                        "patient care"
+                                ),
+                                new EvidenceItem(
+                                        "license:0:name",
+                                        Section.LICENSE,
+                                        "license:0",
+                                        EvidenceKind.LICENSE,
+                                        "Registered Nurse License",
+                                        null
+                                ),
+                                new EvidenceItem(
+                                        "certification:0:name",
+                                        Section.CERTIFICATION,
+                                        "certification:0",
+                                        EvidenceKind.CERTIFICATION,
+                                        "Basic Life Support",
+                                        null
+                                ),
+                                new EvidenceItem(
+                                        "language:0:name",
+                                        Section.LANGUAGE,
+                                        "language:0",
+                                        EvidenceKind.LANGUAGE,
+                                        "English",
+                                        null
+                                ),
+                                new EvidenceItem(
+                                        "education:0:degree",
+                                        Section.EDUCATION,
+                                        "education:0",
+                                        EvidenceKind.EDUCATION,
+                                        "Bachelor of Nursing",
+                                        null
+                                )
+                        )
+                );
+
+        NormalizedJob job =
+                NormalizedJob
+                        .builder()
+                        .id(
+                                "job-healthcare"
+                        )
+                        .title(
+                                "Clinical Nurse"
+                        )
+                        .skills(
+                                List.of(
+                                        "Patient Care"
+                                )
+                        )
+                        .requirementsText(
+                                "Requires Registered Nurse License, "
+                                        + "Basic Life Support, "
+                                        + "English, and Bachelor of Nursing."
+                        )
+                        .descriptionText(
+                                "Provide patient care."
+                        )
+                        .build();
+
+        MatchResult targetMatch =
+                MatchResult
+                        .builder()
+                        .matchedSkills(
+                                List.of(
+                                        "Patient Care"
+                                )
+                        )
+                        .missingSkills(
+                                List.of()
+                        )
+                        .build();
+
+        RewriteRequest request =
+                selector.select(
+                        profile,
+                        job,
+                        targetMatch,
+                        evidenceMap
+                );
+
+        EditableNode summaryNode =
+                request
+                        .editableNodes()
+                        .stream()
+                        .filter(
+                                node ->
+                                        "professionalSummary"
+                                                .equals(
+                                                        node.sourceId()
+                                                )
+                        )
+                        .findFirst()
+                        .orElseThrow();
+
+        assertThat(
+                summaryNode.allowedEvidenceIds()
+        )
+                .contains(
+                        "professionalSummary",
+                        "work:0:skill:0",
+                        "license:0:name",
+                        "certification:0:name",
+                        "language:0:name",
+                        "education:0:degree"
+                );
+
+        EditableNode workNode =
+                request
+                        .editableNodes()
+                        .stream()
+                        .filter(
+                                node ->
+                                        "work:0:responsibility:0"
+                                                .equals(
+                                                        node.sourceId()
+                                                )
+                        )
+                        .findFirst()
+                        .orElseThrow();
+
+        assertThat(
+                workNode.allowedEvidenceIds()
+        )
+                .contains(
+                        "work:0:responsibility:0",
+                        "work:0:skill:0"
+                )
+                .doesNotContain(
+                        "license:0:name",
+                        "certification:0:name",
+                        "language:0:name",
+                        "education:0:degree"
                 );
     }
 }

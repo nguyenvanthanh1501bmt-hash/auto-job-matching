@@ -1,0 +1,142 @@
+autojob:
+  taxonomy:
+    shared:
+      cv-rewrite-safety:
+
+        high-risk-claim-groups:
+
+          leadership:
+            - led
+            - managed
+            - supervised
+            - directed
+            - oversaw
+            - mentored
+            - leadership
+            - owned
+
+          impact:
+            - optimized
+            - increased
+            - reduced
+            - improved
+            - scaled
+            - scalable
+            - highly scalable
+
+          seniority-and-proficiency:
+            - expert
+            - expertise
+            - advanced proficiency
+            - proficient
+            - senior
+
+          certification:
+            - certified
+            - certification
+            - certificate
+
+          license:
+            - licensed
+            - license
+            - professional license
+            - medical license
+            - driving license
+
+          education:
+            - bachelor's degree
+            - bachelor degree
+            - bachelor of
+            - master's degree
+            - master degree
+            - master of
+            - doctorate
+            - phd
+
+          language-proficiency:
+            - fluent
+            - native proficiency
+            - professional proficiency
+            - language proficiency
+
+          financial-responsibility:
+            - budget responsibility
+            - budget ownership
+            - budget
+
+          team-responsibility:
+            - team size
+            - team of
+
+          experience-duration:
+            - years of experience
+            - years experience
+
+          regulated-operation:
+            - qualified to operate
+            - authorized to operate
+            - regulated procedure
+
+          architecture-and-systems:
+            - architected
+            - architecture
+            - microservices
+            - distributed systems
+
+        required-evidence-kinds-by-group:
+
+          certification:
+            - CERTIFICATION
+
+          license:
+            - LICENSE
+
+          education:
+            - EDUCATION
+
+          language-proficiency:
+            - LANGUAGE
+
+        generic-tokens-by-group:
+
+          certification:
+            - certified
+            - certification
+            - certificate
+
+          license:
+            - licensed
+            - license
+
+          education:
+            - degree
+            - bachelor
+            - bachelors
+            - master
+            - masters
+            - doctorate
+            - phd
+            - of
+
+          language-proficiency:
+            - fluent
+            - proficiency
+            - native
+            - professional
+            - language
+
+        # Some typed claims require two pieces of evidence
+        # from the same evidence scope.
+        #
+        # Language example:
+        #
+        # language:0:name
+        #   English
+        #
+        # language:0:proficiency
+        #   Fluent
+        #
+        # "English" alone does not prove fluency.
+        # "Fluent" alone does not identify the language.
+        companion-identity-required-groups:
+          - language-proficiency

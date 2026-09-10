@@ -9,6 +9,7 @@
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/secondary-skills.yml"
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/locations.yml"
       - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/seniority.yml"
+      - "file:${AUTOJOB_SHARED_TAXONOMY_DIR:../configs/taxonomy/shared}/cv-rewrite-safety.yml"
 
       # Job-specific taxonomy.
       - "file:${AUTOJOB_TAXONOMY_DIR:../configs/taxonomy/job-normalizer}/job-types.yml"
@@ -56,7 +57,7 @@ autojob:
     benefits-max-chars: ${JOB_EMBEDDING_BENEFITS_MAX_CHARS:2000}
 
   candidate-embedding:
-    text-version: ${CANDIDATE_EMBEDDING_TEXT_VERSION:candidate-text-v1}
+    text-version: ${CANDIDATE_EMBEDDING_TEXT_VERSION:candidate-text-v2}
     text-max-chars: ${CANDIDATE_EMBEDDING_TEXT_MAX_CHARS:2400}
     summary-max-chars: ${CANDIDATE_EMBEDDING_SUMMARY_MAX_CHARS:500}
     work-experience-max-items: ${CANDIDATE_EMBEDDING_WORK_MAX_ITEMS:3}
@@ -64,6 +65,8 @@ autojob:
     project-max-items: ${CANDIDATE_EMBEDDING_PROJECT_MAX_ITEMS:3}
     project-item-max-chars: ${CANDIDATE_EMBEDDING_PROJECT_ITEM_MAX_CHARS:350}
     certifications-max-items: ${CANDIDATE_EMBEDDING_CERTIFICATIONS_MAX_ITEMS:5}
+    licenses-max-items: ${CANDIDATE_EMBEDDING_LICENSES_MAX_ITEMS:5}
+    languages-max-items: ${CANDIDATE_EMBEDDING_LANGUAGES_MAX_ITEMS:8}
 
   qdrant:
     base-url: ${QDRANT_BASE_URL:http://localhost:6333}

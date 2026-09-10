@@ -111,12 +111,35 @@ public class CandidateEmbeddingTextBuilder {
                 buildCertifications(profile.getCertifications())
         );
 
+        /*
+         * candidate-text-v1 must stay byte-contract compatible.
+         *
+         * License/language signals are introduced only by v2.
+         */
+        if (usesQualificationEnrichedText()) {
+            addSection(
+                    sections,
+                    "Licenses",
+                    buildLicenses(profile.getLicenses())
+            );
+
+            addSection(
+                    sections,
+                    "Languages",
+                    buildLanguages(profile.getLanguages())
+            );
+        }
+
         if (sections.isEmpty()) {
             return null;
         }
 
-        String fullText = QUERY_PREFIX
-                + String.join("\n", sections);
+        String fullText =
+                QUERY_PREFIX
+                        + String.join(
+                        "\n",
+                        sections
+                );
 
         return truncateUnicodeSafe(
                 fullText,
@@ -131,25 +154,38 @@ public class CandidateEmbeddingTextBuilder {
             return List.of();
         }
 
-        List<String> values = profile.getSkills()
-                .stream()
-                .filter(skill -> skill != null)
-                .map(skill -> firstNonBlank(
-                        skill.normalizedName(),
-                        skill.name()
-                ))
-                .toList();
+        List<String> values =
+                profile
+                        .getSkills()
+                        .stream()
+                        .filter(
+                                skill ->
+                                        skill != null
+                        )
+                        .map(
+                                skill ->
+                                        firstNonBlank(
+                                                skill.normalizedName(),
+                                                skill.name()
+                                        )
+                        )
+                        .toList();
 
-        return normalizedSorted(values);
+        return normalizedSorted(
+                values
+        );
     }
 
     private String buildWorkExperience(
-            List<CandidateProfile.WorkExperience> workExperiences
+            List<CandidateProfile.WorkExperience>
+                    workExperiences
     ) {
         return buildLimitedItems(
                 workExperiences,
-                properties.getWorkExperienceMaxItems(),
-                properties.getWorkExperienceItemMaxChars(),
+                properties
+                        .getWorkExperienceMaxItems(),
+                properties
+                        .getWorkExperienceItemMaxChars(),
                 this::formatWorkExperience
         );
     }
@@ -161,7 +197,8 @@ public class CandidateEmbeddingTextBuilder {
             return null;
         }
 
-        List<String> parts = new ArrayList<>();
+        List<String> parts =
+                new ArrayList<>();
 
         addValue(
                 parts,
@@ -186,7 +223,9 @@ public class CandidateEmbeddingTextBuilder {
         addLabeledValue(
                 parts,
                 "Mode",
-                displayEnum(experience.workMode())
+                displayEnum(
+                        experience.workMode()
+                )
         );
 
         addLabeledValue(
@@ -225,11 +264,14 @@ public class CandidateEmbeddingTextBuilder {
                 experience.equipment()
         );
 
-        return joinParts(parts);
+        return joinParts(
+                parts
+        );
     }
 
     private String buildProjects(
-            List<CandidateProfile.ProjectExperience> projects
+            List<CandidateProfile.ProjectExperience>
+                    projects
     ) {
         return buildLimitedItems(
                 projects,
@@ -246,7 +288,8 @@ public class CandidateEmbeddingTextBuilder {
             return null;
         }
 
-        List<String> parts = new ArrayList<>();
+        List<String> parts =
+                new ArrayList<>();
 
         addValue(
                 parts,
@@ -301,24 +344,32 @@ public class CandidateEmbeddingTextBuilder {
                 project.equipment()
         );
 
-        return joinParts(parts);
+        return joinParts(
+                parts
+        );
     }
 
     private String buildEducation(
             List<CandidateProfile.Education> educations
     ) {
-        if (educations == null || educations.isEmpty()) {
+        if (educations == null
+                || educations.isEmpty()) {
+
             return null;
         }
 
-        List<String> items = new ArrayList<>();
+        List<String> items =
+                new ArrayList<>();
 
-        for (CandidateProfile.Education education : educations) {
+        for (CandidateProfile.Education education
+                : educations) {
+
             if (education == null) {
                 continue;
             }
 
-            List<String> parts = new ArrayList<>();
+            List<String> parts =
+                    new ArrayList<>();
 
             addValue(
                     parts,
@@ -329,7 +380,8 @@ public class CandidateEmbeddingTextBuilder {
                     parts,
                     "Level",
                     displayEnum(
-                            education.normalizedDegreeLevel()
+                            education
+                                    .normalizedDegreeLevel()
                     )
             );
 
@@ -357,28 +409,41 @@ public class CandidateEmbeddingTextBuilder {
                     education.achievements()
             );
 
-            String item = joinParts(parts);
+            String item =
+                    joinParts(
+                            parts
+                    );
 
             if (item != null) {
-                items.add(item);
+                items.add(
+                        item
+                );
             }
         }
 
         return items.isEmpty()
                 ? null
-                : String.join(" || ", items);
+                : String.join(
+                " || ",
+                items
+        );
     }
 
     private String buildCertifications(
-            List<CandidateProfile.Certification> certifications
+            List<CandidateProfile.Certification>
+                    certifications
     ) {
         if (certifications == null
                 || certifications.isEmpty()
-                || properties.getCertificationsMaxItems() == 0) {
+                || properties
+                .getCertificationsMaxItems()
+                == 0) {
+
             return null;
         }
 
-        List<String> items = new ArrayList<>();
+        List<String> items =
+                new ArrayList<>();
 
         for (CandidateProfile.Certification certification
                 : certifications) {
@@ -387,7 +452,22 @@ public class CandidateEmbeddingTextBuilder {
                 continue;
             }
 
-            List<String> parts = new ArrayList<>();
+            /*
+             * v1 keeps its previous representation unchanged.
+             *
+             * v2 stops treating an explicitly expired
+             * certification as an active matching signal.
+             */
+            if (usesQualificationEnrichedText()
+                    && Boolean.TRUE.equals(
+                    certification.expired()
+            )) {
+
+                continue;
+            }
+
+            List<String> parts =
+                    new ArrayList<>();
 
             addValue(
                     parts,
@@ -406,21 +486,202 @@ public class CandidateEmbeddingTextBuilder {
                     certification.relatedSkills()
             );
 
-            String item = joinParts(parts);
+            String item =
+                    joinParts(
+                            parts
+                    );
 
             if (item != null) {
-                items.add(item);
+                items.add(
+                        item
+                );
             }
 
             if (items.size()
-                    >= properties.getCertificationsMaxItems()) {
+                    >= properties
+                    .getCertificationsMaxItems()) {
+
                 break;
             }
         }
 
         return items.isEmpty()
                 ? null
-                : String.join(" || ", items);
+                : String.join(
+                " || ",
+                items
+        );
+    }
+
+    private String buildLicenses(
+            List<CandidateProfile.LicenseEntry>
+                    licenses
+    ) {
+        if (licenses == null
+                || licenses.isEmpty()
+                || properties.getLicensesMaxItems()
+                == 0) {
+
+            return null;
+        }
+
+        List<String> items =
+                new ArrayList<>();
+
+        for (CandidateProfile.LicenseEntry license
+                : licenses) {
+
+            if (license == null
+                    || Boolean.TRUE.equals(
+                    license.expired()
+            )) {
+
+                continue;
+            }
+
+            List<String> parts =
+                    new ArrayList<>();
+
+            addValue(
+                    parts,
+                    license.name()
+            );
+
+            addLabeledValue(
+                    parts,
+                    "Authority",
+                    license.issuingAuthority()
+            );
+
+            addLabeledValue(
+                    parts,
+                    "Jurisdiction",
+                    license.jurisdiction()
+            );
+
+            /*
+             * Do NOT add:
+             *
+             * licenseNumber
+             *
+             * It is not needed for matching.
+             */
+            String item =
+                    joinParts(
+                            parts
+                    );
+
+            if (item != null) {
+                items.add(
+                        item
+                );
+            }
+
+            if (items.size()
+                    >= properties
+                    .getLicensesMaxItems()) {
+
+                break;
+            }
+        }
+
+        return items.isEmpty()
+                ? null
+                : String.join(
+                " || ",
+                items
+        );
+    }
+
+    private String buildLanguages(
+            List<CandidateProfile.LanguageSkill>
+                    languages
+    ) {
+        if (languages == null
+                || languages.isEmpty()
+                || properties.getLanguagesMaxItems()
+                == 0) {
+
+            return null;
+        }
+
+        List<String> items =
+                new ArrayList<>();
+
+        for (CandidateProfile.LanguageSkill language
+                : languages) {
+
+            if (language == null) {
+                continue;
+            }
+
+            List<String> parts =
+                    new ArrayList<>();
+
+            addValue(
+                    parts,
+                    language.language()
+            );
+
+            addLabeledValue(
+                    parts,
+                    "Proficiency",
+                    firstNonBlank(
+                            language.proficiencyText(),
+                            displayEnum(
+                                    language
+                                            .normalizedProficiency()
+                            )
+                    )
+            );
+
+            addLabeledValue(
+                    parts,
+                    "Framework",
+                    language.framework()
+            );
+
+            addLabeledValue(
+                    parts,
+                    "Score",
+                    language.score()
+            );
+
+            String item =
+                    joinParts(
+                            parts
+                    );
+
+            if (item != null) {
+                items.add(
+                        item
+                );
+            }
+
+            if (items.size()
+                    >= properties
+                    .getLanguagesMaxItems()) {
+
+                break;
+            }
+        }
+
+        return items.isEmpty()
+                ? null
+                : String.join(
+                " || ",
+                items
+        );
+    }
+
+    private boolean usesQualificationEnrichedText() {
+        return CandidateEmbeddingProperties
+                .TEXT_VERSION_V2
+                .equals(
+                        clean(
+                                properties.getTextVersion()
+                        )
+                );
     }
 
     private <T> String buildLimitedItems(
@@ -432,17 +693,24 @@ public class CandidateEmbeddingTextBuilder {
         if (source == null
                 || source.isEmpty()
                 || maxItems == 0) {
+
             return null;
         }
 
-        List<String> items = new ArrayList<>();
+        List<String> items =
+                new ArrayList<>();
 
         for (T value : source) {
-            String formatted = clean(
-                    formatter.apply(value)
-            );
+
+            String formatted =
+                    clean(
+                            formatter.apply(
+                                    value
+                            )
+                    );
 
             if (formatted != null) {
+
                 items.add(
                         truncateUnicodeSafe(
                                 formatted,
@@ -451,14 +719,19 @@ public class CandidateEmbeddingTextBuilder {
                 );
             }
 
-            if (items.size() >= maxItems) {
+            if (items.size()
+                    >= maxItems) {
+
                 break;
             }
         }
 
         return items.isEmpty()
                 ? null
-                : String.join(" || ", items);
+                : String.join(
+                " || ",
+                items
+        );
     }
 
     private void addSection(
@@ -466,11 +739,16 @@ public class CandidateEmbeddingTextBuilder {
             String label,
             String value
     ) {
-        String cleaned = clean(value);
+        String cleaned =
+                clean(
+                        value
+                );
 
         if (cleaned != null) {
             sections.add(
-                    label + ": " + cleaned
+                    label
+                            + ": "
+                            + cleaned
             );
         }
     }
@@ -480,11 +758,16 @@ public class CandidateEmbeddingTextBuilder {
             String label,
             List<String> values
     ) {
-        if (values != null && !values.isEmpty()) {
+        if (values != null
+                && !values.isEmpty()) {
+
             sections.add(
                     label
                             + ": "
-                            + String.join(", ", values)
+                            + String.join(
+                            ", ",
+                            values
+                    )
             );
         }
     }
@@ -493,10 +776,15 @@ public class CandidateEmbeddingTextBuilder {
             List<String> parts,
             String value
     ) {
-        String cleaned = clean(value);
+        String cleaned =
+                clean(
+                        value
+                );
 
         if (cleaned != null) {
-            parts.add(cleaned);
+            parts.add(
+                    cleaned
+            );
         }
     }
 
@@ -505,11 +793,16 @@ public class CandidateEmbeddingTextBuilder {
             String label,
             String value
     ) {
-        String cleaned = clean(value);
+        String cleaned =
+                clean(
+                        value
+                );
 
         if (cleaned != null) {
             parts.add(
-                    label + ": " + cleaned
+                    label
+                            + ": "
+                            + cleaned
             );
         }
     }
@@ -520,13 +813,18 @@ public class CandidateEmbeddingTextBuilder {
             Collection<String> values
     ) {
         List<String> cleaned =
-                normalizedPreservingOrder(values);
+                normalizedPreservingOrder(
+                        values
+                );
 
         if (!cleaned.isEmpty()) {
             parts.add(
                     label
                             + ": "
-                            + String.join(", ", cleaned)
+                            + String.join(
+                            ", ",
+                            cleaned
+                    )
             );
         }
     }
@@ -547,7 +845,9 @@ public class CandidateEmbeddingTextBuilder {
     private List<String> normalizedSorted(
             Collection<String> values
     ) {
-        if (values == null || values.isEmpty()) {
+        if (values == null
+                || values.isEmpty()) {
+
             return List.of();
         }
 
@@ -555,14 +855,20 @@ public class CandidateEmbeddingTextBuilder {
                 new TreeMap<>();
 
         for (String value : values) {
-            String cleaned = clean(value);
+
+            String cleaned =
+                    clean(
+                            value
+                    );
 
             if (cleaned == null) {
                 continue;
             }
 
             String key =
-                    cleaned.toLowerCase(Locale.ROOT);
+                    cleaned.toLowerCase(
+                            Locale.ROOT
+                    );
 
             byKey.merge(
                     key,
@@ -570,7 +876,11 @@ public class CandidateEmbeddingTextBuilder {
                     (left, right) ->
                             Comparator
                                     .<String>naturalOrder()
-                                    .compare(left, right) <= 0
+                                    .compare(
+                                            left,
+                                            right
+                                    )
+                                    <= 0
                                     ? left
                                     : right
             );
@@ -584,7 +894,9 @@ public class CandidateEmbeddingTextBuilder {
     private List<String> normalizedPreservingOrder(
             Collection<String> values
     ) {
-        if (values == null || values.isEmpty()) {
+        if (values == null
+                || values.isEmpty()) {
+
             return List.of();
         }
 
@@ -595,17 +907,29 @@ public class CandidateEmbeddingTextBuilder {
                 new ArrayList<>();
 
         for (String value : values) {
-            String cleaned = clean(value);
+
+            String cleaned =
+                    clean(
+                            value
+                    );
 
             if (cleaned == null) {
                 continue;
             }
 
             String key =
-                    cleaned.toLowerCase(Locale.ROOT);
+                    cleaned.toLowerCase(
+                            Locale.ROOT
+                    );
 
-            if (!byKey.containsKey(key)) {
-                keys.add(key);
+            if (!byKey.containsKey(
+                    key
+            )) {
+
+                keys.add(
+                        key
+                );
+
                 byKey.put(
                         key,
                         cleaned
@@ -618,53 +942,78 @@ public class CandidateEmbeddingTextBuilder {
 
         for (String key : keys) {
             result.add(
-                    byKey.get(key)
+                    byKey.get(
+                            key
+                    )
             );
         }
 
-        return List.copyOf(result);
+        return List.copyOf(
+                result
+        );
     }
 
     private String formatExperience(
             Double years
     ) {
         if (years == null
-                || !Double.isFinite(years)
+                || !Double.isFinite(
+                years
+        )
                 || years < 0) {
+
             return null;
         }
 
         String number =
-                BigDecimal.valueOf(years)
+                BigDecimal
+                        .valueOf(
+                                years
+                        )
                         .stripTrailingZeros()
                         .toPlainString();
 
-        return number + " years";
+        return number
+                + " years";
     }
 
     private String displayEnum(
             Enum<?> value
     ) {
         if (value == null
-                || "UNKNOWN".equals(value.name())) {
+                || "UNKNOWN".equals(
+                value.name()
+        )) {
+
             return null;
         }
 
         String[] words =
-                value.name()
-                        .toLowerCase(Locale.ROOT)
-                        .split("_");
+                value
+                        .name()
+                        .toLowerCase(
+                                Locale.ROOT
+                        )
+                        .split(
+                                "_"
+                        );
 
         List<String> displayed =
                 new ArrayList<>();
 
         for (String word : words) {
+
             if (!word.isEmpty()) {
+
                 displayed.add(
                         Character.toUpperCase(
-                                word.charAt(0)
+                                word.charAt(
+                                        0
+                                )
                         )
-                                + word.substring(1)
+                                + word.substring(
+                                1
+                        )
                 );
             }
         }
@@ -680,13 +1029,17 @@ public class CandidateEmbeddingTextBuilder {
             String second
     ) {
         String normalizedFirst =
-                clean(first);
+                clean(
+                        first
+                );
 
         if (normalizedFirst != null) {
             return normalizedFirst;
         }
 
-        return clean(second);
+        return clean(
+                second
+        );
     }
 
     private String clean(
@@ -698,7 +1051,10 @@ public class CandidateEmbeddingTextBuilder {
 
         String normalized =
                 value
-                        .replaceAll("\\s+", " ")
+                        .replaceAll(
+                                "\\s+",
+                                " "
+                        )
                         .trim();
 
         return normalized.isEmpty()
@@ -711,25 +1067,36 @@ public class CandidateEmbeddingTextBuilder {
             int maxChars
     ) {
         if (value == null
-                || value.length() <= maxChars) {
+                || value.length()
+                <= maxChars) {
+
             return value;
         }
 
-        int end = maxChars;
+        int end =
+                maxChars;
 
         if (end > 0
                 && end < value.length()
                 && Character.isHighSurrogate(
-                value.charAt(end - 1)
+                value.charAt(
+                        end - 1
+                )
         )
                 && Character.isLowSurrogate(
-                value.charAt(end)
+                value.charAt(
+                        end
+                )
         )) {
+
             end--;
         }
 
         return value
-                .substring(0, end)
+                .substring(
+                        0,
+                        end
+                )
                 .stripTrailing();
     }
 }

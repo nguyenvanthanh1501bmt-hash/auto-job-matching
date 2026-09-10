@@ -71,6 +71,26 @@ public class CvEvidenceService {
                 profile.getProjects()
         );
 
+        addEducationEvidence(
+                evidence,
+                profile.getEducations()
+        );
+
+        addCertificationEvidence(
+                evidence,
+                profile.getCertifications()
+        );
+
+        addLicenseEvidence(
+                evidence,
+                profile.getLicenses()
+        );
+
+        addLanguageEvidence(
+                evidence,
+                profile.getLanguages()
+        );
+
         return new EvidenceMap(
                 evidence
         );
@@ -85,13 +105,17 @@ public class CvEvidenceService {
 
         List<String> normalized =
                 skillNormalizer.normalize(
-                        List.of(rawSkill)
+                        List.of(
+                                rawSkill
+                        )
                 );
 
         String value =
                 normalized != null
                         && !normalized.isEmpty()
-                        && hasText(normalized.getFirst())
+                        && hasText(
+                        normalized.getFirst()
+                )
                         ? normalized.getFirst()
                         : rawSkill;
 
@@ -113,7 +137,9 @@ public class CvEvidenceService {
              index++) {
 
             CandidateProfile.Skill skill =
-                    skills.get(index);
+                    skills.get(
+                            index
+                    );
 
             if (skill == null) {
                 continue;
@@ -156,7 +182,9 @@ public class CvEvidenceService {
              workIndex++) {
 
             CandidateProfile.WorkExperience experience =
-                    experiences.get(workIndex);
+                    experiences.get(
+                            workIndex
+                    );
 
             if (experience == null) {
                 continue;
@@ -231,7 +259,9 @@ public class CvEvidenceService {
              projectIndex++) {
 
             CandidateProfile.ProjectExperience project =
-                    projects.get(projectIndex);
+                    projects.get(
+                            projectIndex
+                    );
 
             if (project == null) {
                 continue;
@@ -293,6 +323,280 @@ public class CvEvidenceService {
         }
     }
 
+    private void addEducationEvidence(
+            List<EvidenceItem> target,
+            List<CandidateProfile.Education> educations
+    ) {
+        if (educations == null) {
+            return;
+        }
+
+        for (int index = 0;
+             index < educations.size();
+             index++) {
+
+            CandidateProfile.Education education =
+                    educations.get(
+                            index
+                    );
+
+            if (education == null) {
+                continue;
+            }
+
+            String scopeId =
+                    "education:" + index;
+
+            String normalizedDegree =
+                    education.normalizedDegreeLevel()
+                            == null
+                            ? null
+                            : education
+                            .normalizedDegreeLevel()
+                            .name();
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":degree",
+                    Section.EDUCATION,
+                    scopeId,
+                    EvidenceKind.EDUCATION,
+                    firstText(
+                            education.degree(),
+                            normalizedDegree
+                    )
+            );
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":fieldOfStudy",
+                    Section.EDUCATION,
+                    scopeId,
+                    EvidenceKind.EDUCATION,
+                    education.fieldOfStudy()
+            );
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":specialization",
+                    Section.EDUCATION,
+                    scopeId,
+                    EvidenceKind.EDUCATION,
+                    education.specialization()
+            );
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":institution",
+                    Section.EDUCATION,
+                    scopeId,
+                    EvidenceKind.EDUCATION,
+                    education.institutionName()
+            );
+        }
+    }
+
+    private void addCertificationEvidence(
+            List<EvidenceItem> target,
+            List<CandidateProfile.Certification> certifications
+    ) {
+        if (certifications == null) {
+            return;
+        }
+
+        for (int index = 0;
+             index < certifications.size();
+             index++) {
+
+            CandidateProfile.Certification certification =
+                    certifications.get(
+                            index
+                    );
+
+            if (certification == null) {
+                continue;
+            }
+
+            /*
+             * An expired certification must not be treated as
+             * evidence for an active qualification claim.
+             */
+            if (Boolean.TRUE.equals(
+                    certification.expired()
+            )) {
+                continue;
+            }
+
+            String scopeId =
+                    "certification:" + index;
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":name",
+                    Section.CERTIFICATION,
+                    scopeId,
+                    EvidenceKind.CERTIFICATION,
+                    certification.name()
+            );
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":issuer",
+                    Section.CERTIFICATION,
+                    scopeId,
+                    EvidenceKind.CERTIFICATION,
+                    certification.issuer()
+            );
+
+            /*
+             * credentialId / credentialUrl are deliberately
+             * excluded from AI evidence.
+             */
+        }
+    }
+
+    private void addLicenseEvidence(
+            List<EvidenceItem> target,
+            List<CandidateProfile.LicenseEntry> licenses
+    ) {
+        if (licenses == null) {
+            return;
+        }
+
+        for (int index = 0;
+             index < licenses.size();
+             index++) {
+
+            CandidateProfile.LicenseEntry license =
+                    licenses.get(
+                            index
+                    );
+
+            if (license == null) {
+                continue;
+            }
+
+            /*
+             * Same policy as certification:
+             * expired credentials are not active evidence.
+             */
+            if (Boolean.TRUE.equals(
+                    license.expired()
+            )) {
+                continue;
+            }
+
+            String scopeId =
+                    "license:" + index;
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":name",
+                    Section.LICENSE,
+                    scopeId,
+                    EvidenceKind.LICENSE,
+                    license.name()
+            );
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":authority",
+                    Section.LICENSE,
+                    scopeId,
+                    EvidenceKind.LICENSE,
+                    license.issuingAuthority()
+            );
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":jurisdiction",
+                    Section.LICENSE,
+                    scopeId,
+                    EvidenceKind.LICENSE,
+                    license.jurisdiction()
+            );
+
+            /*
+             * licenseNumber is deliberately excluded.
+             * It is not necessary for rewriting and should not
+             * be exposed to the LLM.
+             */
+        }
+    }
+
+    private void addLanguageEvidence(
+            List<EvidenceItem> target,
+            List<CandidateProfile.LanguageSkill> languages
+    ) {
+        if (languages == null) {
+            return;
+        }
+
+        for (int index = 0;
+             index < languages.size();
+             index++) {
+
+            CandidateProfile.LanguageSkill language =
+                    languages.get(
+                            index
+                    );
+
+            if (language == null) {
+                continue;
+            }
+
+            String scopeId =
+                    "language:" + index;
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":name",
+                    Section.LANGUAGE,
+                    scopeId,
+                    EvidenceKind.LANGUAGE,
+                    language.language()
+            );
+
+            String normalizedProficiency =
+                    language.normalizedProficiency()
+                            == null
+                            ? null
+                            : language
+                            .normalizedProficiency()
+                            .name();
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":proficiency",
+                    Section.LANGUAGE,
+                    scopeId,
+                    EvidenceKind.LANGUAGE,
+                    firstText(
+                            language.proficiencyText(),
+                            normalizedProficiency
+                    )
+            );
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":framework",
+                    Section.LANGUAGE,
+                    scopeId,
+                    EvidenceKind.LANGUAGE,
+                    language.framework()
+            );
+
+            addQualificationEvidence(
+                    target,
+                    scopeId + ":score",
+                    Section.LANGUAGE,
+                    scopeId,
+                    EvidenceKind.LANGUAGE,
+                    language.score()
+            );
+        }
+    }
+
     private void addTextList(
             List<EvidenceItem> target,
             String idPrefix,
@@ -313,7 +617,9 @@ public class CvEvidenceService {
                     idPrefix + index,
                     section,
                     scopeId,
-                    values.get(index)
+                    values.get(
+                            index
+                    )
             );
         }
     }
@@ -335,7 +641,9 @@ public class CvEvidenceService {
              index++) {
 
             String value =
-                    values.get(index);
+                    values.get(
+                            index
+                    );
 
             addSkillEvidence(
                     target,
@@ -356,7 +664,9 @@ public class CvEvidenceService {
             String scopeId,
             String text
     ) {
-        if (!hasText(text)) {
+        if (!hasText(
+                text
+        )) {
             return;
         }
 
@@ -372,6 +682,32 @@ public class CvEvidenceService {
         );
     }
 
+    private void addQualificationEvidence(
+            List<EvidenceItem> target,
+            String id,
+            Section section,
+            String scopeId,
+            EvidenceKind kind,
+            String text
+    ) {
+        if (!hasText(
+                text
+        )) {
+            return;
+        }
+
+        target.add(
+                new EvidenceItem(
+                        id,
+                        section,
+                        scopeId,
+                        kind,
+                        text.trim(),
+                        null
+                )
+        );
+    }
+
     private void addSkillEvidence(
             List<EvidenceItem> target,
             String id,
@@ -381,8 +717,13 @@ public class CvEvidenceService {
             String displayText,
             String canonicalSource
     ) {
-        if (!hasText(displayText)
-                && !hasText(canonicalSource)) {
+        if (!hasText(
+                displayText
+        )
+                && !hasText(
+                canonicalSource
+        )) {
+
             return;
         }
 
@@ -419,7 +760,9 @@ public class CvEvidenceService {
     private String compact(
             String value
     ) {
-        if (!hasText(value)) {
+        if (!hasText(
+                value
+        )) {
             return "";
         }
 
@@ -431,27 +774,47 @@ public class CvEvidenceService {
 
         String folded =
                 DIACRITICS
-                        .matcher(decomposed)
-                        .replaceAll("")
-                        .replace('đ', 'd')
-                        .replace('Đ', 'D')
-                        .toLowerCase(Locale.ROOT)
+                        .matcher(
+                                decomposed
+                        )
+                        .replaceAll(
+                                ""
+                        )
+                        .replace(
+                                'đ',
+                                'd'
+                        )
+                        .replace(
+                                'Đ',
+                                'D'
+                        )
+                        .toLowerCase(
+                                Locale.ROOT
+                        )
                         .trim();
 
         return NON_KEY
-                .matcher(folded)
-                .replaceAll("");
+                .matcher(
+                        folded
+                )
+                .replaceAll(
+                        ""
+                );
     }
 
     private String firstText(
             String first,
             String second
     ) {
-        if (hasText(first)) {
+        if (hasText(
+                first
+        )) {
             return first;
         }
 
-        return hasText(second)
+        return hasText(
+                second
+        )
                 ? second
                 : null;
     }
@@ -470,7 +833,9 @@ public class CvEvidenceService {
         public EvidenceMap {
             items = items == null
                     ? List.of()
-                    : List.copyOf(items);
+                    : List.copyOf(
+                    items
+            );
         }
 
         public Set<String> topLevelSkillKeys() {
@@ -479,10 +844,16 @@ public class CvEvidenceService {
 
             for (EvidenceItem item : items) {
                 if (item == null
-                        || item.section() != Section.SKILLS
-                        || item.kind() != EvidenceKind.SKILL
-                        || item.canonicalSkillKey() == null
-                        || item.canonicalSkillKey().isBlank()) {
+                        || item.section()
+                        != Section.SKILLS
+                        || item.kind()
+                        != EvidenceKind.SKILL
+                        || item.canonicalSkillKey()
+                        == null
+                        || item
+                        .canonicalSkillKey()
+                        .isBlank()) {
+
                     continue;
                 }
 
@@ -491,7 +862,9 @@ public class CvEvidenceService {
                 );
             }
 
-            return Set.copyOf(result);
+            return Set.copyOf(
+                    result
+            );
         }
 
         public List<EvidenceItem>
@@ -500,12 +873,15 @@ public class CvEvidenceService {
         ) {
             if (canonicalSkill == null
                     || canonicalSkill.isBlank()) {
+
                 return List.of();
             }
 
             return items
                     .stream()
-                    .filter(Objects::nonNull)
+                    .filter(
+                            Objects::nonNull
+                    )
                     .filter(
                             item ->
                                     item.section()

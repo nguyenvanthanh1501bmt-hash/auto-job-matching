@@ -107,13 +107,21 @@ public record CvTailoringAnalyzeResponse(
         PROFESSIONAL_SUMMARY,
         SKILLS,
         WORK_EXPERIENCE,
-        PROJECT
+        PROJECT,
+        EDUCATION,
+        CERTIFICATION,
+        LICENSE,
+        LANGUAGE
     }
 
     public enum EvidenceKind {
         TEXT,
         SKILL,
         TOOL,
-        EQUIPMENT
+        EQUIPMENT,
+        EDUCATION,
+        CERTIFICATION,
+        LICENSE,
+        LANGUAGE
     }
 }

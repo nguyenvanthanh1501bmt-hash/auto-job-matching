@@ -95,6 +95,12 @@ public class CvRewriteCandidateSelector {
                         evidenceMap
                 );
 
+        Set<String> relevantQualificationEvidenceIds =
+                relevantQualificationEvidenceIds(
+                        job,
+                        evidenceMap
+                );
+
         Set<String> titleTerms =
                 titleTerms(
                         job.getTitle()
@@ -104,7 +110,9 @@ public class CvRewriteCandidateSelector {
                 new ArrayList<>();
 
         for (EvidenceItem item : evidenceMap.items()) {
-            if (!isEditableText(item)) {
+            if (!isEditableText(
+                    item
+            )) {
                 continue;
             }
 
@@ -116,7 +124,9 @@ public class CvRewriteCandidateSelector {
                                 profile,
                                 item.id()
                         );
+
             } catch (IllegalArgumentException exception) {
+
                 continue;
             }
 
@@ -124,7 +134,8 @@ public class CvRewriteCandidateSelector {
                     allowedEvidence(
                             source,
                             evidenceMap.items(),
-                            relevantSkillKeys
+                            relevantSkillKeys,
+                            relevantQualificationEvidenceIds
                     );
 
             int score =
@@ -132,6 +143,7 @@ public class CvRewriteCandidateSelector {
                             source,
                             allowedEvidence,
                             relevantSkillKeys,
+                            relevantQualificationEvidenceIds,
                             titleTerms
                     );
 
@@ -156,7 +168,8 @@ public class CvRewriteCandidateSelector {
                         .reversed()
                         .thenComparing(
                                 node ->
-                                        node.source()
+                                        node
+                                                .source()
                                                 .sourceId()
                         )
         );
@@ -177,10 +190,13 @@ public class CvRewriteCandidateSelector {
                 new ArrayList<>();
 
         for (ScoredNode node : selected) {
+
             List<String> allowedEvidenceIds =
                     new ArrayList<>();
 
-            for (EvidenceItem item : node.evidence()) {
+            for (EvidenceItem item :
+                    node.evidence()) {
+
                 allowedEvidenceIds.add(
                         item.id()
                 );
@@ -195,14 +211,18 @@ public class CvRewriteCandidateSelector {
 
             editableNodes.add(
                     new EditableNode(
-                            node.source().sourceId(),
-                            node.source().section().name(),
+                            node.source()
+                                    .sourceId(),
+                            node.source()
+                                    .section()
+                                    .name(),
                             localContext(
                                     profile,
                                     node.source()
                             ),
                             truncate(
-                                    node.source().text(),
+                                    node.source()
+                                            .text(),
                                     properties
                                             .getMaxEvidenceTextChars()
                                             * 2
@@ -245,7 +265,8 @@ public class CvRewriteCandidateSelector {
     private List<EvidenceItem> allowedEvidence(
             CvSourceIdResolver.ResolvedSource source,
             List<EvidenceItem> allEvidence,
-            Set<String> relevantSkillKeys
+            Set<String> relevantSkillKeys,
+            Set<String> relevantQualificationEvidenceIds
     ) {
         List<EvidenceItem> candidates =
                 new ArrayList<>();
@@ -263,7 +284,9 @@ public class CvRewriteCandidateSelector {
                                                 )
                         )
                         .findFirst()
-                        .orElse(null);
+                        .orElse(
+                                null
+                        );
 
         if (sourceEvidence != null) {
             candidates.add(
@@ -271,26 +294,75 @@ public class CvRewriteCandidateSelector {
             );
         }
 
-        for (EvidenceItem item : allEvidence) {
+        /*
+         * Skill/tool/equipment evidence follows the existing
+         * scope rule:
+         *
+         * Summary -> whole confirmed profile.
+         * Work/Project -> same local scope only.
+         */
+        for (EvidenceItem item :
+                allEvidence) {
+
             if (item == null
-                    || !isSkillEvidence(item)
-                    || item.canonicalSkillKey() == null
-                    || item.canonicalSkillKey().isBlank()
+                    || !isSkillEvidence(
+                    item
+            )
+                    || item.canonicalSkillKey()
+                    == null
+                    || item
+                    .canonicalSkillKey()
+                    .isBlank()
                     || !relevantSkillKeys.contains(
                     item.canonicalSkillKey()
             )) {
+
                 continue;
             }
 
             boolean allowed =
                     source.section()
                             == Section.PROFESSIONAL_SUMMARY
-                            || source.scopeId()
+                            || source
+                            .scopeId()
                             .equals(
                                     item.scopeId()
                             );
 
             if (allowed) {
+                candidates.add(
+                        item
+                );
+            }
+        }
+
+        /*
+         * Education / certification / license / language are
+         * profile-level confirmed evidence.
+         *
+         * They may support Professional Summary only.
+         *
+         * They are intentionally NOT injected into Work or
+         * Project rewrite scopes.
+         */
+        if (source.section()
+                == Section.PROFESSIONAL_SUMMARY) {
+
+            for (EvidenceItem item :
+                    allEvidence) {
+
+                if (item == null
+                        || !isQualificationEvidence(
+                        item
+                )
+                        || !relevantQualificationEvidenceIds
+                        .contains(
+                                item.id()
+                        )) {
+
+                    continue;
+                }
+
                 candidates.add(
                         item
                 );
@@ -314,6 +386,7 @@ public class CvRewriteCandidateSelector {
             CvSourceIdResolver.ResolvedSource source,
             List<EvidenceItem> allowedEvidence,
             Set<String> relevantSkillKeys,
+            Set<String> relevantQualificationEvidenceIds,
             Set<String> titleTerms
     ) {
         int score = 0;
@@ -321,14 +394,36 @@ public class CvRewriteCandidateSelector {
         Set<String> matchedEvidenceSkills =
                 new LinkedHashSet<>();
 
-        for (EvidenceItem item : allowedEvidence) {
-            if (isSkillEvidence(item)
-                    && item.canonicalSkillKey() != null
+        Set<String> matchedQualifications =
+                new LinkedHashSet<>();
+
+        for (EvidenceItem item :
+                allowedEvidence) {
+
+            if (isSkillEvidence(
+                    item
+            )
+                    && item.canonicalSkillKey()
+                    != null
                     && relevantSkillKeys.contains(
                     item.canonicalSkillKey()
             )) {
+
                 matchedEvidenceSkills.add(
                         item.canonicalSkillKey()
+                );
+            }
+
+            if (isQualificationEvidence(
+                    item
+            )
+                    && relevantQualificationEvidenceIds
+                    .contains(
+                            item.id()
+                    )) {
+
+                matchedQualifications.add(
+                        item.id()
                 );
             }
         }
@@ -338,28 +433,43 @@ public class CvRewriteCandidateSelector {
                 matchedEvidenceSkills.size()
         ) * 5;
 
+        score += Math.min(
+                4,
+                matchedQualifications.size()
+        ) * 4;
+
         String sourceKey =
                 compact(
                         source.text()
                 );
 
-        for (String skillKey : relevantSkillKeys) {
+        for (String skillKey :
+                relevantSkillKeys) {
+
             if (!skillKey.isBlank()
                     && sourceKey.contains(
                     skillKey
             )) {
+
                 score += 2;
             }
         }
 
         if (source.section()
                 == Section.PROFESSIONAL_SUMMARY
-                && !matchedEvidenceSkills.isEmpty()) {
+                && (
+                !matchedEvidenceSkills.isEmpty()
+                        || !matchedQualifications.isEmpty()
+        )) {
+
             score += 3;
         }
 
         if (source.kind()
-                == CvSourceIdResolver.SourceKind.ACHIEVEMENT) {
+                == CvSourceIdResolver
+                .SourceKind
+                .ACHIEVEMENT) {
+
             score += 1;
         }
 
@@ -368,6 +478,7 @@ public class CvRewriteCandidateSelector {
                 sourceKey,
                 titleTerms
         )) {
+
             score = 1;
         }
 
@@ -385,9 +496,11 @@ public class CvRewriteCandidateSelector {
         Set<String> missing =
                 new LinkedHashSet<>();
 
-        for (String skill : safeList(
-                targetMatch.getMissingSkills()
-        )) {
+        for (String skill :
+                safeList(
+                        targetMatch.getMissingSkills()
+                )) {
+
             String key =
                     evidenceService
                             .canonicalSkillKey(
@@ -401,9 +514,11 @@ public class CvRewriteCandidateSelector {
             }
         }
 
-        for (String skill : safeList(
-                targetMatch.getMatchedSkills()
-        )) {
+        for (String skill :
+                safeList(
+                        targetMatch.getMatchedSkills()
+                )) {
+
             String key =
                     evidenceService
                             .canonicalSkillKey(
@@ -411,7 +526,10 @@ public class CvRewriteCandidateSelector {
                             );
 
             if (!key.isBlank()
-                    && !missing.contains(key)) {
+                    && !missing.contains(
+                    key
+            )) {
+
                 result.add(
                         key
                 );
@@ -419,27 +537,26 @@ public class CvRewriteCandidateSelector {
         }
 
         String jobCorpus =
-                compact(
-                        safeText(job.getTitle())
-                                + " "
-                                + String.join(
-                                " ",
-                                safeList(job.getSkills())
-                        )
-                                + " "
-                                + safeText(job.getRequirementsText())
-                                + " "
-                                + safeText(job.getDescriptionText())
+                jobCorpus(
+                        job
                 );
 
-        for (EvidenceItem item : evidenceMap.items()) {
+        for (EvidenceItem item :
+                evidenceMap.items()) {
+
             if (item == null
-                    || !isSkillEvidence(item)
-                    || item.canonicalSkillKey() == null
-                    || item.canonicalSkillKey().isBlank()
+                    || !isSkillEvidence(
+                    item
+            )
+                    || item.canonicalSkillKey()
+                    == null
+                    || item
+                    .canonicalSkillKey()
+                    .isBlank()
                     || missing.contains(
                     item.canonicalSkillKey()
             )) {
+
                 continue;
             }
 
@@ -453,6 +570,7 @@ public class CvRewriteCandidateSelector {
                     jobCorpus,
                     phrase
             )) {
+
                 result.add(
                         item.canonicalSkillKey()
                 );
@@ -460,6 +578,84 @@ public class CvRewriteCandidateSelector {
         }
 
         return result;
+    }
+
+    private Set<String> relevantQualificationEvidenceIds(
+            NormalizedJob job,
+            CvEvidenceService.EvidenceMap evidenceMap
+    ) {
+        String jobCorpus =
+                jobCorpus(
+                        job
+                );
+
+        if (jobCorpus.isBlank()) {
+            return Set.of();
+        }
+
+        Set<String> result =
+                new LinkedHashSet<>();
+
+        for (EvidenceItem item :
+                evidenceMap.items()) {
+
+            if (item == null
+                    || !isQualificationEvidence(
+                    item
+            )
+                    || item.id() == null
+                    || item.id().isBlank()
+                    || item.text() == null
+                    || item.text().isBlank()) {
+
+                continue;
+            }
+
+            String phrase =
+                    compact(
+                            item.text()
+                    );
+
+            if (!phrase.isBlank()
+                    && containsPhrase(
+                    jobCorpus,
+                    phrase
+            )) {
+
+                result.add(
+                        item.id()
+                );
+            }
+        }
+
+        return Set.copyOf(
+                result
+        );
+    }
+
+    private String jobCorpus(
+            NormalizedJob job
+    ) {
+        return compact(
+                safeText(
+                        job.getTitle()
+                )
+                        + " "
+                        + String.join(
+                        " ",
+                        safeList(
+                                job.getSkills()
+                        )
+                )
+                        + " "
+                        + safeText(
+                        job.getRequirementsText()
+                )
+                        + " "
+                        + safeText(
+                        job.getDescriptionText()
+                )
+        );
     }
 
     private boolean containsPhrase(
@@ -470,12 +666,15 @@ public class CvRewriteCandidateSelector {
                 || compactText.isBlank()
                 || compactPhrase == null
                 || compactPhrase.isBlank()) {
+
             return false;
         }
 
         return (" " + compactText + " ")
                 .contains(
-                        " " + compactPhrase + " "
+                        " "
+                                + compactPhrase
+                                + " "
                 );
     }
 
@@ -494,8 +693,14 @@ public class CvRewriteCandidateSelector {
         Set<String> result =
                 new LinkedHashSet<>();
 
-        for (String token : compact.split(" ")) {
-            if (token.length() >= 4) {
+        for (String token :
+                compact.split(
+                        " "
+                )) {
+
+            if (token.length()
+                    >= 4) {
+
                 result.add(
                         token
                 );
@@ -509,8 +714,12 @@ public class CvRewriteCandidateSelector {
             String value,
             Set<String> terms
     ) {
-        for (String term : terms) {
-            if (value.contains(term)) {
+        for (String term :
+                terms) {
+
+            if (value.contains(
+                    term
+            )) {
                 return true;
             }
         }
@@ -545,6 +754,19 @@ public class CvRewriteCandidateSelector {
                 == EvidenceKind.EQUIPMENT;
     }
 
+    private boolean isQualificationEvidence(
+            EvidenceItem item
+    ) {
+        return item.kind()
+                == EvidenceKind.EDUCATION
+                || item.kind()
+                == EvidenceKind.CERTIFICATION
+                || item.kind()
+                == EvidenceKind.LICENSE
+                || item.kind()
+                == EvidenceKind.LANGUAGE;
+    }
+
     private EvidenceValue toEvidenceValue(
             EvidenceItem item
     ) {
@@ -568,11 +790,13 @@ public class CvRewriteCandidateSelector {
     ) {
         if (source.section()
                 == Section.PROFESSIONAL_SUMMARY) {
+
             return "Professional summary";
         }
 
         if (source.section()
                 == Section.WORK_EXPERIENCE) {
+
             CandidateProfile.WorkExperience work =
                     profile
                             .getWorkExperiences()
@@ -618,6 +842,7 @@ public class CvRewriteCandidateSelector {
     ) {
         if (first != null
                 && !first.isBlank()) {
+
             return first;
         }
 
@@ -630,6 +855,7 @@ public class CvRewriteCandidateSelector {
     ) {
         if (value == null
                 || value.isBlank()) {
+
             return "";
         }
 
@@ -638,6 +864,7 @@ public class CvRewriteCandidateSelector {
 
         if (trimmed.length()
                 <= maxChars) {
+
             return trimmed;
         }
 
@@ -652,6 +879,7 @@ public class CvRewriteCandidateSelector {
     ) {
         if (value == null
                 || value.isBlank()) {
+
             return "";
         }
 
@@ -670,14 +898,18 @@ public class CvRewriteCandidateSelector {
                         .matcher(
                                 normalized
                         )
-                        .replaceAll("");
+                        .replaceAll(
+                                ""
+                        );
 
         normalized =
                 NON_WORD
                         .matcher(
                                 normalized
                         )
-                        .replaceAll(" ")
+                        .replaceAll(
+                                " "
+                        )
                         .trim();
 
         return normalized.replaceAll(

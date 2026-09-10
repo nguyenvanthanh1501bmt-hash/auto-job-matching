@@ -21,7 +21,7 @@ autojob:
 
     compatibility:
       normalization-version: ${MATCHING_NORMALIZATION_VERSION:rule-v4}
-      candidate-text-version: ${MATCHING_CANDIDATE_TEXT_VERSION:candidate-text-v1}
+      candidate-text-version: ${MATCHING_CANDIDATE_TEXT_VERSION:candidate-text-v2}
       job-text-version: ${MATCHING_JOB_TEXT_VERSION:job-text-v2}
 
     weights:
