@@ -29,26 +29,13 @@ import java.util.Set;
 @Service
 public class CvTailoringAnalysisService {
 
-    private final HybridMatchingService
-            hybridMatchingService;
-
-    private final CandidateProfileRepository
-            candidateProfileRepository;
-
-    private final CvEvidenceService
-            cvEvidenceService;
-
-    private final CvSuggestionValidator
-            suggestionValidator;
-
-    private final CvTailoringAnalysisStore
-            analysisStore;
-
-    private final NormalizedJobRepository
-            normalizedJobRepository;
-
-    private final CvSuggestionService
-            cvSuggestionService;
+    private final HybridMatchingService hybridMatchingService;
+    private final CandidateProfileRepository candidateProfileRepository;
+    private final CvEvidenceService cvEvidenceService;
+    private final CvSuggestionValidator suggestionValidator;
+    private final CvTailoringAnalysisStore analysisStore;
+    private final NormalizedJobRepository normalizedJobRepository;
+    private final CvSuggestionService cvSuggestionService;
 
     public CvTailoringAnalysisService(
             HybridMatchingService hybridMatchingService,
@@ -107,19 +94,9 @@ public class CvTailoringAnalysisService {
             String normalizedJobId,
             String ownerUserId
     ) {
-        requireText(
-                candidateProfileId,
-                "candidateProfileId"
-        );
+        requireText(candidateProfileId, "candidateProfileId");
+        requireText(normalizedJobId, "normalizedJobId");
 
-        requireText(
-                normalizedJobId,
-                "normalizedJobId"
-        );
-
-        /*
-         * Current matching engine vẫn là source of truth.
-         */
         MatchingRunResult currentRun =
                 loadCurrentMatchingRun(
                         candidateProfileId,
@@ -127,12 +104,9 @@ public class CvTailoringAnalysisService {
                 );
 
         MatchResult targetMatch =
-                currentRun
-                        .results()
+                currentRun.results()
                         .stream()
-                        .filter(
-                                Objects::nonNull
-                        )
+                        .filter(Objects::nonNull)
                         .filter(
                                 result ->
                                         normalizedJobId.equals(
@@ -141,42 +115,30 @@ public class CvTailoringAnalysisService {
                         )
                         .findFirst()
                         .orElseThrow(
-                                () ->
-                                        new ResponseStatusException(
-                                                HttpStatus.CONFLICT,
-                                                "Selected job is not part of "
-                                                        + "the current matching result. "
-                                                        + "Run matching again before "
-                                                        + "tailoring this CV."
-                                        )
+                                () -> new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Selected job is not part of "
+                                                + "the current matching result. "
+                                                + "Run matching again before "
+                                                + "tailoring this CV."
+                                )
                         );
 
         CandidateProfile profile =
                 candidateProfileRepository
-                        .findById(
-                                candidateProfileId
-                        )
+                        .findById(candidateProfileId)
                         .orElseThrow(
-                                () ->
-                                        new ResponseStatusException(
-                                                HttpStatus.CONFLICT,
-                                                "Candidate profile changed while "
-                                                        + "CV tailoring analysis "
-                                                        + "was starting"
-                                        )
+                                () -> new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Candidate profile changed while "
+                                                + "CV tailoring analysis "
+                                                + "was starting"
+                                )
                         );
 
-        /*
-         * HybridMatchingService đã ownership-check.
-         *
-         * Check lại để analysis context luôn bind
-         * với profile đúng owner.
-         */
         if (ownerUserId == null
                 || ownerUserId.isBlank()
-                || !ownerUserId.equals(
-                profile.getOwnerUserId()
-        )) {
+                || !ownerUserId.equals(profile.getOwnerUserId())) {
 
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
@@ -185,32 +147,20 @@ public class CvTailoringAnalysisService {
         }
 
         CvEvidenceService.EvidenceMap evidenceMap =
-                cvEvidenceService.build(
-                        profile
-                );
+                cvEvidenceService.build(profile);
 
-        /*
-         * REWRITE phải dựa vào JD thật chứ không chỉ MatchResult snapshot.
-         */
         NormalizedJob targetJob =
                 normalizedJobRepository
-                        .findById(
-                                normalizedJobId
-                        )
+                        .findById(normalizedJobId)
                         .orElseThrow(
-                                () ->
-                                        new ResponseStatusException(
-                                                HttpStatus.CONFLICT,
-                                                "Selected job is no longer available. "
-                                                        + "Run matching again before "
-                                                        + "tailoring this CV."
-                                        )
+                                () -> new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Selected job is no longer available. "
+                                                + "Run matching again before "
+                                                + "tailoring this CV."
+                                )
                         );
 
-        /*
-         * Deterministic suggestions remain available even when
-         * every AI provider is disabled, rate-limited or down.
-         */
         List<SuggestionItem> generatedSuggestions =
                 new ArrayList<>(
                         buildEmphasizeSuggestions(
@@ -220,14 +170,10 @@ public class CvTailoringAnalysisService {
                 );
 
         /*
-         * Phase 5:
+         * Groq = primary.
+         * Gemini = fallback.
          *
-         * AI reads the real JD but may only rewrite backend-selected
-         * editable nodes using evidence explicitly whitelisted
-         * for that source scope.
-         *
-         * Gemini = primary.
-         * Groq = fallback.
+         * Provider order vẫn do Spring @Order quyết định.
          */
         generatedSuggestions.addAll(
                 cvSuggestionService.generateRewrites(
@@ -238,46 +184,71 @@ public class CvTailoringAnalysisService {
                 )
         );
 
-        /*
-         * Backend still owns truth.
-         *
-         * AI suggestions must pass the existing validator before
-         * they are stored or returned to the client.
-         */
         List<SuggestionItem> validatedSuggestions =
-                suggestionValidator
-                        .validateAll(
-                                profile,
-                                evidenceMap,
-                                generatedSuggestions
-                        );
+                suggestionValidator.validateAll(
+                        profile,
+                        evidenceMap,
+                        generatedSuggestions
+                );
 
         List<GapItem> gaps =
-                buildGapWarnings(
-                        targetMatch
-                );
+                buildGapWarnings(targetMatch);
+
+        CvTailoringAnalysisStore.AnalysisContext context;
 
         /*
-         * analysisId has a real server-side context.
+         * Fresh production matching results có generatedAt,
+         * và NormalizedJob mới có revision metadata.
+         *
+         * Khi metadata tồn tại -> dùng strict context mới.
+         *
+         * Legacy documents / test fixtures cũ có thể thiếu cả
+         * generatedAt lẫn job revision. Trong trường hợp đó,
+         * giữ backward-compatible context thay vì trả 409.
          */
-        CvTailoringAnalysisStore.AnalysisContext context =
-                analysisStore.save(
-                        ownerUserId,
-                        profile,
-                        normalizedJobId,
-                        currentRun.candidateEmbeddingId(),
-                        currentRun.rankingVersion(),
-                        evidenceMap.items(),
-                        validatedSuggestions
-                );
+        boolean hasRunOrJobRevisionMetadata =
+                targetMatch.getGeneratedAt() != null
+                        || (
+                        targetJob.getRawContentHash() != null
+                                && !targetJob
+                                .getRawContentHash()
+                                .isBlank()
+                )
+                        || targetJob.getNormalizedAt() != null;
+
+        if (hasRunOrJobRevisionMetadata) {
+            context =
+                    analysisStore.save(
+                            ownerUserId,
+                            profile,
+                            normalizedJobId,
+                            currentRun.candidateEmbeddingId(),
+                            currentRun.rankingVersion(),
+                            targetMatch.getGeneratedAt(),
+                            targetJob.getRawContentHash(),
+                            targetJob.getNormalizedAt(),
+                            evidenceMap.items(),
+                            validatedSuggestions
+                    );
+        } else {
+            context =
+                    analysisStore.save(
+                            ownerUserId,
+                            profile,
+                            normalizedJobId,
+                            currentRun.candidateEmbeddingId(),
+                            currentRun.rankingVersion(),
+                            evidenceMap.items(),
+                            validatedSuggestions
+                    );
+        }
 
         return new CvTailoringAnalyzeResponse(
                 context.analysisId(),
+                context.expiresAt(),
                 candidateProfileId,
                 normalizedJobId,
-                toJobSnapshot(
-                        targetMatch
-                ),
+                toJobSnapshot(targetMatch),
                 toCurrentMatch(
                         currentRun,
                         targetMatch
@@ -293,19 +264,12 @@ public class CvTailoringAnalysisService {
             String ownerUserId
     ) {
         try {
-            return hybridMatchingService
-                    .getCurrent(
-                            candidateProfileId,
-                            ownerUserId
-                    );
-
-        } catch (
-                MatchingPreconditionException exception
-        ) {
-
-            throw toHttpException(
-                    exception
+            return hybridMatchingService.getCurrent(
+                    candidateProfileId,
+                    ownerUserId
             );
+        } catch (MatchingPreconditionException exception) {
+            throw toHttpException(exception);
         }
     }
 
@@ -313,10 +277,7 @@ public class CvTailoringAnalysisService {
             MatchingPreconditionException exception
     ) {
         HttpStatus status =
-                switch (
-                        exception.getReason()
-                        ) {
-
+                switch (exception.getReason()) {
                     case AUTHENTICATION_REQUIRED ->
                             HttpStatus.UNAUTHORIZED;
 
@@ -337,23 +298,19 @@ public class CvTailoringAnalysisService {
         );
     }
 
-    private List<SuggestionItem>
-    buildEmphasizeSuggestions(
+    private List<SuggestionItem> buildEmphasizeSuggestions(
             MatchResult targetMatch,
             CvEvidenceService.EvidenceMap evidenceMap
     ) {
         List<String> matchedSkills =
-                safeList(
-                        targetMatch.getMatchedSkills()
-                );
+                safeList(targetMatch.getMatchedSkills());
 
         if (matchedSkills.isEmpty()) {
             return List.of();
         }
 
         Set<String> topLevelSkills =
-                evidenceMap
-                        .topLevelSkillKeys();
+                evidenceMap.topLevelSkillKeys();
 
         Set<String> emittedSkills =
                 new LinkedHashSet<>();
@@ -362,20 +319,14 @@ public class CvTailoringAnalysisService {
                 new ArrayList<>();
 
         for (String matchedSkill : matchedSkills) {
-
             String canonicalSkill =
-                    cvEvidenceService
-                            .canonicalSkillKey(
-                                    matchedSkill
-                            );
+                    cvEvidenceService.canonicalSkillKey(
+                            matchedSkill
+                    );
 
             if (canonicalSkill.isBlank()
-                    || topLevelSkills.contains(
-                    canonicalSkill
-            )
-                    || !emittedSkills.add(
-                    canonicalSkill
-            )) {
+                    || topLevelSkills.contains(canonicalSkill)
+                    || !emittedSkills.add(canonicalSkill)) {
 
                 continue;
             }
@@ -393,16 +344,13 @@ public class CvTailoringAnalysisService {
             List<String> evidenceIds =
                     supportingEvidence
                             .stream()
-                            .map(
-                                    EvidenceItem::id
-                            )
+                            .map(EvidenceItem::id)
                             .distinct()
                             .toList();
 
             result.add(
                     new SuggestionItem(
-                            "emphasize-"
-                                    + result.size(),
+                            "emphasize-" + result.size(),
                             SuggestionType.EMPHASIZE,
                             Section.SKILLS,
                             "skills",
@@ -411,25 +359,20 @@ public class CvTailoringAnalysisService {
                             buildEmphasizeReason(
                                     supportingEvidence
                             ),
-                            List.of(
-                                    matchedSkill
-                            ),
+                            List.of(matchedSkill),
                             evidenceIds
                     )
             );
         }
 
-        return List.copyOf(
-                result
-        );
+        return List.copyOf(result);
     }
 
     private String buildEmphasizeReason(
             List<EvidenceItem> evidence
     ) {
         boolean hasWorkEvidence =
-                evidence
-                        .stream()
+                evidence.stream()
                         .anyMatch(
                                 item ->
                                         item.section()
@@ -437,17 +380,14 @@ public class CvTailoringAnalysisService {
                         );
 
         boolean hasProjectEvidence =
-                evidence
-                        .stream()
+                evidence.stream()
                         .anyMatch(
                                 item ->
                                         item.section()
                                                 == Section.PROJECT
                         );
 
-        if (hasWorkEvidence
-                && hasProjectEvidence) {
-
+        if (hasWorkEvidence && hasProjectEvidence) {
             return "This matched skill already has "
                     + "supporting evidence in Work Experience "
                     + "and Projects but is not surfaced in "
@@ -455,7 +395,6 @@ public class CvTailoringAnalysisService {
         }
 
         if (hasWorkEvidence) {
-
             return "This matched skill already has "
                     + "supporting evidence in Work Experience "
                     + "but is not surfaced in the "
@@ -471,16 +410,8 @@ public class CvTailoringAnalysisService {
     private List<GapItem> buildGapWarnings(
             MatchResult targetMatch
     ) {
-        /*
-         * Không tự calculate gap.
-         *
-         * Matching engine hiện tại
-         * là source of truth.
-         */
         List<String> missingSkills =
-                safeList(
-                        targetMatch.getMissingSkills()
-                );
+                safeList(targetMatch.getMissingSkills());
 
         if (missingSkills.isEmpty()) {
             return List.of();
@@ -493,7 +424,6 @@ public class CvTailoringAnalysisService {
                 new ArrayList<>();
 
         for (String missingSkill : missingSkills) {
-
             if (missingSkill == null
                     || missingSkill.isBlank()) {
 
@@ -501,30 +431,25 @@ public class CvTailoringAnalysisService {
             }
 
             String canonicalSkill =
-                    cvEvidenceService
-                            .canonicalSkillKey(
-                                    missingSkill
-                            );
+                    cvEvidenceService.canonicalSkillKey(
+                            missingSkill
+                    );
 
             String dedupeKey =
                     canonicalSkill.isBlank()
                             ? missingSkill.trim()
                             : canonicalSkill;
 
-            if (!seen.add(
-                    dedupeKey
-            )) {
-
+            if (!seen.add(dedupeKey)) {
                 continue;
             }
 
             result.add(
                     new GapItem(
-                            "gap-"
-                                    + result.size(),
+                            "gap-" + result.size(),
                             SuggestionType.GAP_WARNING,
                             missingSkill,
-                            "This skill is required by "
+                            "This skill is relevant to "
                                     + "the selected job, but the "
                                     + "current matching engine found "
                                     + "no supporting professional "
@@ -534,9 +459,7 @@ public class CvTailoringAnalysisService {
             );
         }
 
-        return List.copyOf(
-                result
-        );
+        return List.copyOf(result);
     }
 
     private JobSnapshot toJobSnapshot(
@@ -560,37 +483,25 @@ public class CvTailoringAnalysisService {
     ) {
         return new CurrentMatch(
                 currentRun.rankingVersion(),
-
                 targetMatch.getFinalScore(),
-
                 targetMatch.getSemanticScore(),
-
                 targetMatch.getSkillScore(),
-
                 targetMatch.getSeniorityScore(),
-
                 targetMatch.getLocationScore(),
-
                 targetMatch.getFreshnessScore(),
-
                 Boolean.TRUE.equals(
                         targetMatch.getSkillKnown()
                 ),
-
                 Boolean.TRUE.equals(
                         targetMatch.getSeniorityKnown()
                 ),
-
                 Boolean.TRUE.equals(
                         targetMatch.getLocationKnown()
                 ),
-
                 Boolean.TRUE.equals(
                         targetMatch.getFreshnessKnown()
                 ),
-
                 targetMatch.getMatchedSkills(),
-
                 targetMatch.getMissingSkills()
         );
     }
@@ -612,8 +523,7 @@ public class CvTailoringAnalysisService {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    fieldName
-                            + " must not be blank"
+                    fieldName + " must not be blank"
             );
         }
     }

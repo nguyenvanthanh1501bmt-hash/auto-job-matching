@@ -1,9 +1,11 @@
 package com.autojob.modules.cvtailoring.contract;
 
+import java.time.Instant;
 import java.util.List;
 
 public record CvTailoringAnalyzeResponse(
         String analysisId,
+        Instant expiresAt,
         String candidateProfileId,
         String normalizedJobId,
         JobSnapshot job,

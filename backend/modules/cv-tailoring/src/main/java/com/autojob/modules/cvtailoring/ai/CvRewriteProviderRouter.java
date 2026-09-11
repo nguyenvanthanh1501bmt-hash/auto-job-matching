@@ -104,7 +104,7 @@ public class CvRewriteProviderRouter {
         }
 
         /*
-         * Cả Gemini và Groq đều unavailable/fail.
+         * Groq và Gemini đều unavailable/fail.
          *
          * Caller sẽ tiếp tục với rule-based:
          * - GAP_WARNING
@@ -242,10 +242,6 @@ public class CvRewriteProviderRouter {
          *
          * 5xx/network:
          * -> retry exactly once before reaching here.
-         *
-         * detail is deliberately restricted to provider-generated
-         * exception text. GeminiCvRewriteProvider only places safe
-         * status/token metadata in INVALID_RESPONSE messages.
          */
         log.warn(
                 "CV rewrite provider failed "

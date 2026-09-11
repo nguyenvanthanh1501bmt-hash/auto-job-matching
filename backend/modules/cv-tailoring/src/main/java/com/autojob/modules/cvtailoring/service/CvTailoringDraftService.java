@@ -3,6 +3,9 @@ package com.autojob.modules.cvtailoring.service;
 import com.autojob.modules.cv.domain.CandidateProfile;
 import com.autojob.modules.cv.repository.CandidateProfileRepository;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionItem;
+import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
+import com.autojob.modules.jobnormalizer.repository.NormalizedJobRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -34,12 +37,39 @@ public class CvTailoringDraftService {
     private final CvSuggestionApplier
             suggestionApplier;
 
+    private final NormalizedJobRepository
+            normalizedJobRepository;
+
+    /*
+     * Backward-compatible constructor for existing unit tests.
+     * Production Spring wiring uses the @Autowired constructor below
+     * so job-revision validation is always enabled at runtime.
+     */
     public CvTailoringDraftService(
             CvTailoringAnalysisStore analysisStore,
             CandidateProfileRepository candidateProfileRepository,
             CvEvidenceService cvEvidenceService,
             CvSuggestionValidator suggestionValidator,
             CvSuggestionApplier suggestionApplier
+    ) {
+        this(
+                analysisStore,
+                candidateProfileRepository,
+                cvEvidenceService,
+                suggestionValidator,
+                suggestionApplier,
+                null
+        );
+    }
+
+    @Autowired
+    public CvTailoringDraftService(
+            CvTailoringAnalysisStore analysisStore,
+            CandidateProfileRepository candidateProfileRepository,
+            CvEvidenceService cvEvidenceService,
+            CvSuggestionValidator suggestionValidator,
+            CvSuggestionApplier suggestionApplier,
+            NormalizedJobRepository normalizedJobRepository
     ) {
         this.analysisStore =
                 Objects.requireNonNull(
@@ -70,6 +100,9 @@ public class CvTailoringDraftService {
                         suggestionApplier,
                         "suggestionApplier must not be null"
                 );
+
+        this.normalizedJobRepository =
+                normalizedJobRepository;
     }
 
     public TemporaryDraft createTemporaryDraft(
@@ -132,6 +165,36 @@ public class CvTailoringDraftService {
                         context,
                         profile
                 );
+
+        /*
+         * Suggestions were generated from one exact normalized-job
+         * revision. Do not let the client preview stale suggestions
+         * against a JD that was re-normalized after Analyze.
+         *
+         * The null branch only exists for the backward-compatible
+         * constructor used by older unit tests. Spring production
+         * wiring always provides the repository.
+         */
+        if (normalizedJobRepository != null) {
+            NormalizedJob currentJob =
+                    normalizedJobRepository
+                            .findById(
+                                    normalizedJobId
+                            )
+                            .orElseThrow(
+                                    () ->
+                                            new ResponseStatusException(
+                                                    HttpStatus.CONFLICT,
+                                                    "Selected job is no longer available. Analyze again before previewing."
+                                            )
+                            );
+
+            analysisStore
+                    .assertJobUnchanged(
+                            context,
+                            currentJob
+                    );
+        }
 
         /*
          * 4. Client chỉ được gửi ID.

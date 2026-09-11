@@ -38,7 +38,82 @@ public class CvRewriteSafetyGuard {
                     Pattern.CASE_INSENSITIVE
             );
 
-    private final CvEvidenceService evidenceService;
+    /*
+     * Rewrite được phép rõ hơn và đầy đủ hơn một chút,
+     * nhưng không được biến một bullet ngắn thành paragraph
+     * chứa hàng loạt keyword chỉ để tác động embedding.
+     */
+    private static final double
+            MAX_REWRITE_TOKEN_MULTIPLIER =
+            2.0d;
+
+    private static final int
+            MAX_REWRITE_EXTRA_TOKENS =
+            12;
+
+    private static final double
+            MAX_REWRITE_CHAR_MULTIPLIER =
+            2.25d;
+
+    private static final int
+            MAX_REWRITE_EXTRA_CHARS =
+            180;
+
+    private static final Set<String>
+            FREQUENCY_IGNORED_TOKENS =
+            Set.of(
+                    "a",
+                    "an",
+                    "and",
+                    "as",
+                    "at",
+                    "by",
+                    "for",
+                    "from",
+                    "in",
+                    "into",
+                    "of",
+                    "on",
+                    "or",
+                    "the",
+                    "to",
+                    "with",
+                    "across",
+                    "using",
+                    "through",
+                    "via"
+            );
+
+    private static final Set<String>
+            JOB_COPY_IGNORED_TOKENS =
+            Set.of(
+                    "a",
+                    "an",
+                    "and",
+                    "as",
+                    "at",
+                    "by",
+                    "for",
+                    "from",
+                    "in",
+                    "into",
+                    "of",
+                    "on",
+                    "or",
+                    "the",
+                    "to",
+                    "with",
+                    "across",
+                    "using",
+                    "through",
+                    "via",
+                    "role",
+                    "job",
+                    "position"
+            );
+
+    private final CvEvidenceService
+            evidenceService;
 
     private final Map<String, List<String>>
             highRiskClaimGroups;
@@ -74,6 +149,7 @@ public class CvRewriteSafetyGuard {
                 );
 
         if (highRiskClaimGroups.isEmpty()) {
+
             throw new IllegalArgumentException(
                     "CV rewrite safety taxonomy "
                             + "must contain at least one "
@@ -138,10 +214,12 @@ public class CvRewriteSafetyGuard {
         List<EvidenceItem> citedEvidence =
                 new ArrayList<>();
 
-        for (String evidenceId :
-                safeList(
-                        suggestion.evidenceIds()
-                )) {
+        for (
+                String evidenceId
+                : safeList(
+                suggestion.evidenceIds()
+        )
+        ) {
 
             EvidenceItem item =
                     evidenceById.get(
@@ -158,30 +236,112 @@ public class CvRewriteSafetyGuard {
         }
 
         String evidenceCorpus =
-                evidenceCorpus(
-                        suggestion.original(),
-                        citedEvidence
+                compact(
+                        evidenceCorpus(
+                                suggestion.original(),
+                                citedEvidence
+                        )
                 );
 
+        /*
+         * Model không được tạo metric,
+         * %, năm, số lượng... mới.
+         */
         if (introducesUnsupportedNumber(
-                suggestion.suggested(),
+                suggested,
                 evidenceCorpus
         )) {
 
             return false;
         }
 
+        /*
+         * Các claim có rủi ro cao như:
+         *
+         * leadership
+         * impact
+         * seniority
+         * certification
+         * license
+         * education
+         * language proficiency
+         *
+         * phải có evidence phù hợp.
+         */
         if (introducesUnsupportedHighRiskClaim(
                 suggested,
-                compact(
-                        evidenceCorpus
-                ),
+                evidenceCorpus,
                 citedEvidence
         )) {
 
             return false;
         }
 
+        /*
+         * Không cho một bullet ngắn biến thành
+         * một đoạn dài bất thường.
+         */
+        if (isExcessivelyExpanded(
+                original,
+                suggested
+        )) {
+
+            return false;
+        }
+
+        /*
+         * Skill có thật vẫn không được spam
+         * để cố tình đẩy semantic similarity.
+         */
+        if (isKeywordStuffed(
+                suggestion,
+                suggested,
+                evidenceCorpus
+        )) {
+
+            return false;
+        }
+
+        /*
+         * JD là context, không phải candidate evidence.
+         *
+         * Nếu model lấy một term chỉ xuất hiện trong JD
+         * rồi đưa nó vào CV trong khi evidence không có,
+         * suggestion bị reject.
+         *
+         * Ví dụ:
+         *
+         * CV:
+         *   Developed backend services using Java.
+         *
+         * JD:
+         *   Financial services platform...
+         *
+         * AI:
+         *   Developed financial services using Java.
+         *
+         * => reject.
+         *
+         * Những skill thật như Java/Spring Boot không bị
+         * ảnh hưởng vì chúng đã xuất hiện trong cited
+         * candidate evidence.
+         */
+        if (introducesJobOnlyTerms(
+                suggested,
+                evidenceCorpus,
+                job
+        )) {
+
+            return false;
+        }
+
+        /*
+         * Skill mới xuất hiện rõ trong rewrite phải:
+         *
+         * - được tracking trong targetSkills
+         * - và sau đó CvSuggestionValidator sẽ kiểm tra
+         *   candidate evidence thực sự support skill đó.
+         */
         return newlyExplicitSkillsAreTracked(
                 suggestion,
                 evidenceMap,
@@ -198,10 +358,12 @@ public class CvRewriteSafetyGuard {
                         evidenceCorpus
                 );
 
-        for (String number :
-                numbers(
-                        suggested
-                )) {
+        for (
+                String number
+                : numbers(
+                suggested
+        )
+        ) {
 
             if (!supportedNumbers.contains(
                     number
@@ -223,11 +385,9 @@ public class CvRewriteSafetyGuard {
                 Map.Entry<String, List<String>> entry
                 : highRiskClaimGroups.entrySet()
         ) {
+
             String group =
                     entry.getKey();
-
-            List<String> phrases =
-                    entry.getValue();
 
             Set<EvidenceKind> requiredKinds =
                     requiredEvidenceKindsByGroup
@@ -236,7 +396,10 @@ public class CvRewriteSafetyGuard {
                                     Set.of()
                             );
 
-            for (String phrase : phrases) {
+            for (
+                    String phrase
+                    : entry.getValue()
+            ) {
 
                 if (!containsPhrase(
                         suggested,
@@ -246,6 +409,14 @@ public class CvRewriteSafetyGuard {
                     continue;
                 }
 
+                /*
+                 * Một số claim có typed evidence.
+                 *
+                 * Ví dụ:
+                 *
+                 * "licensed" phải đến từ LICENSE,
+                 * không được lấy từ một TEXT arbitrary.
+                 */
                 if (!requiredKinds.isEmpty()) {
 
                     if (!supportsTypedClaim(
@@ -261,6 +432,11 @@ public class CvRewriteSafetyGuard {
                     continue;
                 }
 
+                /*
+                 * Với claim không có typed evidence riêng,
+                 * wording đó phải đã được chứng minh trong
+                 * source hoặc cited evidence.
+                 */
                 if (!containsPhrase(
                         evidenceCorpus,
                         phrase
@@ -321,7 +497,10 @@ public class CvRewriteSafetyGuard {
             );
         }
 
-        for (EvidenceItem item : typedEvidence) {
+        for (
+                EvidenceItem item
+                : typedEvidence
+        ) {
 
             String evidenceText =
                     compact(
@@ -333,12 +512,13 @@ public class CvRewriteSafetyGuard {
             }
 
             /*
-             * Exact qualification name is strongest evidence.
+             * Strongest case:
              *
-             * Example:
+             * Evidence:
+             *   Basic Life Support
              *
-             * Basic Life Support
-             * Bachelor of Nursing
+             * Suggested:
+             *   Basic Life Support certification
              */
             if (containsPhrase(
                     suggested,
@@ -355,12 +535,12 @@ public class CvRewriteSafetyGuard {
                     );
 
             /*
-             * Supports morphological wording changes:
+             * Cho phép morphology nhỏ.
              *
-             * evidence:
+             * Evidence:
              *   Registered Nurse License
              *
-             * suggested:
+             * Suggested:
              *   licensed registered nurse
              */
             if (!identityTokens.isEmpty()
@@ -390,29 +570,18 @@ public class CvRewriteSafetyGuard {
                                 List.of()
                         );
 
-        for (EvidenceItem claimEvidence :
-                typedEvidence) {
+        for (
+                EvidenceItem claimEvidence
+                : typedEvidence
+        ) {
 
             String evidenceText =
                     compact(
                             claimEvidence.text()
                     );
 
-            if (evidenceText.isBlank()) {
-                continue;
-            }
-
-            /*
-             * A companion-rule evidence item must itself
-             * describe the claimed property.
-             *
-             * For language proficiency:
-             *
-             * "Fluent"               -> yes
-             * "Native proficiency"   -> yes
-             * "English"              -> no
-             */
-            if (!containsAnyClaimPhrase(
+            if (evidenceText.isBlank()
+                    || !containsAnyClaimPhrase(
                     evidenceText,
                     claimPhrases
             )) {
@@ -427,8 +596,11 @@ public class CvRewriteSafetyGuard {
                     );
 
             /*
-             * One evidence value may already contain both
-             * property + identity, e.g. "Fluent English".
+             * Ví dụ evidence:
+             *
+             * Fluent English
+             *
+             * đã chứa cả property + identity.
              */
             if (!ownIdentity.isEmpty()
                     && containsPhrase(
@@ -440,11 +612,12 @@ public class CvRewriteSafetyGuard {
             }
 
             /*
-             * Otherwise the property evidence itself must be
-             * visible in the proposed wording.
+             * Evidence:
              *
-             * "Fluent" evidence cannot silently justify
-             * "native proficiency".
+             * language:0:proficiency = Fluent
+             *
+             * thì suggestion ít nhất phải thật sự
+             * sử dụng property "Fluent".
              */
             if (!containsPhrase(
                     suggested,
@@ -455,11 +628,9 @@ public class CvRewriteSafetyGuard {
             }
 
             /*
-             * Property-only evidence needs a companion from
-             * the same deterministic evidence scope.
+             * Sau đó cần identity cùng scope:
              *
-             * language:0:proficiency = Fluent
-             * language:0:name        = English
+             * language:0:name = English
              */
             if (hasMatchingCompanionEvidence(
                     claimEvidence,
@@ -479,8 +650,10 @@ public class CvRewriteSafetyGuard {
             String evidenceText,
             List<String> claimPhrases
     ) {
-        for (String phrase :
-                claimPhrases) {
+        for (
+                String phrase
+                : claimPhrases
+        ) {
 
             if (containsPhrase(
                     evidenceText,
@@ -506,8 +679,10 @@ public class CvRewriteSafetyGuard {
             return false;
         }
 
-        for (EvidenceItem companion :
-                citedEvidence) {
+        for (
+                EvidenceItem companion
+                : citedEvidence
+        ) {
 
             if (companion == null
                     || companion == source
@@ -523,10 +698,6 @@ public class CvRewriteSafetyGuard {
                     compact(
                             companion.text()
                     );
-
-            if (companionText.isBlank()) {
-                continue;
-            }
 
             Set<String> companionIdentity =
                     identityTokens(
@@ -560,10 +731,12 @@ public class CvRewriteSafetyGuard {
         Set<String> result =
                 new LinkedHashSet<>();
 
-        for (String token :
-                compactEvidence.split(
-                        " "
-                )) {
+        for (
+                String token
+                : compactEvidence.split(
+                " "
+        )
+        ) {
 
             if (token.isBlank()
                     || genericTokens.contains(
@@ -609,6 +782,329 @@ public class CvRewriteSafetyGuard {
         );
     }
 
+    private boolean isExcessivelyExpanded(
+            String original,
+            String suggested
+    ) {
+        int originalChars =
+                original.length();
+
+        int suggestedChars =
+                suggested.length();
+
+        int allowedChars =
+                Math.max(
+                        (int) Math.ceil(
+                                originalChars
+                                        * MAX_REWRITE_CHAR_MULTIPLIER
+                        ),
+                        originalChars
+                                + MAX_REWRITE_EXTRA_CHARS
+                );
+
+        if (suggestedChars > allowedChars) {
+
+            return true;
+        }
+
+        int originalTokens =
+                tokens(
+                        original
+                ).size();
+
+        int suggestedTokens =
+                tokens(
+                        suggested
+                ).size();
+
+        int allowedTokens =
+                Math.max(
+                        (int) Math.ceil(
+                                originalTokens
+                                        * MAX_REWRITE_TOKEN_MULTIPLIER
+                        ),
+                        originalTokens
+                                + MAX_REWRITE_EXTRA_TOKENS
+                );
+
+        return suggestedTokens
+                > allowedTokens;
+    }
+
+    private boolean isKeywordStuffed(
+            SuggestionItem suggestion,
+            String suggested,
+            String evidenceCorpus
+    ) {
+        Map<String, Integer> suggestedCounts =
+                tokenCounts(
+                        suggested,
+                        FREQUENCY_IGNORED_TOKENS
+                );
+
+        Map<String, Integer> evidenceCounts =
+                tokenCounts(
+                        evidenceCorpus,
+                        FREQUENCY_IGNORED_TOKENS
+                );
+
+        /*
+         * Generic repeated-token protection.
+         *
+         * Ví dụ:
+         *
+         * Java Java Java Java
+         * backend backend backend backend
+         */
+        for (
+                Map.Entry<String, Integer> entry
+                : suggestedCounts.entrySet()
+        ) {
+
+            String token =
+                    entry.getKey();
+
+            int suggestedCount =
+                    entry.getValue();
+
+            /*
+             * Short technical tokens như C / R
+             * không dùng heuristic này.
+             */
+            if (token.length() < 3
+                    || suggestedCount <= 3) {
+
+                continue;
+            }
+
+            int evidenceCount =
+                    evidenceCounts
+                            .getOrDefault(
+                                    token,
+                                    0
+                            );
+
+            int allowed =
+                    Math.max(
+                            3,
+                            evidenceCount + 2
+                    );
+
+            if (suggestedCount > allowed) {
+
+                return true;
+            }
+        }
+
+        /*
+         * Skill phrase protection.
+         *
+         * Dù Java là skill thật,
+         *
+         * "Java Java Java Java"
+         *
+         * vẫn không phải một rewrite hợp lệ.
+         */
+        for (
+                String targetSkill
+                : safeList(
+                suggestion.targetSkills()
+        )
+        ) {
+
+            String phrase =
+                    compact(
+                            targetSkill
+                    );
+
+            if (phrase.isBlank()) {
+                continue;
+            }
+
+            int suggestedCount =
+                    countPhraseOccurrences(
+                            suggested,
+                            phrase
+                    );
+
+            int evidenceCount =
+                    countPhraseOccurrences(
+                            evidenceCorpus,
+                            phrase
+                    );
+
+            int allowed =
+                    Math.max(
+                            2,
+                            evidenceCount + 1
+                    );
+
+            if (suggestedCount > allowed) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean introducesJobOnlyTerms(
+            String suggested,
+            String evidenceCorpus,
+            NormalizedJob job
+    ) {
+        if (job == null) {
+            return false;
+        }
+
+        String jobCorpus =
+                compact(
+                        jobCorpus(
+                                job
+                        )
+                );
+
+        if (jobCorpus.isBlank()) {
+            return false;
+        }
+
+        Set<String> evidenceTokens =
+                new LinkedHashSet<>(
+                        tokens(
+                                evidenceCorpus
+                        )
+                );
+
+        Set<String> jobTokens =
+                new LinkedHashSet<>(
+                        tokens(
+                                jobCorpus
+                        )
+                );
+
+        /*
+         * Nếu một content token:
+         *
+         * 1. xuất hiện trong rewritten CV,
+         * 2. chưa có trong candidate evidence,
+         * 3. lại xuất hiện trong JD,
+         *
+         * thì có khả năng cao model đang copy JD
+         * thay vì rewrite candidate truth.
+         */
+        for (
+                String token
+                : tokens(
+                suggested
+        )
+        ) {
+
+            if (token.isBlank()
+                    || JOB_COPY_IGNORED_TOKENS
+                    .contains(
+                            token
+                    )
+                    || evidenceTokens
+                    .contains(
+                            token
+                    )) {
+
+                continue;
+            }
+
+            if (jobTokens.contains(
+                    token
+            )) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String jobCorpus(
+            NormalizedJob job
+    ) {
+        StringBuilder builder =
+                new StringBuilder();
+
+        appendCorpus(
+                builder,
+                job.getTitle()
+        );
+
+        appendCorpus(
+                builder,
+                job.getCompanyName()
+        );
+
+        appendCorpus(
+                builder,
+                job.getLocationText()
+        );
+
+        appendCorpus(
+                builder,
+                job.getDescriptionText()
+        );
+
+        appendCorpus(
+                builder,
+                job.getRequirementsText()
+        );
+
+        for (
+                String skill
+                : safeList(
+                job.getSkills()
+        )
+        ) {
+
+            appendCorpus(
+                    builder,
+                    skill
+            );
+        }
+
+        for (
+                String location
+                : safeList(
+                job.getLocations()
+        )
+        ) {
+
+            appendCorpus(
+                    builder,
+                    location
+            );
+        }
+
+        return builder.toString();
+    }
+
+    private void appendCorpus(
+            StringBuilder builder,
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+
+            return;
+        }
+
+        if (builder.length() > 0) {
+
+            builder.append(
+                    ' '
+            );
+        }
+
+        builder.append(
+                value
+        );
+    }
+
     private boolean newlyExplicitSkillsAreTracked(
             SuggestionItem suggestion,
             CvEvidenceService.EvidenceMap evidenceMap,
@@ -617,10 +1113,12 @@ public class CvRewriteSafetyGuard {
         Set<String> targetSkillKeys =
                 new LinkedHashSet<>();
 
-        for (String targetSkill :
-                safeList(
-                        suggestion.targetSkills()
-                )) {
+        for (
+                String targetSkill
+                : safeList(
+                suggestion.targetSkills()
+        )
+        ) {
 
             if (targetSkill == null
                     || targetSkill.isBlank()) {
@@ -648,45 +1146,59 @@ public class CvRewriteSafetyGuard {
         Map<String, String> watchedSkills =
                 new HashMap<>();
 
-        if (evidenceMap.items() != null) {
+        /*
+         * Watch mọi skill/tool/equipment
+         * đã tồn tại trong CandidateProfile.
+         */
+        for (
+                EvidenceItem item
+                : safeList(
+                evidenceMap.items()
+        )
+        ) {
 
-            for (EvidenceItem item :
-                    evidenceMap.items()) {
+            if (item == null
+                    || !isSkillEvidence(
+                    item
+            )
+                    || item.canonicalSkillKey() == null
+                    || item.canonicalSkillKey().isBlank()
+                    || item.text() == null
+                    || item.text().isBlank()) {
 
-                if (item != null
-                        && isSkillEvidence(
-                        item
-                )
-                        && item.canonicalSkillKey()
-                        != null
-                        && !item
-                        .canonicalSkillKey()
-                        .isBlank()
-                        && item.text() != null
-                        && !item.text().isBlank()) {
+                continue;
+            }
 
-                    String phrase =
-                            compact(
-                                    item.text()
-                            );
+            String phrase =
+                    compact(
+                            item.text()
+                    );
 
-                    if (!phrase.isBlank()) {
+            if (!phrase.isBlank()) {
 
-                        watchedSkills.putIfAbsent(
+                watchedSkills
+                        .putIfAbsent(
                                 phrase,
                                 item.canonicalSkillKey()
                         );
-                    }
-                }
             }
         }
 
+        /*
+         * Watch skill trong JD luôn.
+         *
+         * Nếu AWS chỉ có trong JD rồi AI tự đưa AWS
+         * vào rewrite mà không declare/support target skill,
+         * reject.
+         */
         if (job != null) {
 
-            for (String jobSkill :
-                    safeList(
-                            job.getSkills()
-                    )) {
+            for (
+                    String jobSkill
+                    : safeList(
+                    job.getSkills()
+            )
+            ) {
 
                 if (jobSkill == null
                         || jobSkill.isBlank()) {
@@ -709,10 +1221,11 @@ public class CvRewriteSafetyGuard {
                         && !key.isBlank()
                         && !phrase.isBlank()) {
 
-                    watchedSkills.putIfAbsent(
-                            phrase,
-                            key
-                    );
+                    watchedSkills
+                            .putIfAbsent(
+                                    phrase,
+                                    key
+                            );
                 }
             }
         }
@@ -727,31 +1240,27 @@ public class CvRewriteSafetyGuard {
                         suggestion.suggested()
                 );
 
-        for (Map.Entry<String, String> watched :
-                watchedSkills.entrySet()) {
-
-            String phrase =
-                    watched.getKey();
-
-            String canonicalKey =
-                    watched.getValue();
+        for (
+                Map.Entry<String, String> watched
+                : watchedSkills.entrySet()
+        ) {
 
             boolean existedBefore =
                     containsPhrase(
                             original,
-                            phrase
+                            watched.getKey()
                     );
 
             boolean existsAfter =
                     containsPhrase(
                             suggested,
-                            phrase
+                            watched.getKey()
                     );
 
             if (!existedBefore
                     && existsAfter
                     && !targetSkillKeys.contains(
-                    canonicalKey
+                    watched.getValue()
             )) {
 
                 return false;
@@ -765,17 +1274,19 @@ public class CvRewriteSafetyGuard {
     normalizeClaimGroups(
             Map<String, List<String>> configured
     ) {
-        Map<String, List<String>> result =
-                new LinkedHashMap<>();
-
         if (configured == null) {
+
             return Map.of();
         }
+
+        Map<String, List<String>> result =
+                new LinkedHashMap<>();
 
         for (
                 Map.Entry<String, List<String>> entry
                 : configured.entrySet()
         ) {
+
             if (entry.getKey() == null
                     || entry.getKey().isBlank()) {
 
@@ -785,10 +1296,12 @@ public class CvRewriteSafetyGuard {
             Set<String> normalized =
                     new LinkedHashSet<>();
 
-            for (String phrase :
-                    safeList(
-                            entry.getValue()
-                    )) {
+            for (
+                    String phrase
+                    : safeList(
+                    entry.getValue()
+            )
+            ) {
 
                 String value =
                         compact(
@@ -809,7 +1322,6 @@ public class CvRewriteSafetyGuard {
                         entry
                                 .getKey()
                                 .trim(),
-
                         List.copyOf(
                                 normalized
                         )
@@ -829,8 +1341,10 @@ public class CvRewriteSafetyGuard {
         Map<String, Set<EvidenceKind>> result =
                 new LinkedHashMap<>();
 
-        for (String group :
-                highRiskClaimGroups.keySet()) {
+        for (
+                String group
+                : highRiskClaimGroups.keySet()
+        ) {
 
             Set<EvidenceKind> kinds =
                     taxonomy
@@ -861,8 +1375,10 @@ public class CvRewriteSafetyGuard {
         Map<String, Set<String>> result =
                 new LinkedHashMap<>();
 
-        for (String group :
-                highRiskClaimGroups.keySet()) {
+        for (
+                String group
+                : highRiskClaimGroups.keySet()
+        ) {
 
             Set<String> configured =
                     taxonomy
@@ -871,27 +1387,34 @@ public class CvRewriteSafetyGuard {
                             );
 
             if (configured.isEmpty()) {
+
                 continue;
             }
 
             Set<String> normalized =
                     new LinkedHashSet<>();
 
-            for (String token : configured) {
+            for (
+                    String token
+                    : configured
+            ) {
 
-                String compact =
+                String value =
                         compact(
                                 token
                         );
 
-                if (compact.isBlank()) {
+                if (value.isBlank()) {
+
                     continue;
                 }
 
-                for (String part :
-                        compact.split(
-                                " "
-                        )) {
+                for (
+                        String part
+                        : value.split(
+                        " "
+                )
+                ) {
 
                     if (!part.isBlank()) {
 
@@ -918,15 +1441,18 @@ public class CvRewriteSafetyGuard {
         );
     }
 
-    private Set<String> normalizeCompanionIdentityGroups(
+    private Set<String>
+    normalizeCompanionIdentityGroups(
             CvRewriteSafetyTaxonomyProperties taxonomy
     ) {
         Set<String> result =
                 new LinkedHashSet<>();
 
-        for (String group :
-                taxonomy
-                        .getCompanionIdentityRequiredGroups()) {
+        for (
+                String group
+                : taxonomy
+                .getCompanionIdentityRequiredGroups()
+        ) {
 
             if (group == null
                     || group.isBlank()) {
@@ -937,9 +1463,10 @@ public class CvRewriteSafetyGuard {
             String normalized =
                     group.trim();
 
-            if (highRiskClaimGroups.containsKey(
-                    normalized
-            )
+            if (highRiskClaimGroups
+                    .containsKey(
+                            normalized
+                    )
                     && requiredEvidenceKindsByGroup
                     .containsKey(
                             normalized
@@ -978,7 +1505,10 @@ public class CvRewriteSafetyGuard {
                                 : original
                 );
 
-        for (EvidenceItem item : evidence) {
+        for (
+                EvidenceItem item
+                : evidence
+        ) {
 
             if (item != null
                     && item.text() != null
@@ -986,7 +1516,9 @@ public class CvRewriteSafetyGuard {
 
                 builder.append(
                         ' '
-                ).append(
+                );
+
+                builder.append(
                         item.text()
                 );
             }
@@ -995,17 +1527,19 @@ public class CvRewriteSafetyGuard {
         return builder.toString();
     }
 
-    private Map<String, EvidenceItem> indexEvidence(
+    private Map<String, EvidenceItem>
+    indexEvidence(
             List<EvidenceItem> items
     ) {
         Map<String, EvidenceItem> result =
                 new HashMap<>();
 
-        if (items == null) {
-            return result;
-        }
-
-        for (EvidenceItem item : items) {
+        for (
+                EvidenceItem item
+                : safeList(
+                items
+        )
+        ) {
 
             if (item != null
                     && item.id() != null
@@ -1050,6 +1584,100 @@ public class CvRewriteSafetyGuard {
         return result;
     }
 
+    private Map<String, Integer> tokenCounts(
+            String compactText,
+            Set<String> ignoredTokens
+    ) {
+        Map<String, Integer> result =
+                new HashMap<>();
+
+        for (
+                String token
+                : tokens(
+                compactText
+        )
+        ) {
+
+            if (token.isBlank()
+                    || ignoredTokens.contains(
+                    token
+            )) {
+
+                continue;
+            }
+
+            result.merge(
+                    token,
+                    1,
+                    Integer::sum
+            );
+        }
+
+        return result;
+    }
+
+    private List<String> tokens(
+            String compactText
+    ) {
+        if (compactText == null
+                || compactText.isBlank()) {
+
+            return List.of();
+        }
+
+        return List.of(
+                compactText.split(
+                        " "
+                )
+        );
+    }
+
+    private int countPhraseOccurrences(
+            String compactText,
+            String compactPhrase
+    ) {
+        if (compactText == null
+                || compactText.isBlank()
+                || compactPhrase == null
+                || compactPhrase.isBlank()) {
+
+            return 0;
+        }
+
+        String haystack =
+                " "
+                        + compactText
+                        + " ";
+
+        String needle =
+                " "
+                        + compactPhrase
+                        + " ";
+
+        int count = 0;
+        int fromIndex = 0;
+
+        while (true) {
+
+            int index =
+                    haystack.indexOf(
+                            needle,
+                            fromIndex
+                    );
+
+            if (index < 0) {
+
+                return count;
+            }
+
+            count++;
+
+            fromIndex =
+                    index
+                            + needle.length();
+        }
+    }
+
     private boolean containsPhrase(
             String compactText,
             String compactPhrase
@@ -1062,12 +1690,15 @@ public class CvRewriteSafetyGuard {
             return false;
         }
 
-        return (" " + compactText + " ")
-                .contains(
-                        " "
-                                + compactPhrase
-                                + " "
-                );
+        return (
+                " "
+                        + compactText
+                        + " "
+        ).contains(
+                " "
+                        + compactPhrase
+                        + " "
+        );
     }
 
     private String compact(
@@ -1121,16 +1752,18 @@ public class CvRewriteSafetyGuard {
                         );
 
         normalized =
-                normalized.trim();
+                normalized
+                        .trim();
 
-        return normalized.replaceAll(
-                "\\s+",
-                " "
-        );
+        return normalized
+                .replaceAll(
+                        "\\s+",
+                        " "
+                );
     }
 
-    private List<String> safeList(
-            List<String> values
+    private <T> List<T> safeList(
+            List<T> values
     ) {
         return values == null
                 ? List.of()

@@ -22,20 +22,11 @@ import java.util.Objects;
 @Service
 public class CvTailoringPreviewService {
 
-    private final CvTailoringDraftService
-            draftService;
-
-    private final HybridMatchingService
-            hybridMatchingService;
-
-    private final CandidateEmbeddingGenerator
-            candidateEmbeddingGenerator;
-
-    private final MatchingEvaluationService
-            matchingEvaluationService;
-
-    private final MatchingProperties
-            matchingProperties;
+    private final CvTailoringDraftService draftService;
+    private final HybridMatchingService hybridMatchingService;
+    private final CandidateEmbeddingGenerator candidateEmbeddingGenerator;
+    private final MatchingEvaluationService matchingEvaluationService;
+    private final MatchingProperties matchingProperties;
 
     public CvTailoringPreviewService(
             CvTailoringDraftService draftService,
@@ -91,164 +82,234 @@ public class CvTailoringPreviewService {
                 "analysisId"
         );
 
-        /*
-         * Phase 2:
-         *
-         * analysis ownership
-         * + profile unchanged
-         * + accepted IDs only
-         * + evidence revalidation
-         * + temporary CandidateProfile
-         */
-        CvTailoringDraftService
-                .TemporaryDraft draft =
-                draftService
-                        .createTemporaryDraft(
-                                request.analysisId(),
-                                candidateProfileId,
-                                normalizedJobId,
-                                ownerUserId,
-                                request
-                                        .acceptedSuggestionIds()
-                        );
+        CvTailoringDraftService.TemporaryDraft draft =
+                draftService.createTemporaryDraft(
+                        request.analysisId(),
+                        candidateProfileId,
+                        normalizedJobId,
+                        ownerUserId,
+                        request.acceptedSuggestionIds()
+                );
 
-        /*
-         * Before phải vẫn là EXACT matching run
-         * được dùng khi Analyze.
-         */
-        MatchingRunResult beforeRun =
+        MatchingRunResult baselineRun =
                 loadCurrentMatchingRun(
                         candidateProfileId,
                         ownerUserId
                 );
 
-        assertSameBaseline(
-                draft.analysis(),
-                beforeRun
-        );
-
-        MatchResult beforeMatch =
-                beforeRun
-                        .results()
+        MatchResult baselineMatch =
+                baselineRun.results()
                         .stream()
-                        .filter(
-                                Objects::nonNull
-                        )
+                        .filter(Objects::nonNull)
                         .filter(
                                 result ->
                                         normalizedJobId.equals(
-                                                result
-                                                        .getNormalizedJobId()
+                                                result.getNormalizedJobId()
                                         )
                         )
                         .findFirst()
                         .orElseThrow(
-                                () ->
-                                        new ResponseStatusException(
-                                                HttpStatus.CONFLICT,
-                                                "Selected job is no longer part of the current matching result. Analyze again before previewing."
-                                        )
+                                () -> new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Selected job is no longer part "
+                                                + "of the current matching result. "
+                                                + "Analyze again before previewing."
+                                )
                         );
 
-        /*
-         * Generate vector trực tiếp từ Temporary CandidateProfile.
-         *
-         * Không persist CandidateEmbedding.
-         */
-        CandidateEmbeddingGenerator
-                .GeneratedCandidateEmbedding generated =
-                candidateEmbeddingGenerator
-                        .generate(
-                                draft
-                                        .temporaryProfile()
-                        );
-
-        assertCompatibleTransientEmbedding(
-                beforeMatch,
-                generated
+        assertSameBaseline(
+                draft.analysis(),
+                baselineRun,
+                baselineMatch
         );
 
         /*
-         * REAL matching evaluation.
+         * Legacy analysis:
          *
-         * MatchingEvaluationService cũng là service
-         * mà normal HybridMatchingService sử dụng.
+         * Context được tạo từ MatchResult cũ không có
+         * generatedAt thì không thể xác định exact matching run.
+         *
+         * Giữ behavior cũ cho những context này để:
+         *
+         * - dữ liệu cũ vẫn dùng được
+         * - rolling deployment không làm preview chết
+         * - test fixtures cũ vẫn đúng
+         *
+         * Fresh analyses từ production MatchingService có
+         * generatedAt và sẽ luôn đi strict path phía dưới.
          */
-        MatchingEvaluationService
-                .EvaluationResult afterEvaluation =
-                matchingEvaluationService
-                        .evaluate(
-                                draft
-                                        .temporaryProfile(),
+        if (draft.analysis().matchingGeneratedAt() == null) {
+            return previewLegacyContext(
+                    candidateProfileId,
+                    normalizedJobId,
+                    draft,
+                    baselineMatch
+            );
+        }
 
-                                generated
-                                        .vector(),
+        /*
+         * Strict path:
+         *
+         * Generate embedding cho cả original và tailored CV.
+         * Sau đó evaluate hai profile cùng thời điểm để tránh
+         * lấy score persist cũ đem so với score mới.
+         */
+        CandidateEmbeddingGenerator.GeneratedCandidateEmbedding
+                originalEmbedding =
+                candidateEmbeddingGenerator.generate(
+                        draft.originalProfile()
+                );
 
-                                generated
-                                        .embeddingVersion()
-                        );
+        assertCompatibleTransientEmbedding(
+                baselineMatch,
+                originalEmbedding
+        );
+
+        CandidateEmbeddingGenerator.GeneratedCandidateEmbedding
+                temporaryEmbedding;
+
+        if (draft.appliedSuggestionIds().isEmpty()) {
+            temporaryEmbedding =
+                    originalEmbedding;
+        } else {
+            temporaryEmbedding =
+                    candidateEmbeddingGenerator.generate(
+                            draft.temporaryProfile()
+                    );
+
+            assertCompatibleTransientEmbedding(
+                    baselineMatch,
+                    temporaryEmbedding
+            );
+
+            assertSameEmbeddingFamily(
+                    originalEmbedding,
+                    temporaryEmbedding
+            );
+        }
+
+        MatchingEvaluationService.EvaluationResult
+                beforeEvaluation =
+                matchingEvaluationService.evaluate(
+                        draft.originalProfile(),
+                        originalEmbedding.vector(),
+                        originalEmbedding.embeddingVersion()
+                );
+
+        ScoreSnapshot before =
+                toEvaluationSnapshot(
+                        normalizedJobId,
+                        beforeEvaluation,
+                        "original CV"
+                );
+
+        MatchingEvaluationService.EvaluationResult
+                afterEvaluation;
+
+        /*
+         * Không chọn suggestion nào:
+         *
+         * before và after phải chính xác giống nhau.
+         * Không chạy lại lần hai để tránh environmental drift.
+         */
+        if (draft.appliedSuggestionIds().isEmpty()) {
+            afterEvaluation =
+                    beforeEvaluation;
+        } else {
+            afterEvaluation =
+                    matchingEvaluationService.evaluate(
+                            draft.temporaryProfile(),
+                            temporaryEmbedding.vector(),
+                            temporaryEmbedding.embeddingVersion()
+                    );
+        }
 
         ScoreSnapshot after =
-                toAfterSnapshot(
+                toEvaluationSnapshot(
                         normalizedJobId,
-                        afterEvaluation
+                        afterEvaluation,
+                        "tailored CV"
                 );
 
         return new CvTailoringPreviewResponse(
-                draft
-                        .analysis()
-                        .analysisId(),
-
+                draft.analysis().analysisId(),
                 candidateProfileId,
-
                 normalizedJobId,
-
-                draft
-                        .analysis()
-                        .rankingVersion(),
-
-                generated
-                        .embeddingVersion(),
-
-                draft
-                        .appliedSuggestionIds(),
-
-                toBeforeSnapshot(
-                        beforeMatch
-                ),
-
+                draft.analysis().rankingVersion(),
+                temporaryEmbedding.embeddingVersion(),
+                draft.appliedSuggestionIds(),
+                before,
                 after,
-
-                afterEvaluation
-                        .retrievedCount(),
-
-                afterEvaluation
-                        .hydratedCount()
+                afterEvaluation.retrievedCount(),
+                afterEvaluation.hydratedCount()
         );
     }
 
-    private MatchingRunResult
-    loadCurrentMatchingRun(
+    /*
+     * Backward-compatible path dành riêng cho analysis context
+     * được tạo trước khi exact matching-run metadata tồn tại.
+     */
+    private CvTailoringPreviewResponse previewLegacyContext(
+            String candidateProfileId,
+            String normalizedJobId,
+            CvTailoringDraftService.TemporaryDraft draft,
+            MatchResult baselineMatch
+    ) {
+        CandidateEmbeddingGenerator.GeneratedCandidateEmbedding
+                generated =
+                candidateEmbeddingGenerator.generate(
+                        draft.temporaryProfile()
+                );
+
+        assertCompatibleTransientEmbedding(
+                baselineMatch,
+                generated
+        );
+
+        MatchingEvaluationService.EvaluationResult
+                afterEvaluation =
+                matchingEvaluationService.evaluate(
+                        draft.temporaryProfile(),
+                        generated.vector(),
+                        generated.embeddingVersion()
+                );
+
+        ScoreSnapshot after =
+                toEvaluationSnapshot(
+                        normalizedJobId,
+                        afterEvaluation,
+                        "tailored CV"
+                );
+
+        return new CvTailoringPreviewResponse(
+                draft.analysis().analysisId(),
+                candidateProfileId,
+                normalizedJobId,
+                draft.analysis().rankingVersion(),
+                generated.embeddingVersion(),
+                draft.appliedSuggestionIds(),
+                toPersistedBaselineSnapshot(
+                        baselineMatch
+                ),
+                after,
+                afterEvaluation.retrievedCount(),
+                afterEvaluation.hydratedCount()
+        );
+    }
+
+    private MatchingRunResult loadCurrentMatchingRun(
             String candidateProfileId,
             String ownerUserId
     ) {
         try {
+            return hybridMatchingService.getCurrent(
+                    candidateProfileId,
+                    ownerUserId
+            );
 
-            return hybridMatchingService
-                    .getCurrent(
-                            candidateProfileId,
-                            ownerUserId
-                    );
-
-        } catch (
-                MatchingPreconditionException exception
-        ) {
-
+        } catch (MatchingPreconditionException exception) {
             HttpStatus status =
-                    switch (
-                            exception.getReason()
-                            ) {
-
+                    switch (exception.getReason()) {
                         case AUTHENTICATION_REQUIRED ->
                                 HttpStatus.UNAUTHORIZED;
 
@@ -272,39 +333,60 @@ public class CvTailoringPreviewService {
 
     private void assertSameBaseline(
             CvTailoringAnalysisStore.AnalysisContext context,
-            MatchingRunResult beforeRun
+            MatchingRunResult currentRun,
+            MatchResult currentTargetMatch
     ) {
-        boolean sameRun =
+        boolean sameLogicalRun =
                 Objects.equals(
-                        context
-                                .candidateEmbeddingId(),
-
-                        beforeRun
-                                .candidateEmbeddingId()
+                        context.candidateEmbeddingId(),
+                        currentRun.candidateEmbeddingId()
                 )
-
                         && Objects.equals(
-                        context
-                                .rankingVersion(),
-
-                        beforeRun
-                                .rankingVersion()
+                        context.rankingVersion(),
+                        currentRun.rankingVersion()
                 );
 
-        if (!sameRun) {
+        if (!sameLogicalRun) {
+            throw baselineChanged();
+        }
 
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Matching result changed after CV tailoring analysis. Analyze again before previewing."
-            );
+        /*
+         * Context mới bind thêm generatedAt.
+         *
+         * Vì force matching có thể tạo run mới nhưng vẫn giữ:
+         *
+         * candidateEmbeddingId
+         * rankingVersion
+         *
+         * nên generatedAt giúp phân biệt exact run.
+         */
+        if (context.matchingGeneratedAt() != null
+                && !Objects.equals(
+                context.matchingGeneratedAt(),
+                currentTargetMatch.getGeneratedAt()
+        )) {
+
+            throw baselineChanged();
         }
     }
 
+    private ResponseStatusException baselineChanged() {
+        return new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Matching result changed after CV tailoring analysis. "
+                        + "Analyze again before previewing."
+        );
+    }
+
     private void assertCompatibleTransientEmbedding(
-            MatchResult beforeMatch,
-            CandidateEmbeddingGenerator
-                    .GeneratedCandidateEmbedding generated
+            MatchResult baselineMatch,
+            CandidateEmbeddingGenerator.GeneratedCandidateEmbedding generated
     ) {
+        Objects.requireNonNull(
+                generated,
+                "generated candidate embedding must not be null"
+        );
+
         String requiredCandidateTextVersion =
                 matchingProperties
                         .getCompatibility()
@@ -317,146 +399,132 @@ public class CvTailoringPreviewService {
 
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Temporary candidate embedding text version is not compatible with the matching engine"
+                    "Temporary candidate embedding text version "
+                            + "is not compatible with the matching engine"
             );
         }
 
-        if (beforeMatch
-                .getCandidateTextVersion()
-                != null
-                && !beforeMatch
+        if (baselineMatch.getCandidateTextVersion() != null
+                && !baselineMatch
                 .getCandidateTextVersion()
                 .isBlank()
-
                 && !Objects.equals(
-                beforeMatch
-                        .getCandidateTextVersion(),
-
-                generated
-                        .textVersion()
+                baselineMatch.getCandidateTextVersion(),
+                generated.textVersion()
         )) {
 
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Candidate embedding text version changed after analysis. Re-embed and analyze again."
+                    "Candidate embedding text version changed "
+                            + "after analysis. Re-embed and analyze again."
             );
         }
 
-        /*
-         * Before và After phải dùng cùng embedding model.
-         *
-         * Nếu model config đổi giữa Analyze và Preview,
-         * comparison không còn apples-to-apples.
-         */
-        if (beforeMatch
-                .getEmbeddingVersion()
-                != null
-                && !beforeMatch
+        if (baselineMatch.getEmbeddingVersion() != null
+                && !baselineMatch
                 .getEmbeddingVersion()
                 .isBlank()
-
                 && !Objects.equals(
-                beforeMatch
-                        .getEmbeddingVersion(),
-
-                generated
-                        .embeddingVersion()
+                baselineMatch.getEmbeddingVersion(),
+                generated.embeddingVersion()
         )) {
 
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Embedding model version changed after analysis. Re-run candidate embedding and matching before previewing."
+                    "Embedding model version changed after analysis. "
+                            + "Re-run candidate embedding and matching "
+                            + "before previewing."
             );
         }
     }
 
-    private ScoreSnapshot toBeforeSnapshot(
+    private void assertSameEmbeddingFamily(
+            CandidateEmbeddingGenerator.GeneratedCandidateEmbedding original,
+            CandidateEmbeddingGenerator.GeneratedCandidateEmbedding tailored
+    ) {
+        boolean sameFamily =
+                Objects.equals(
+                        original.embeddingVersion(),
+                        tailored.embeddingVersion()
+                )
+                        && Objects.equals(
+                        original.textVersion(),
+                        tailored.textVersion()
+                )
+                        && original.dimension()
+                        == tailored.dimension();
+
+        if (!sameFamily) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Embedding configuration changed while generating "
+                            + "the tailoring preview. "
+                            + "Analyze again before previewing."
+            );
+        }
+    }
+
+    private ScoreSnapshot toPersistedBaselineSnapshot(
             MatchResult match
     ) {
         return new ScoreSnapshot(
                 PreviewStatus.MATCHED,
-
                 match.getRank(),
-
                 match.getFinalScore(),
-
                 match.getSemanticScore(),
-
                 match.getSkillScore(),
-
                 match.getSeniorityScore(),
-
                 match.getLocationScore(),
-
                 match.getFreshnessScore(),
-
                 match.getSkillKnown(),
-
                 match.getSeniorityKnown(),
-
                 match.getLocationKnown(),
-
                 match.getFreshnessKnown(),
-
                 match.getMatchedSkills(),
-
                 match.getMissingSkills(),
-
                 null
         );
     }
 
-    private ScoreSnapshot toAfterSnapshot(
+    private ScoreSnapshot toEvaluationSnapshot(
             String normalizedJobId,
-            MatchingEvaluationService
-                    .EvaluationResult evaluation
+            MatchingEvaluationService.EvaluationResult evaluation,
+            String profileLabel
     ) {
-        /*
-         * Job rớt khỏi Qdrant candidate pool.
-         *
-         * Không invent pair score.
-         */
-        if (!evaluation.wasRetrieved(
-                normalizedJobId
-        )) {
+        Objects.requireNonNull(
+                evaluation,
+                "evaluation must not be null"
+        );
 
-            return emptyAfterSnapshot(
+        if (!evaluation.wasRetrieved(normalizedJobId)) {
+            return emptySnapshot(
                     PreviewStatus.NOT_RETRIEVED,
-
-                    "The selected job no longer appears in the current Qdrant candidate pool for the tailored CV."
+                    "The selected job does not appear in "
+                            + "the current Qdrant candidate pool for the "
+                            + profileLabel
+                            + "."
             );
         }
 
         HybridRankingService.RankedJob ranked =
                 evaluation
-                        .findRankedJob(
-                                normalizedJobId
-                        )
-                        .orElse(
-                                null
-                        );
+                        .findRankedJob(normalizedJobId)
+                        .orElse(null);
 
-        /*
-         * Job có trong retrieval nhưng không nằm
-         * trong final production result.
-         *
-         * Có thể do:
-         *
-         * eligibility
-         * acceptance
-         * result-limit
-         * orphan job hydration
-         */
         if (ranked == null) {
-
             String reason =
-                    evaluation.wasHydrated(
-                            normalizedJobId
-                    )
-                            ? "The selected job was retrieved, but it did not survive the existing eligibility, acceptance, or result-limit rules."
-                            : "The selected job was retrieved from Qdrant but could not be hydrated from the normalized job store.";
+                    evaluation.wasHydrated(normalizedJobId)
+                            ? "The selected job was retrieved for the "
+                            + profileLabel
+                            + ", but it did not survive the existing "
+                            + "eligibility, acceptance, or result-limit rules."
+                            : "The selected job was retrieved from Qdrant "
+                            + "for the "
+                            + profileLabel
+                            + " but could not be hydrated from "
+                            + "the normalized job store.";
 
-            return emptyAfterSnapshot(
+            return emptySnapshot(
                     PreviewStatus.NOT_MATCHED,
                     reason
             );
@@ -464,64 +532,29 @@ public class CvTailoringPreviewService {
 
         return new ScoreSnapshot(
                 PreviewStatus.MATCHED,
-
                 ranked.rank(),
-
-                ranked
-                        .score()
-                        .finalScore(),
-
-                ranked
-                        .score()
-                        .semanticScore(),
-
-                ranked
-                        .score()
-                        .skillScore(),
-
-                ranked
-                        .score()
-                        .seniorityScore(),
-
-                ranked
-                        .score()
-                        .locationScore(),
-
-                ranked
-                        .score()
-                        .freshnessScore(),
-
-                ranked
-                        .score()
-                        .skillKnown(),
-
-                ranked
-                        .score()
-                        .seniorityKnown(),
-
-                ranked
-                        .score()
-                        .locationKnown(),
-
-                ranked
-                        .score()
-                        .freshnessKnown(),
-
+                ranked.score().finalScore(),
+                ranked.score().semanticScore(),
+                ranked.score().skillScore(),
+                ranked.score().seniorityScore(),
+                ranked.score().locationScore(),
+                ranked.score().freshnessScore(),
+                ranked.score().skillKnown(),
+                ranked.score().seniorityKnown(),
+                ranked.score().locationKnown(),
+                ranked.score().freshnessKnown(),
                 ranked.matchedSkills(),
-
                 ranked.missingSkills(),
-
                 null
         );
     }
 
-    private ScoreSnapshot emptyAfterSnapshot(
+    private ScoreSnapshot emptySnapshot(
             PreviewStatus status,
             String reason
     ) {
         return new ScoreSnapshot(
                 status,
-
                 null,
                 null,
                 null,
@@ -529,15 +562,12 @@ public class CvTailoringPreviewService {
                 null,
                 null,
                 null,
-
                 null,
                 null,
                 null,
                 null,
-
                 List.of(),
                 List.of(),
-
                 reason
         );
     }
@@ -551,8 +581,7 @@ public class CvTailoringPreviewService {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    fieldName
-                            + " must not be blank"
+                    fieldName + " must not be blank"
             );
         }
     }
