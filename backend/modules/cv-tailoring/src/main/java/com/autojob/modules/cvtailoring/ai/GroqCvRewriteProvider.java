@@ -4,6 +4,7 @@ import com.autojob.modules.cvtailoring.config.CvTailoringAiProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @Component
-@Order(20)
+@Order(10)
 public class GroqCvRewriteProvider
         implements CvRewriteProvider {
 
@@ -30,6 +31,7 @@ public class GroqCvRewriteProvider
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
+    @Autowired
     public GroqCvRewriteProvider(
             CvTailoringAiProperties properties,
             ObjectMapper objectMapper

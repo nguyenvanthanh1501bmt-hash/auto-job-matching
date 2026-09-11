@@ -87,6 +87,7 @@ public class CvRewriteProviderRouter {
                     || isCoolingDown(
                     provider.name()
             )) {
+
                 continue;
             }
 
@@ -120,6 +121,7 @@ public class CvRewriteProviderRouter {
         int transientRetries = 0;
 
         while (true) {
+
             try {
                 RewriteResponse response =
                         provider.generate(
@@ -130,6 +132,7 @@ public class CvRewriteProviderRouter {
                         && usableResponse.test(
                         response
                 )) {
+
                     return Optional.of(
                             response
                     );
@@ -216,6 +219,7 @@ public class CvRewriteProviderRouter {
         if (shouldCooldown(
                 exception
         )) {
+
             cooldownUntil.put(
                     provider.name(),
                     Instant.now(
@@ -238,13 +242,20 @@ public class CvRewriteProviderRouter {
          *
          * 5xx/network:
          * -> retry exactly once before reaching here.
+         *
+         * detail is deliberately restricted to provider-generated
+         * exception text. GeminiCvRewriteProvider only places safe
+         * status/token metadata in INVALID_RESPONSE messages.
          */
         log.warn(
                 "CV rewrite provider failed "
-                        + "provider={} reason={} status={}",
+                        + "provider={} reason={} status={} detail={}",
                 provider.name(),
                 exception.reason(),
-                exception.statusCode()
+                exception.statusCode(),
+                safeDetail(
+                        exception.getMessage()
+                )
         );
     }
 
@@ -277,6 +288,7 @@ public class CvRewriteProviderRouter {
         if (!now.isBefore(
                 until
         )) {
+
             cooldownUntil.remove(
                     providerName,
                     until
@@ -286,5 +298,36 @@ public class CvRewriteProviderRouter {
         }
 
         return true;
+    }
+
+    private String safeDetail(
+            String message
+    ) {
+        if (message == null
+                || message.isBlank()) {
+
+            return "n/a";
+        }
+
+        String compact =
+                message
+                        .replace(
+                                '\n',
+                                ' '
+                        )
+                        .replace(
+                                '\r',
+                                ' '
+                        )
+                        .trim();
+
+        if (compact.length() <= 500) {
+            return compact;
+        }
+
+        return compact.substring(
+                0,
+                500
+        ) + "...";
     }
 }

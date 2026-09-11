@@ -4,6 +4,7 @@ import com.autojob.modules.cvtailoring.config.CvTailoringAiProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @Component
-@Order(10)
+@Order(20)
 public class GeminiCvRewriteProvider
         implements CvRewriteProvider {
 
@@ -30,6 +31,7 @@ public class GeminiCvRewriteProvider
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
+    @Autowired
     public GeminiCvRewriteProvider(
             CvTailoringAiProperties properties,
             ObjectMapper objectMapper
@@ -228,8 +230,8 @@ public class GeminiCvRewriteProvider
                             "text",
                             Map.of(
                                     /*
-                                     * Runtime API expects enum value,
-                                     * not MIME string "application/json".
+                                     * Keep the runtime contract currently
+                                     * verified by this project.
                                      */
                                     "mimeType",
                                     "APPLICATION_JSON",
@@ -322,56 +324,79 @@ public class GeminiCvRewriteProvider
             );
         }
 
+        JsonNode root;
+
         try {
-            JsonNode root =
+            root =
                     objectMapper
                             .readTree(
                                     responseBody
                             );
+        } catch (JsonProcessingException exception) {
 
-            JsonNode candidates =
-                    root.path(
-                            "candidates"
-                    );
+            throw new ProviderException(
+                    FailureReason.INVALID_RESPONSE,
+                    null,
+                    "Gemini returned malformed response JSON",
+                    exception
+            );
+        }
 
-            if (!candidates.isArray()
-                    || candidates.isEmpty()) {
-
-                throw invalidResponse(
-                        "Gemini response did not contain candidates"
+        JsonNode candidates =
+                root.path(
+                        "candidates"
                 );
-            }
 
-            JsonNode parts =
-                    candidates
-                            .path(0)
-                            .path("content")
-                            .path("parts");
+        if (!candidates.isArray()
+                || candidates.isEmpty()) {
 
-            if (!parts.isArray()
-                    || parts.isEmpty()) {
+            throw invalidResponse(
+                    "Gemini response did not contain candidates"
+                            + responseDiagnostics(
+                            root,
+                            null
+                    )
+            );
+        }
 
-                throw invalidResponse(
-                        "Gemini response did not contain content parts"
+        JsonNode candidate =
+                candidates.path(0);
+
+        JsonNode parts =
+                candidate
+                        .path("content")
+                        .path("parts");
+
+        if (!parts.isArray()
+                || parts.isEmpty()) {
+
+            throw invalidResponse(
+                    "Gemini response did not contain content parts"
+                            + responseDiagnostics(
+                            root,
+                            candidate
+                    )
+            );
+        }
+
+        String content =
+                extractNonThoughtText(
+                        parts
                 );
-            }
 
-            String content =
-                    parts
-                            .path(0)
-                            .path("text")
-                            .asText(
-                                    null
-                            );
+        if (content == null
+                || content.isBlank()) {
 
-            if (content == null
-                    || content.isBlank()) {
+            throw invalidResponse(
+                    "Gemini response did not contain non-thought text output"
+                            + responseDiagnostics(
+                            root,
+                            candidate
+                    )
+            );
+        }
 
-                throw invalidResponse(
-                        "Gemini response did not contain text output"
-                );
-            }
-
+        try {
             RewriteResponse parsed =
                     objectMapper
                             .readValue(
@@ -384,6 +409,10 @@ public class GeminiCvRewriteProvider
 
                 throw invalidResponse(
                         "Gemini response did not contain suggestions"
+                                + responseDiagnostics(
+                                root,
+                                candidate
+                        )
                 );
             }
 
@@ -398,10 +427,148 @@ public class GeminiCvRewriteProvider
             throw new ProviderException(
                     FailureReason.INVALID_RESPONSE,
                     null,
-                    "Gemini returned malformed structured output",
+                    "Gemini returned malformed structured output"
+                            + responseDiagnostics(
+                            root,
+                            candidate
+                    ),
                     exception
             );
         }
+    }
+
+    private String extractNonThoughtText(
+            JsonNode parts
+    ) {
+        StringBuilder output =
+                new StringBuilder();
+
+        for (JsonNode part : parts) {
+
+            if (part == null
+                    || part.isNull()
+                    || part
+                    .path("thought")
+                    .asBoolean(false)) {
+
+                continue;
+            }
+
+            String text =
+                    part
+                            .path("text")
+                            .asText(null);
+
+            if (text == null
+                    || text.isBlank()) {
+
+                continue;
+            }
+
+            /*
+             * A non-streaming Gemini response will normally
+             * contain a single final text part.
+             *
+             * Concatenating keeps this parser safe if the API
+             * returns multiple non-thought text parts.
+             */
+            output.append(
+                    text
+            );
+        }
+
+        if (output.isEmpty()) {
+            return null;
+        }
+
+        return output.toString();
+    }
+
+    private String responseDiagnostics(
+            JsonNode root,
+            JsonNode candidate
+    ) {
+        String finishReason =
+                candidate == null
+                        ? "unknown"
+                        : candidate
+                        .path("finishReason")
+                        .asText("unknown");
+
+        JsonNode usage =
+                root == null
+                        ? null
+                        : root.path(
+                        "usageMetadata"
+                );
+
+        long promptTokens =
+                tokenCount(
+                        usage,
+                        "promptTokenCount"
+                );
+
+        long candidateTokens =
+                tokenCount(
+                        usage,
+                        "candidatesTokenCount"
+                );
+
+        long thoughtTokens =
+                tokenCount(
+                        usage,
+                        "thoughtsTokenCount"
+                );
+
+        long totalTokens =
+                tokenCount(
+                        usage,
+                        "totalTokenCount"
+                );
+
+        /*
+         * Safe diagnostics only.
+         *
+         * Never include:
+         * - CV text
+         * - JD text
+         * - generated output
+         * - API key
+         */
+        return " [finishReason="
+                + finishReason
+                + ", promptTokens="
+                + promptTokens
+                + ", candidateTokens="
+                + candidateTokens
+                + ", thoughtTokens="
+                + thoughtTokens
+                + ", totalTokens="
+                + totalTokens
+                + "]";
+    }
+
+    private long tokenCount(
+            JsonNode usage,
+            String field
+    ) {
+        if (usage == null
+                || usage.isMissingNode()
+                || usage.isNull()) {
+
+            return -1L;
+        }
+
+        JsonNode value =
+                usage.path(
+                        field
+                );
+
+        if (!value.canConvertToLong()) {
+            return -1L;
+        }
+
+        return value.asLong();
     }
 
     private void ensureSuccess(
@@ -409,6 +576,7 @@ public class GeminiCvRewriteProvider
     ) {
         if (statusCode >= 200
                 && statusCode < 300) {
+
             return;
         }
 
