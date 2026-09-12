@@ -1,414 +1,254 @@
 # Roadmap
 
-## Current milestone
-
-Core MVP backend pipeline hiện đã có:
+AutoJob currently implements the complete MVP flow:
 
 ```text
-job crawler
-→ job normalizer
-→ job embedding
-→ Qdrant
+Job Crawling
+    ↓
+Normalization
+    ↓
+Job Embeddings
 
-CV upload
-→ CV parser
-→ candidate profile
-→ candidate embedding
+CV Upload
+    ↓
+CV Parsing
+    ↓
+Candidate Embedding
 
-candidate
-→ hybrid matching
-→ match_results
+Candidate + Jobs
+    ↓
+Hybrid Matching
+    ↓
+Explainable Results
+    ↓
+CV Tailoring
 ```
 
-Roadmap không còn coi CV parser, candidate embedding hay Matching Engine là chưa triển khai.
+Future work focuses primarily on quality, reliability, observability, and production readiness rather than adding architectural complexity for its own sake.
 
 ---
 
-# 1. Stabilize CV parsing
+## 1. Matching Quality
 
-Current:
+Priority improvements:
 
-```text
-Java ↔ cv-parser-service integrated
-candidate_profiles persisted
-candidate embedding triggered
-real CV Docker verification available
-```
+* expand anonymized evaluation datasets;
+* build stable regression cases;
+* measure ranking quality using metrics such as Precision@K and NDCG;
+* analyze false-positive and false-negative matches;
+* improve skill evidence weighting;
+* improve location and work-mode compatibility;
+* formalize ranking-version evaluation before rollout.
 
-Next:
-
-```text
-expand real-CV regression corpus
-improve education parsing
-improve certification/award section boundaries
-improve multi-column extraction
-improve non-canonical job-title detection
-add more Vietnamese/English seniority regression cases
-```
-
-Seniority principles phải giữ:
-
-```text
-semantic > substring
-current/latest > historical
-structured history > aspiration
-```
+The goal is to make ranking changes measurable rather than subjective.
 
 ---
 
-# 2. Expand Matching automated coverage
+## 2. CV Parsing Quality
 
-Matching runtime đã tồn tại nhưng automated test coverage còn mỏng.
-
-Priority:
+Future parser improvements may include:
 
 ```text
-SemanticScoreNormalizer
-SkillScorer
-SeniorityScorer
-LocationScorer
-FreshnessScorer
-JobEligibilityFilter
-MatchAcceptanceFilter
-HybridRankingService
-HybridMatchingService
+better complex-layout handling
+stronger section detection
+improved project extraction
+better experience-duration calculation
+improved multilingual CV support
+higher-confidence seniority inference
 ```
 
-Create golden regression cases từ real data.
+Parser changes that materially affect candidate representations should continue to use explicit parser versions.
 
 ---
 
-# 3. Matching evaluation dataset
+## 3. Embedding Reliability
 
-Build anonymized evaluation set:
+Planned improvements:
 
-```text
-candidate profile
-expected relevant job families
-known false positives
-known stretch opportunities
-known seniority mismatch
-known location mismatch
-```
+* automatic stale-embedding detection;
+* batch rebuild tooling;
+* failed-embedding retry workflows;
+* reconciliation between MongoDB and Qdrant;
+* safer migration between embedding models or text versions.
 
-Metrics có thể theo dõi:
-
-```text
-Precision@K
-Recall@K
-NDCG
-false-positive rate
-manual relevance label
-```
-
-Không tune ranking chỉ bằng một CV.
+Derived semantic data should remain rebuildable from canonical business data.
 
 ---
 
-# 4. Matching configuration governance
+## 4. CV Tailoring
 
-Current:
-
-```text
-hybrid-v6-balanced-r4
-```
-
-Mỗi thay đổi:
+Potential improvements include:
 
 ```text
-weights
-threshold
-calibration
-acceptance
-skill confidence
+more precise evidence attribution
+improved rewrite quality
+additional provider evaluation
+better suggestion prioritization
+candidate-controlled suggestion acceptance
+persistent tailored CV versions
+export workflows
 ```
 
-phải bump:
+The core safety requirement remains unchanged:
 
-```text
-rankingVersion
-```
-
-để result cũ và result mới không bị lẫn.
+> Tailoring may improve existing evidence but must not invent candidate qualifications.
 
 ---
 
-# 5. Version consistency cleanup
+## 5. Crawler Reliability
 
-Fix remaining config inconsistency:
+Planned improvements:
 
-```text
-docker-compose fallback rule-v1
-vs
-current rule-v2
-```
+* source-specific monitoring;
+* selector-change detection;
+* retry and backoff policies;
+* crawler scheduling;
+* duplicate monitoring;
+* per-source failure metrics;
+* source health reporting.
 
-Target:
-
-```text
-.env.example
-docker-compose.yml
-application.yml
-tests
-```
-
-dùng cùng parser version default.
+Live crawling should remain isolated by source so failures do not affect the complete ingestion pipeline.
 
 ---
 
-# 6. Candidate embedding reliability
+## 6. Observability
 
-Current:
-
-```text
-PROCESSING
-READY
-FAILED
-```
-
-Next:
+Production-oriented observability should include:
 
 ```text
-automatic retry/reconciliation
-metrics
-failure dashboard
-stale embedding reconciliation
-batch rebuild
-```
+structured logs
+request correlation IDs
+pipeline correlation IDs
 
----
-
-# 7. Job embedding reliability
-
-Next:
-
-```text
-reconcile Mongo READY vs Qdrant point
-rebuild missing points
-remove stale/deleted job vectors
-version migration tooling
-```
-
----
-
-# 8. Crawler production hardening
-
-Live route hiện có:
-
-```text
-ITVIEC
-JOBOKO
-TOPDEV
-VIECLAM24H
-```
-
-Next:
-
-```text
-selector monitoring
-per-domain failure metrics
-rate-limit/backoff
-safe scheduler
-dedup verification
-HTML change alerts
-source-specific integration checks
-```
-
-Không bypass:
-
-```text
-CAPTCHA
-login wall
-anti-bot protection
-```
-
----
-
-# 9. Source Discovery
-
-Current Source Discovery chỉ generate common paths:
-
-```text
-/careers
-/jobs
-/tuyen-dung
-/viec-lam
-```
-
-Next:
-
-```text
-HTTP probe
-robots validation
-content classification
-candidate scoring
-approve/reject workflow
-crawler config generation
-```
-
----
-
-# 10. Frontend
-
-Frontend cần hỗ trợ:
-
-```text
-register/login
-CV upload
-parse status
-candidate profile
-matching results
-score explanations
-matched skills
-missing skills
-match tier
-apply URL
-retry/error states
-```
-
-Frontend không tự tính match score.
-
----
-
-# 11. Matching UX
-
-Expose current:
-
-```text
-STRONG
-STRETCH
-POSSIBLE
-EXPLORE
-```
-
-Improve explanation:
-
-```text
-why this job
-matched core skills
-missing key skills
-seniority gap
-location relation
-freshness
-```
-
-Tránh hiển thị finalScore như một xác suất tuyệt đối.
-
----
-
-# 12. AI CV suggestions
-
-Chỉ build sau khi matching evaluation đủ ổn.
-
-Input:
-
-```text
-candidate profile
-selected normalized job
-matching explanation
-```
-
-AI được phép:
-
-```text
-gợi ý wording
-gợi ý keyword có evidence
-gợi ý làm rõ experience
-gợi ý bổ sung measurable detail
-```
-
-AI không được:
-
-```text
-bịa skill
-bịa experience
-bịa company
-bịa achievement
-```
-
----
-
-# 13. Async processing
-
-Hiện Spring events synchronous đủ cho local/MVP.
-
-Chỉ thêm RabbitMQ/Kafka khi có nhu cầu:
-
-```text
-durable retries
-background CV processing
-independent worker scaling
-DLQ
-long-running workflows
-```
-
-Không thêm broker chỉ vì kiến trúc microservice-looking.
-
----
-
-# 14. Observability
-
-Add:
-
-```text
-structured logging
-pipeline correlation id
-parse latency
+crawler latency
+parser latency
 embedding latency
-matching latency
 Qdrant latency
-crawler failure rate
-ranking distribution
-acceptance rate
+matching latency
+
+failure rates
+acceptance rates
+ranking score distributions
+```
+
+Distributed tracing can be introduced when operational complexity justifies it.
+
+---
+
+## 7. Asynchronous Processing
+
+Current Spring pipeline events are synchronous.
+
+Potential future evolution:
+
+```text
+Job collected
+    ↓
+durable queue
+    ↓
+Normalization worker
+    ↓
+Embedding worker
+```
+
+and:
+
+```text
+Candidate profile ready
+    ↓
+durable queue
+    ↓
+Candidate embedding worker
+```
+
+A message broker should be introduced only when requirements such as:
+
+```text
+higher throughput
+independent worker scaling
+durable retries
+failure isolation
+```
+
+make it necessary.
+
+---
+
+## 8. Security Hardening
+
+Before production deployment:
+
+* replace all development credentials;
+* use managed secret storage;
+* define key-rotation procedures;
+* review JWT and refresh-token lifecycle;
+* harden CORS configuration;
+* add security regression testing;
+* review file-upload protections;
+* review rate-limit policies;
+* review frontend token storage strategy.
+
+Development defaults must not be considered production configuration.
+
+---
+
+## 9. Deployment
+
+Future deployment work includes:
+
+```text
+production container images
+CI/CD pipelines
+environment-specific configuration
+database backup strategy
+MinIO/object-storage backup strategy
+Qdrant rebuild strategy
+health and readiness policies
+rolling deployment strategy
+```
+
+Because job and candidate embeddings are derived data, deployment planning should distinguish between:
+
+```text
+canonical business data
+and
+rebuildable semantic indexes
 ```
 
 ---
 
-# 15. Security
+## 10. Frontend
 
-Before production:
+Potential frontend improvements include:
 
-```text
-AUTH_PUBLIC_API_MODE=false
-strong JWT secret
-owner authorization regression tests
-rate-limit tuning
-MinIO credential rotation
-non-default Mongo credentials
-admin endpoint protection
-```
+* stronger loading and error states;
+* richer matching explanations;
+* improved CV workspace;
+* tailored CV editing and export;
+* accessibility review;
+* responsive UI refinement;
+* end-to-end browser testing.
 
 ---
 
-# 16. Definition of core backend complete
+## 11. Engineering Principles
 
-Core backend được coi là ổn khi:
-
-```text
-job pipeline deterministic
-CV pipeline deterministic
-embedding recovery reliable
-matching regression automated
-real-data ranking quality measured
-version migrations documented
-Docker smoke test reproducible
-```
-
-Current architecture đã đi qua giai đoạn skeleton của:
+Future development should continue to preserve the following principles:
 
 ```text
-CV parser integration
-candidate profile
-candidate embedding
-matching
+Prefer explicit versions over hidden behavioral changes.
+
+Prefer measurable ranking improvements over heuristic complexity.
+
+Keep business state separate from derived semantic indexes.
+
+Do not treat semantic similarity as a probability.
+
+Do not fabricate missing candidate information.
+
+Add distributed infrastructure only when operational requirements justify it.
+
+Keep modules independently understandable and testable.
 ```
 
-Focus tiếp theo là:
-
-```text
-quality
-regression coverage
-reliability
-frontend
-production hardening
-```
+The goal is to evolve AutoJob from a strong full-stack MVP into a reliable production platform without losing the current clarity of its architecture.

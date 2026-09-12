@@ -1,219 +1,197 @@
 # Matching Engine
 
-## 1. Status
+The matching engine combines semantic retrieval with structured candidate–job compatibility to produce explainable job recommendations.
 
-Matching Engine hiện đã được triển khai và chạy trong:
-
-```text
-autojob-app
-```
-
-Module:
+Current ranking version:
 
 ```text
-backend/modules/matching
+hybrid-v6-balanced-r7
 ```
 
-Module đã nằm trong:
+## 1. Overview
 
 ```text
-backend/pom.xml
+Candidate Profile
+        +
+READY Candidate Embedding
+        ↓
+Qdrant Retrieval
+        ↓
+Normalized Job Hydration
+        ↓
+Eligibility Filtering
+        ↓
+Semantic Calibration
+        ↓
+Hybrid Scoring
+        ↓
+Acceptance Filtering
+        ↓
+Ranking
+        ↓
+Match Results
 ```
 
-và là dependency của:
+The system intentionally separates **retrieval** from **ranking**.
 
-```text
-backend/autojob-app/pom.xml
-```
+A high vector similarity does not automatically mean that a job is a strong match.
 
 ---
 
-## 2. API
+## 2. Matching API
 
-Run:
+Run matching:
 
-```text
+```http
 POST /api/matching/candidates/{candidateProfileId}
 ```
 
-Force:
+Force recalculation:
 
-```text
+```http
 POST /api/matching/candidates/{candidateProfileId}?force=true
 ```
 
-Read current:
+Read the current result:
 
-```text
+```http
 GET /api/matching/candidates/{candidateProfileId}
 ```
+
+Matching requires authentication and verifies ownership of the candidate profile.
 
 ---
 
 ## 3. Preconditions
 
-Matching cần:
+Before matching can run, AutoJob requires:
 
 ```text
-candidate profile tồn tại
-candidate thuộc owner hiện tại
-READY candidate embedding tồn tại
-candidate textVersion tương thích
-embedding không stale
-embedding vector hợp lệ
+Candidate profile exists
+        ↓
+Candidate belongs to current user
+        ↓
+Candidate embedding exists
+        ↓
+Embedding status = READY
+        ↓
+Embedding version is compatible
+        ↓
+Vector is valid
 ```
 
-Nếu chưa ready, API trả precondition error thay vì tự chạy parse/embed ngầm.
+Matching does not automatically parse CVs or rebuild missing embeddings.
 
 ---
 
-## 4. Flow
+## 4. Retrieval
 
-```text
-CandidateProfile
-        +
-CandidateEmbedding READY
-        |
-        v
-Qdrant retrieval
-        |
-        v
-Mongo hydrate normalized_jobs
-        |
-        v
-Eligibility Filter
-        |
-        v
-Semantic Calibration
-        |
-        v
-Hybrid Scoring
-        |
-        v
-Acceptance Filter
-        |
-        v
-Sort + Limit
-        |
-        v
-match_results
-```
+Qdrant is used to retrieve semantically relevant job candidates.
 
----
-
-## 5. Retrieval configuration
-
-Source:
-
-```text
-configs/matching/ranking.yml
-```
-
-Current:
+Current configuration:
 
 ```yaml
-version: hybrid-v6-balanced-r4
-
-retrieval:
-  candidate-pool-size: 100
-  result-limit: 20
+candidate-pool-size: 100
+result-limit: 20
 ```
 
-Qdrant search filter:
+Current compatibility requirements:
 
 ```text
 normalizationVersion = rule-v4
-embeddingVersion     = candidate embedding version
-textVersion          = job-text-v2
+candidateTextVersion = candidate-text-v2
+jobTextVersion       = job-text-v2
 ```
+
+Retrieval filters incompatible vectors before structured ranking begins.
 
 ---
 
-## 6. Job eligibility
+## 5. Eligibility Filtering
 
-Hard reject trước semantic calibration khi:
+Retrieved jobs may be rejected before ranking if they are no longer valid for the current matching run.
 
-```text
-job missing
-job id missing
-normalization version mismatch
-deadline passed
-postedAt quá cũ
-```
-
-Current max age:
+Examples include:
 
 ```text
-30 days
+Missing job
+Version mismatch
+Expired deadline
+Job older than configured maximum age
+Invalid job metadata
 ```
 
-Hard filter chạy trước ranking để job invalid không làm méo calibration distribution.
+Current freshness configuration:
+
+```text
+Fresh job threshold = 7 days
+Maximum age         = 30 days
+```
+
+Filtering invalid jobs before scoring prevents them from distorting semantic calibration and ranking.
 
 ---
 
-## 7. Semantic calibration
+## 6. Semantic Calibration
 
-Qdrant cosine score không được hiểu trực tiếp là phần trăm match.
+Raw cosine similarity is not treated as a direct match percentage.
 
-Current calibration:
+The matching engine calibrates semantic scores relative to the retrieved candidate pool while preserving an absolute similarity signal.
 
-```text
-p10 → relative lower
-p90 → relative upper
-minimum spread = 0.04
-
-raw floor   = 0.75
-raw ceiling = 0.95
-
-relative weight = 0.65
-```
-
-Final semantic score kết hợp:
+Current configuration includes:
 
 ```text
-relative pool score
-+
-absolute raw cosine score
+Lower percentile = 0.10
+Upper percentile = 0.90
+Minimum spread   = 0.04
+
+Raw floor        = 0.75
+Raw ceiling      = 0.95
+
+Relative weight  = 0.65
 ```
+
+This reduces sensitivity to score distribution differences between candidate profiles.
 
 ---
 
-## 8. Hybrid score
+## 7. Hybrid Scoring
 
-Current weights:
+Current component weights:
 
-```text
-semantic   0.40
-skill      0.40
-seniority  0.10
-location   0.05
-freshness  0.05
-```
+| Component           | Weight |
+| ------------------- | -----: |
+| Semantic relevance  |    40% |
+| Skill compatibility |    40% |
+| Seniority           |    10% |
+| Location            |     5% |
+| Freshness           |     5% |
 
-Formula về nguyên tắc:
+The final score is calculated only from components for which meaningful evidence is available.
+
+Conceptually:
 
 ```text
 weighted known components
-/
-active weights
+─────────────────────────
+active component weights
 ```
 
-Nếu component không có evidence thì weight đó không được ép thành `0.5` và làm sai final score.
+Missing information is therefore not automatically treated as either a perfect match or a complete mismatch.
 
 ---
 
-## 9. Skill score
+## 8. Skill Compatibility
 
-Skill scorer dùng shared skill taxonomy.
-
-Có phân biệt:
+Skill scoring uses the shared taxonomy under:
 
 ```text
-core skill
-generic skill
+configs/taxonomy/
 ```
 
-Generic skills:
+The engine distinguishes between professional skills and secondary skills.
+
+Examples of secondary skills include:
 
 ```text
 communication
@@ -224,243 +202,100 @@ teamwork
 time-management
 ```
 
-Generic-only matching bị cap để soft skills không làm job unrelated leo ranking.
+Secondary skills provide limited supporting evidence and cannot independently produce a strong professional match.
 
-Evidence confidence:
+Candidate skill confidence also depends on where the evidence was found, such as:
 
 ```text
-skills section       1.00
-work experience      1.00
-project              0.65
-profile text         0.55
-scoped text          0.50
-unknown evidence     0.50
+Skills section
+Work experience
+Projects
+Profile text
 ```
 
-Output:
+Matching results expose:
 
 ```text
-skillScore
 matchedSkills
 missingSkills
 ```
 
----
-
-## 10. Seniority score
-
-Seniority scorer dùng:
-
-```text
-candidate seniority
-job seniority
-candidate experienceYears
-job experienceMin
-job experienceMax
-```
-
-Nếu có cả level và years:
-
-```text
-level score      75%
-experience score 25%
-```
-
-Nếu không đủ data:
-
-```text
-0.5 = UNKNOWN/no-decision
-```
-
-Candidate parser seniority là signal chính.
-
-Matching có fallback khi parser trả UNKNOWN.
+Secondary skills are excluded from professional `missingSkills`.
 
 ---
 
-## 11. Location score
+## 9. Seniority
 
-Ưu tiên:
+Seniority matching considers available evidence from both candidate and job data.
+
+Candidate evidence may include:
 
 ```text
-preferredLocations
+Parsed seniority
+Experience years
+Recent job titles
 ```
 
-Nếu candidate không khai preference, scorer có thể fallback về current/contact location.
+Job evidence may include:
 
-Current/home city không được coi như hard preference.
+```text
+Normalized seniority
+Minimum experience
+Maximum experience
+```
 
-Vì vậy candidate sống ở HCM không đồng nghĩa job Hà Nội phải bị reject.
+The scorer distinguishes between known evidence and unknown information instead of relying on title substring matching alone.
 
 ---
 
-## 12. Freshness
+## 10. Acceptance Rules
 
-Fresh:
+Retrieval and ranking do not guarantee that a job will be returned.
 
-```text
-<= 7 days
-→ 1.0
-```
-
-Old:
+Current acceptance thresholds include:
 
 ```text
->= 30 days
-→ 0.0
+Minimum final score    = 0.45
+Minimum semantic score = 0.50
+Minimum skill score    = 0.10
+
+Strong skill score     = 0.70
+Strong semantic score  = 0.70
 ```
 
-Giữa 7 và 30 ngày decay tuyến tính.
+This allows AutoJob to return fewer than the configured result limit when remaining jobs are not sufficiently relevant.
 
 ---
 
-## 13. Acceptance filter
+## 11. Explainability
 
-Current config:
+Each result includes a score breakdown containing:
 
 ```text
-minimum final        0.45
-minimum semantic     0.50
-minimum skill        0.10
-strong skill         0.30
-strong semantic      0.80
-min structured       0.10
+final score
+semantic score
+skill score
+seniority score
+location score
+freshness score
 ```
 
-Logic:
+The response also identifies whether structured components had enough evidence to be considered known.
+
+Additional explanation fields include:
 
 ```text
-baseline final + semantic
-        |
-        v
-strong skill?
-        |
-        + yes -> accept
-        |
-        no
-        v
-structured contradiction?
-        |
-        + yes -> reject
-        |
-        no
-        v
-moderate skill?
-        |
-        + yes -> accept
-        |
-        no
-        v
-strong semantic?
-        |
-        + yes -> accept
-        + no  -> reject
-```
-
-Filter chạy trước `result-limit`.
-
-Nếu chỉ 7 job đủ tốt:
-
-```text
-return 7
-```
-
-không lấy job yếu để lấp đủ 20.
-
----
-
-## 14. Sorting
-
-Primary:
-
-```text
-finalScore DESC
-```
-
-Tie breakers:
-
-```text
-semanticScore DESC
-freshnessScore DESC
-job id
-Qdrant point id
+matchedSkills
+missingSkills
+explanations
+version metadata
 ```
 
 ---
 
-## 15. Persistence
+## 12. Match Tiers
 
-Collection:
-
-```text
-match_results
-```
-
-Mỗi document snapshot:
-
-```text
-candidate identity
-job identity
-job display fields
-version fields
-rank
-score breakdown
-matched skills
-missing skills
-generatedAt
-```
-
-Unique run/job key:
-
-```text
-candidateProfileId
-+
-candidateEmbeddingId
-+
-rankingVersion
-+
-normalizedJobId
-```
-
----
-
-## 16. Idempotency
-
-Nếu:
-
-```text
-candidateEmbeddingId
-+
-rankingVersion
-```
-
-đã có result và:
-
-```text
-force=false
-```
-
-service reuse existing result.
-
-Response:
-
-```text
-reusedExisting = true
-```
-
-Force rerun:
-
-```text
-force=true
-```
-
-sẽ replace exact run snapshot.
-
----
-
-## 17. Presentation tier
-
-API tính thêm:
+For presentation purposes, results are categorized into:
 
 ```text
 STRONG
@@ -469,67 +304,64 @@ POSSIBLE
 EXPLORE
 ```
 
-Tier chỉ phục vụ frontend explanation.
+These tiers provide a user-friendly interpretation of the result.
 
-Nó không:
-
-```text
-thay finalScore
-thay rank
-reject job
-thay Qdrant retrieval
-```
+They do not represent statistical probabilities and do not affect the underlying ranking order.
 
 ---
 
-## 18. Test status
+## 13. Persistence
 
-Automated test trong module matching hiện còn mỏng.
-
-Có:
+Accepted results are stored in:
 
 ```text
-MatchingPropertiesTest
+match_results
 ```
 
-Real-data validation hiện được thực hiện bằng:
+Each persisted result records:
 
 ```text
-CV thật
-+
-candidate profile thật
-+
-Mongo normalized jobs
-+
-Qdrant job vectors
-+
-matching result thật
+candidate identity
+candidate embedding
+job identity
+job snapshot
+
+score breakdown
+known/unknown component state
+
+matched skills
+missing skills
+
+parser version
+normalization version
+embedding version
+candidate text version
+job text version
+ranking version
+
+rank
+generated timestamp
 ```
 
-Hai loại test phải được phân biệt:
-
-```text
-automated regression tests
-vs
-real-data ranking validation
-```
+Persisting version metadata allows previous results to be distinguished from results created by newer matching logic.
 
 ---
 
-## 19. Next testing work
+## 14. Current Configuration
 
-Nên bổ sung automated test cho:
+Matching configuration is maintained in:
 
 ```text
-SemanticScoreNormalizer
-SkillScorer
-SeniorityScorer
-LocationScorer
-FreshnessScorer
-JobEligibilityFilter
-MatchAcceptanceFilter
-HybridRankingService
-HybridMatchingService
+configs/matching/ranking.yml
 ```
 
-Đặc biệt cần golden regression set từ CV/job thật.
+Current version matrix:
+
+| Component      | Version                 |
+| -------------- | ----------------------- |
+| Normalization  | `rule-v4`               |
+| Candidate text | `candidate-text-v2`     |
+| Job text       | `job-text-v2`           |
+| Ranking        | `hybrid-v6-balanced-r7` |
+
+Changes that materially affect result ordering should be accompanied by a ranking version bump.

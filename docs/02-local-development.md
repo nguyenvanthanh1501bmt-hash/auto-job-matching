@@ -1,348 +1,290 @@
 # Local Development
 
-## 1. Recommended workflow
+This guide describes the recommended local setup for AutoJob.
 
-Local development ưu tiên Docker Compose.
+## Prerequisites
 
-Không cần chạy:
+Required:
 
-```text
-java -jar
-mvn spring-boot:run
-```
+* Docker and Docker Compose
+* Node.js
+* npm
 
-cho smoke/integration flow thông thường.
+Java and Python do not need to be installed locally when backend services are run through Docker Compose.
 
 ---
 
-## 2. Setup
+## 1. Environment Setup
 
-Từ repo root:
+From the repository root, create the local environment file:
+
+### Windows PowerShell
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Đảm bảo:
+### macOS / Linux
 
-```dotenv
-CV_PARSER_VERSION=rule-v2
-CV_PARSER_EXPECTED_VERSION=rule-v2
+```bash
+cp .env.example .env
 ```
 
-Start:
+The values provided in `.env.example` are intended for local development only.
 
-```powershell
+Do not reuse default credentials, JWT secrets, or API keys in production.
+
+---
+
+## 2. Start Backend Services
+
+Run:
+
+```bash
 docker compose --env-file .env up -d --build
 ```
 
----
+Check service status:
 
-## 3. Services
-
-```text
-autojob-app           :8080
-embedding-service     :8002
-cv-parser-service     :8003
-
-mongo                 :27018 host
-qdrant                :6333
-minio                 :9000
-minio console         :9001
-
-mock-job-site         :18080
-```
-
----
-
-## 4. Check containers
-
-```powershell
+```bash
 docker compose --env-file .env ps
 ```
 
-App health:
+The local stack includes:
 
-```powershell
-Invoke-RestMethod http://localhost:8080/actuator/health
+| Service           | Address                  |
+| ----------------- | ------------------------ |
+| AutoJob API       | `http://localhost:8080`  |
+| Embedding Service | `http://localhost:8002`  |
+| CV Parser         | `http://localhost:8003`  |
+| MongoDB           | `localhost:27018`        |
+| Qdrant            | `http://localhost:6333`  |
+| MinIO API         | `http://localhost:9000`  |
+| MinIO Console     | `http://localhost:9001`  |
+| Mock Job Site     | `http://localhost:18080` |
+
+---
+
+## 3. Health Checks
+
+Backend:
+
+```bash
+curl http://localhost:8080/actuator/health
+```
+
+Embedding service:
+
+```bash
+curl http://localhost:8002/ready
 ```
 
 CV parser:
 
-```powershell
-Invoke-RestMethod http://localhost:8003/ready
+```bash
+curl http://localhost:8003/ready
 ```
 
-Embedding:
-
-```powershell
-Invoke-RestMethod http://localhost:8002/ready
-```
+The embedding service loads the configured Sentence Transformer model during startup, so readiness may take longer than container startup.
 
 ---
 
-## 5. Build only CV parser
+## 4. Start the Frontend
 
-Khi chỉ sửa:
+Create:
 
 ```text
-ai-services/cv-parser-service
+frontend/web-app/.env.local
 ```
 
-run:
-
-```powershell
-docker compose --env-file .env `
-  up -d --build cv-parser-service
-```
-
-Nếu Java app phải reload shared taxonomy/config thì restart:
-
-```powershell
-docker compose --env-file .env restart autojob-app
-```
-
----
-
-## 6. Build backend image
-
-```powershell
-docker compose --env-file .env `
-  up -d --build autojob-app
-```
-
----
-
-## 7. Logs
-
-App:
-
-```powershell
-docker compose --env-file .env `
-  logs --tail=200 autojob-app
-```
-
-CV parser:
-
-```powershell
-docker compose --env-file .env `
-  logs --tail=200 cv-parser-service
-```
-
-Embedding:
-
-```powershell
-docker compose --env-file .env `
-  logs --tail=200 embedding-service
-```
-
-Mongo:
-
-```powershell
-docker compose --env-file .env `
-  logs --tail=100 mongo
-```
-
----
-
-## 8. Smoke job crawler
-
-Mock:
-
-```powershell
-Invoke-RestMethod `
-  -Method POST `
-  http://localhost:8080/api/admin/crawlers/mock/run
-```
-
-Live:
-
-```text
-POST /api/admin/crawlers/live/ITVIEC/run?limit=15
-POST /api/admin/crawlers/live/JOBOKO/run?limit=15
-POST /api/admin/crawlers/live/TOPDEV/run?limit=15
-POST /api/admin/crawlers/live/VIECLAM24H/run?limit=15
-```
-
-Maximum live limit:
-
-```text
-50
-```
-
----
-
-## 9. Inspect jobs
-
-Raw:
-
-```powershell
-Invoke-RestMethod `
-  "http://localhost:8080/api/raw-jobs?limit=20"
-```
-
-Normalized:
-
-```powershell
-Invoke-RestMethod `
-  "http://localhost:8080/api/normalized-jobs?page=0&size=20"
-```
-
----
-
-## 10. Real CV smoke test
-
-Script:
-
-```text
-scripts/test-cv-parse-embedding.ps1
-```
-
-Set:
-
-```powershell
-$CvPath = "D:\test-data\cv2.pdf"
-```
-
-Run:
-
-```powershell
-powershell -ExecutionPolicy Bypass `
-  -File .\scripts\test-cv-parse-embedding.ps1
-```
-
-Flow:
-
-```text
-CV
-→ upload
-→ parse
-→ candidate_profiles
-→ candidate_embeddings
-```
-
----
-
-## 11. Matching smoke test
-
-Sau khi có candidate profile id:
-
-```powershell
-$candidateProfileId = "..."
-```
-
-Run:
-
-```powershell
-Invoke-RestMethod `
-  -Method POST `
-  "http://localhost:8080/api/matching/candidates/$candidateProfileId"
-```
-
-Force:
-
-```powershell
-Invoke-RestMethod `
-  -Method POST `
-  "http://localhost:8080/api/matching/candidates/$candidateProfileId?force=true"
-```
-
-Read current:
-
-```powershell
-Invoke-RestMethod `
-  "http://localhost:8080/api/matching/candidates/$candidateProfileId"
-```
-
----
-
-## 12. Mongo shell
-
-```powershell
-docker exec -it autojob-mongo `
-  mongosh `
-  -u root `
-  -p password `
-  --authenticationDatabase admin `
-  autojob
-```
-
-Useful:
-
-```javascript
-db.raw_cvs.find().sort({ uploadedAt: -1 }).limit(3)
-
-db.candidate_profiles
-  .find()
-  .sort({ updatedAt: -1 })
-  .limit(3)
-
-db.candidate_embeddings
-  .find()
-  .sort({ updatedAt: -1 })
-  .limit(3)
-
-db.match_results
-  .find()
-  .sort({ generatedAt: -1 })
-  .limit(20)
-```
-
----
-
-## 13. Qdrant
-
-Collections:
-
-```powershell
-Invoke-RestMethod `
-  http://localhost:6333/collections
-```
-
-Expected:
-
-```text
-job_vectors_v1
-```
-
----
-
-## 14. Version compatibility
-
-Current:
-
-```text
-normalizer              rule-v4
-cv parser               rule-v2
-job text                job-text-v2
-candidate text          candidate-text-v1
-matching                hybrid-v6-balanced-r4
-embedding dimension     384
-```
-
-Matching rejects incompatible upstream versions.
-
----
-
-## 15. Important Compose caveat
-
-`.env.example` hiện đúng:
+with:
 
 ```dotenv
-CV_PARSER_VERSION=rule-v2
-CV_PARSER_EXPECTED_VERSION=rule-v2
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 ```
 
-Nhưng `docker-compose.yml` vẫn có một số fallback:
+Then:
+
+```bash
+cd frontend/web-app
+npm ci
+npm run dev
+```
+
+Open:
 
 ```text
-rule-v1
+http://localhost:5173
 ```
 
-Do đó local command chuẩn luôn là:
+---
 
-```powershell
-docker compose --env-file .env ...
+## 5. Authentication
+
+Most business APIs require authentication.
+
+Main endpoints:
+
+```text
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/refresh
+POST /api/auth/logout
+GET  /api/auth/me
 ```
 
-Không xóa `.env` khi test parser.
+Authenticated requests use:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+Current roles:
+
+```text
+USER
+ADMIN
+```
+
+New registrations receive the `USER` role.
+
+Administrative operations such as crawler execution, raw-job management, normalization rebuilds, and embedding administration require `ADMIN`.
+
+---
+
+## 6. Basic Development Flow
+
+A typical local test flow is:
+
+```text
+Start Docker services
+        ↓
+Start Next.js frontend
+        ↓
+Register / Login
+        ↓
+Crawl or load jobs
+        ↓
+Upload and parse CV
+        ↓
+Generate candidate embedding
+        ↓
+Run matching
+        ↓
+Analyze CV tailoring
+```
+
+### Run mock crawler
+
+```http
+POST /api/admin/crawlers/mock/run
+```
+
+### Upload CV
+
+```http
+POST /api/cvs
+```
+
+Multipart field:
+
+```text
+file
+```
+
+### Parse CV
+
+```http
+POST /api/cvs/{rawCvId}/parse
+```
+
+### Run matching
+
+```http
+POST /api/matching/candidates/{candidateProfileId}
+```
+
+Force recalculation:
+
+```http
+POST /api/matching/candidates/{candidateProfileId}?force=true
+```
+
+---
+
+## 7. Current Version Configuration
+
+The current development stack uses:
+
+| Component                | Version                          |
+| ------------------------ | -------------------------------- |
+| CV Parser                | `rule-v2`                        |
+| Job Normalization        | `rule-v4`                        |
+| Job Embedding Text       | `job-text-v2`                    |
+| Candidate Embedding Text | `candidate-text-v2`              |
+| Matching                 | `hybrid-v6-balanced-r7`          |
+| Embedding Model          | `intfloat/multilingual-e5-small` |
+| Vector Dimension         | `384`                            |
+| Qdrant Collection        | `job_vectors_v1`                 |
+
+These versions form part of the matching compatibility contract.
+
+---
+
+## 8. Logs
+
+View all service logs:
+
+```bash
+docker compose --env-file .env logs -f
+```
+
+Backend only:
+
+```bash
+docker compose --env-file .env logs -f autojob-app
+```
+
+CV parser:
+
+```bash
+docker compose --env-file .env logs -f cv-parser-service
+```
+
+Embedding service:
+
+```bash
+docker compose --env-file .env logs -f embedding-service
+```
+
+---
+
+## 9. Rebuild a Service
+
+Example:
+
+```bash
+docker compose --env-file .env up -d --build autojob-app
+```
+
+or:
+
+```bash
+docker compose --env-file .env up -d --build cv-parser-service
+```
+
+---
+
+## 10. Stop the Environment
+
+```bash
+docker compose --env-file .env down
+```
+
+To also remove local Docker volumes:
+
+```bash
+docker compose --env-file .env down -v
+```
+
+Use `-v` only when local MongoDB, MinIO, and Qdrant data can be safely deleted.

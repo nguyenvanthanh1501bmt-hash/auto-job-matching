@@ -1,37 +1,48 @@
 # CV Pipeline
 
-## 1. Current flow
+The CV pipeline converts an uploaded document into a structured candidate profile and semantic representation that can be used by the matching engine.
 
-CV pipeline hiện đã hoạt động end-to-end:
+## Overview
 
 ```text
-Upload
-→ MinIO
-→ raw_cvs
-→ parse
-→ candidate_profiles
-→ candidate embedding
-→ candidate_embeddings
-→ matching
+CV Upload
+    ↓
+MinIO
+    ↓
+Raw CV Metadata
+    ↓
+CV Parser
+    ↓
+Candidate Profile
+    ↓
+Candidate Embedding
+    ↓
+Matching
 ```
 
 ---
 
-## 2. Upload
+## 1. CV Upload
 
-API:
+Endpoint:
 
-```text
+```http
 POST /api/cvs
 ```
 
-Multipart field:
+Request type:
+
+```text
+multipart/form-data
+```
+
+File field:
 
 ```text
 file
 ```
 
-Accepted:
+Supported formats:
 
 ```text
 PDF
@@ -39,372 +50,153 @@ DOC
 DOCX
 ```
 
-Backend validate file structure/signature, không chỉ extension.
-
-Default max:
+Current maximum file size:
 
 ```text
 10 MB
 ```
 
----
+Original CV files are stored privately in MinIO.
 
-## 3. Object storage
-
-Bucket:
+Default bucket:
 
 ```text
 autojob-cvs
 ```
 
-Pattern:
-
-```text
-raw/yyyy/MM/dd/{rawCvId}/{safeFilename}
-```
-
-Raw metadata được persist vào:
+Metadata is stored in MongoDB:
 
 ```text
 raw_cvs
 ```
 
-Status:
+---
+
+## 2. CV Processing Status
+
+A raw CV moves through the following states:
 
 ```text
 UPLOADED
+    ↓
 PARSING
+    ↓
 PARSED
+```
+
+Failures are represented by:
+
+```text
 FAILED
 ```
 
+CV metadata can be retrieved through:
+
+```http
+GET /api/cvs/{rawCvId}
+```
+
 ---
 
-## 4. Parse API
+## 3. CV Parsing
 
-```text
+Parsing is triggered explicitly:
+
+```http
 POST /api/cvs/{rawCvId}/parse
 ```
 
-Java:
+Flow:
 
 ```text
-CvParsingService
-→ CvParserClient
-→ HttpCvParserClient
-→ cv-parser-service
+Spring Boot
+    ↓
+CV Parser Service
+    ↓
+read original file from MinIO
+    ↓
+extract document text
+    ↓
+detect sections
+    ↓
+normalize candidate data
+    ↓
+return structured profile
 ```
 
-Python nhận metadata object:
-
-```text
-rawCvId
-bucket
-objectKey
-filename
-contentType
-```
-
-Python tự đọc object từ MinIO.
-
----
-
-## 5. Parser
-
-Service:
-
-```text
-ai-services/cv-parser-service
-```
-
-Version:
+Current parser version:
 
 ```text
 rule-v2
 ```
 
-Responsibilities:
+The Python parser handles document extraction and candidate-information parsing.
 
-```text
-text extraction
-layout warnings
-section detection
-identity/contact
-skills
-work experience
-education
-certification
-language
-seniority
-experience years
-parse quality
-```
+Java remains responsible for business persistence.
 
 ---
 
-## 6. Candidate profile persistence
+## 4. Candidate Profile
 
-Python chỉ trả response.
-
-Java validate response rồi map sang:
-
-```text
-CandidateProfile
-```
-
-Persist:
+Parsed profiles are stored in:
 
 ```text
 candidate_profiles
 ```
 
-Candidate profile phải được persist trước khi event downstream được publish.
+The structured profile can contain:
 
-Sau đó:
+* name and headline;
+* contact information;
+* professional summary;
+* career objective;
+* skills;
+* work experience;
+* projects;
+* education;
+* certifications and licenses;
+* languages;
+* links;
+* preferred locations and work modes;
+* experience years;
+* seniority;
+* parser warnings;
+* parse quality.
 
-```text
-raw_cvs.status = PARSED
+Retrieve the parsed profile with:
+
+```http
+GET /api/cvs/{rawCvId}/profile
 ```
 
 ---
 
-## 7. Candidate embedding trigger
+## 5. Candidate Embedding
 
-Sau profile persistence:
+After the candidate profile is successfully persisted, AutoJob publishes:
 
 ```text
 CandidateProfileReadyEvent
 ```
 
-được publish.
-
-Listener:
+This triggers:
 
 ```text
-CandidateProfileReadyEventListener
-```
-
-gọi:
-
-```text
+CandidateProfile
+    ↓
+CandidateProfileReadyEvent
+    ↓
 CandidateEmbeddingService
+    ↓
+Embedding Service
+    ↓
+candidate_embeddings
 ```
 
-Embedding failure không rollback candidate profile.
-
-Nếu embedding fail:
+Current candidate text representation:
 
 ```text
-raw_cvs        = PARSED
-candidate      = tồn tại
-embedding      = FAILED
-```
-
----
-
-## 8. Candidate seniority
-
-Source:
-
-```text
-ai-services/cv-parser-service/app/parsing/seniority_parser.py
-```
-
-Taxonomy:
-
-```text
-configs/taxonomy/shared/seniority.yml
-```
-
-Resolution priority:
-
-```text
-1. explicit headline
-2. explicit current/latest work role
-3. experienceYears
-4. career objective
-5. target job title
-```
-
----
-
-## 9. Historical role policy
-
-Không scan lịch sử rồi lấy bất kỳ leadership keyword nào làm current level.
-
-Ví dụ:
-
-```text
-old role = Director
-latest role = Consultant
-```
-
-không mặc định:
-
-```text
-DIRECTOR
-```
-
-Tương tự:
-
-```text
-old role = Intern
-latest role = Engineer
-```
-
-không pin candidate thành:
-
-```text
-INTERN
-```
-
----
-
-## 10. Experience fallback
-
-Current taxonomy:
-
-```yaml
-experience:
-  entry-level-under: 0.5
-  junior-under: 2.0
-  mid-under: 5.0
-```
-
-Meaning:
-
-```text
-< 0.5           ENTRY_LEVEL
-0.5 - < 2.0     JUNIOR
-2.0 - < 5.0     MID
->= 5.0          SENIOR
-```
-
-Boundary:
-
-```text
-2.0 = MID
-```
-
-Nếu business muốn `2 years = JUNIOR`, chỉnh taxonomy threshold, không special-case parser.
-
----
-
-## 11. Career objective
-
-Career objective là weak evidence.
-
-Ví dụ:
-
-```text
-"Là sinh viên..."
-```
-
-không được override:
-
-```text
-experienceYears = 2.0
-```
-
-Correct:
-
-```text
-experienceYears = 2.0
-→ MID
-```
-
-không phải:
-
-```text
-ENTRY_LEVEL
-```
-
----
-
-## 12. Assistant vs leadership
-
-Substring không đủ để infer seniority.
-
-Không phải Director:
-
-```text
-Trợ lý giám đốc
-Trợ lý tổng giám đốc
-Thư ký ban giám đốc
-Assistant to the Director
-Director's Assistant
-Executive Assistant to CEO
-```
-
-Director:
-
-```text
-Assistant Director
-Deputy Director
-Phó giám đốc
-Giám đốc kinh doanh
-```
-
----
-
-## 13. Canonical title != seniority
-
-Ví dụ:
-
-```text
-Trợ lý giám đốc
-```
-
-normalize:
-
-```text
-EXECUTIVE_ASSISTANT
-```
-
-Nhưng seniority không phải:
-
-```text
-EXECUTIVE
-DIRECTOR
-```
-
----
-
-## 14. Unknown job titles
-
-Job title không bắt buộc phải có canonical entry.
-
-Ví dụ:
-
-```text
-DATACENTERS |
-THỰC TẬP SINH KINH DOANH
-```
-
-Expected:
-
-```text
-companyName    = DATACENTERS
-jobTitle       = THỰC TẬP SINH KINH DOANH
-employmentType = INTERNSHIP
-```
-
-Không được vứt role chỉ vì:
-
-```text
-normalizedJobTitle = null
-```
-
----
-
-## 15. Candidate embedding
-
-Candidate profile được chuyển thành deterministic embedding text.
-
-Current version:
-
-```text
-candidate-text-v1
+candidate-text-v2
 ```
 
 Embedding model:
@@ -413,19 +205,17 @@ Embedding model:
 intfloat/multilingual-e5-small
 ```
 
-Dimension:
+Expected dimension:
 
 ```text
 384
 ```
 
-Persist:
+---
 
-```text
-candidate_embeddings
-```
+## 6. Candidate Embedding Status
 
-Statuses:
+Candidate embeddings use:
 
 ```text
 PROCESSING
@@ -433,102 +223,125 @@ READY
 FAILED
 ```
 
----
-
-## 16. Embedding idempotency
-
-Candidate embedding identity phụ thuộc:
+Matching requires a compatible embedding in:
 
 ```text
-candidateProfileId
-embeddingVersion
-textVersion
-textHash
+READY
 ```
 
-Nếu READY và text không đổi:
+state.
 
-```text
-force=false
-→ reuse
-```
+A failed embedding does not invalidate the parsed candidate profile.
 
-Force rebuild:
-
-```text
-POST /api/admin/candidate-embeddings/{candidateProfileId}/rebuild?force=true
-```
+This allows embedding generation to be retried without reparsing the CV.
 
 ---
 
-## 17. Matching handoff
+## 7. Matching Handoff
 
-Matching yêu cầu:
+Once the candidate embedding is ready:
 
 ```text
-CandidateProfile
-+
-READY CandidateEmbedding
+Candidate Profile
+        +
+Candidate Embedding
+        ↓
+Qdrant job retrieval
+        ↓
+Hybrid Matching
+        ↓
+Match Results
 ```
 
-Candidate embedding phải còn tương thích với current profile/parser version.
+Matching does not automatically parse an unprocessed CV or create missing candidate data.
 
-Matching sau đó dùng vector candidate search job vector trong Qdrant.
+The CV pipeline must complete successfully before matching can run.
 
 ---
 
-## 18. Verified real CV behavior
+## 8. Parser Safety and Limits
 
-Một CV tiếng Việt thực đã verify:
+The CV parser applies limits to document processing to protect the service from unexpectedly large or malformed files.
 
-```text
-THỰC TẬP SINH KINH DOANH
-→ DATACENTERS
-→ INTERNSHIP
-```
+Examples include limits for:
 
 ```text
-Trợ lý giám đốc
-→ EXECUTIVE_ASSISTANT
+file size
+PDF page count
+extracted text size
+section size
+DOC/DOCX processing
+number of parsed entities
 ```
 
-```text
-experienceYears = 2.0
-seniority       = MID
-```
-
-Không còn false positive:
-
-```text
-Trợ lý giám đốc
-→ DIRECTOR
-```
+The parser also records warnings and parse-quality information rather than assuming every CV can be extracted perfectly.
 
 ---
 
-## 19. Verification
+## 9. Separation of Responsibilities
 
-Use:
+The pipeline deliberately separates three representations:
 
-```text
-scripts/test-cv-parse-embedding.ps1
-```
-
-Run:
-
-```powershell
-powershell -ExecutionPolicy Bypass `
-  -File .\scripts\test-cv-parse-embedding.ps1
-```
-
-Fields cần inspect:
+### Raw CV
 
 ```text
-careerObjective
-workExperiences
-experienceYears
-seniority
-recentJobTitles
-parserWarnings
-parserVersion
+original uploaded document
 ```
+
+Stored in MinIO with metadata in MongoDB.
+
+### Candidate Profile
+
+```text
+structured business representation
+```
+
+Stored in:
+
+```text
+candidate_profiles
+```
+
+### Candidate Embedding
+
+```text
+semantic representation
+```
+
+Stored in:
+
+```text
+candidate_embeddings
+```
+
+This separation allows parsing, candidate modeling, and semantic search to evolve independently.
+
+---
+
+## 10. Current Flow
+
+The implemented end-to-end candidate flow is:
+
+```text
+Upload CV
+    ↓
+Store in MinIO
+    ↓
+Create raw_cvs record
+    ↓
+Parse document
+    ↓
+Create candidate_profiles record
+    ↓
+Publish CandidateProfileReadyEvent
+    ↓
+Generate candidate embedding
+    ↓
+Store candidate_embeddings record
+    ↓
+Run hybrid matching
+    ↓
+Optional CV tailoring
+```
+
+This is the current supported path for turning a candidate CV into job matching results.

@@ -1,407 +1,348 @@
 # Testing and Verification
 
-## 1. Test layers
+AutoJob uses automated tests and manual verification across the Java backend, Python AI services, frontend, and integration flows.
 
-AutoJob hiện được verify ở nhiều layer:
-
-```text
-unit/component tests
-integration tests
-Docker smoke tests
-real-CV tests
-real Mongo/Qdrant matching validation
-```
-
-Không được đồng nhất:
-
-```text
-ít unit test
-```
-
-với:
-
-```text
-feature chưa được test
-```
-
-Matching hiện có real-data validation dù automated scorer coverage còn mỏng.
+The goal is to verify both individual modules and the full job-to-candidate matching pipeline.
 
 ---
 
-# 2. Docker startup
+## 1. Backend Tests
+
+Backend tests are executed from:
+
+```text
+backend/
+```
+
+### macOS / Linux
+
+```bash
+./mvnw test
+```
+
+### Windows
 
 ```powershell
-docker compose --env-file .env up -d --build
+.\mvnw.cmd test
 ```
 
-Check:
+The Java test suite covers areas including:
 
-```powershell
-docker compose --env-file .env ps
-```
+* authentication and authorization;
+* crawler parsing;
+* job normalization;
+* embedding integration;
+* CV processing;
+* candidate embeddings;
+* matching;
+* CV tailoring;
+* AI provider routing;
+* rewrite validation and safety.
+
+Modules can also be tested independently when developing a specific feature.
 
 ---
 
-# 3. Java tests
+## 2. CV Parser Tests
 
-Có thể chạy Maven tests trong backend dev environment khi cần regression.
-
-Modules có automated tests gồm:
+Location:
 
 ```text
-job-crawler
-job-normalizer
-job-embedding
-cv
-candidate-embedding
-matching
+ai-services/cv-parser-service
 ```
 
-`matching` hiện chủ yếu có:
+Install development dependencies:
 
-```text
-MatchingPropertiesTest
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
-nên scorer/service test coverage cần bổ sung.
+Run tests:
 
----
+```bash
+python -m pytest
+```
 
-# 4. CV parser tests
-
-Python parser có unit/integration tests cho:
+The parser test suite verifies:
 
 ```text
-PDF/DOC/DOCX extraction
+PDF / DOC / DOCX handling
 section detection
-identity/contact
+identity and contact extraction
 skills
-work experience
+experience
+projects
 education
-certification
-language
+languages
 seniority
-FastAPI validation
-MinIO integration
-```
-
-Seniority regression cần cover:
-
-```text
-Trợ lý giám đốc       -> not DIRECTOR
-Assistant to Director -> not DIRECTOR
-Assistant Director    -> DIRECTOR
-Deputy Director       -> DIRECTOR
-Phó giám đốc          -> DIRECTOR
-
-Assistant to Manager  -> not MANAGER
-Assistant Manager     -> MANAGER
-
-Middle School Teacher -> not MID
-Lead Generation       -> not LEAD
-Team Lead              -> LEAD
+taxonomy integration
+MinIO behavior
 ```
 
 ---
 
-# 5. Real CV test
+## 3. Embedding Service Tests
 
-Script:
+Location:
 
 ```text
-scripts/test-cv-parse-embedding.ps1
+ai-services/embedding-service
 ```
 
-Example:
+Install dependencies:
 
-```powershell
-$CvPath = "D:\test-data\cv2.pdf"
+```bash
+python -m pip install -r requirements.txt
 ```
 
 Run:
 
-```powershell
-powershell -ExecutionPolicy Bypass `
-  -File .\scripts\test-cv-parse-embedding.ps1
+```bash
+python -m pytest
+```
+
+Important embedding contract values:
+
+```text
+Model     = intfloat/multilingual-e5-small
+Dimension = 384
+Normalized = true
+```
+
+Changes to embedding behavior should be validated against existing compatibility assumptions before old vectors are reused.
+
+---
+
+## 4. Frontend Verification
+
+Location:
+
+```text
+frontend/web-app
+```
+
+Install dependencies:
+
+```bash
+npm ci
+```
+
+Lint:
+
+```bash
+npm run lint
+```
+
+Production build:
+
+```bash
+npm run build
+```
+
+A successful production build is recommended before merging frontend changes.
+
+---
+
+## 5. Integration Verification
+
+After starting the local stack:
+
+```bash
+docker compose --env-file .env up -d --build
+```
+
+verify:
+
+```text
+GET http://localhost:8080/actuator/health
+GET http://localhost:8002/ready
+GET http://localhost:8003/ready
+```
+
+Expected result:
+
+```text
+Spring Boot       → healthy
+Embedding service → ready
+CV parser         → ready
+```
+
+---
+
+## 6. Job Pipeline Verification
+
+Recommended flow:
+
+```text
+Run mock crawler
+    ↓
+Verify raw_jobs
+    ↓
+Verify normalized_jobs
+    ↓
+Verify job_embeddings
+    ↓
+Verify Qdrant
+```
+
+Start the deterministic crawler:
+
+```http
+POST /api/admin/crawlers/mock/run
+```
+
+Then inspect normalized jobs:
+
+```http
+GET /api/normalized-jobs
+```
+
+Current expected versions:
+
+```text
+Normalization = rule-v4
+Job text      = job-text-v2
+```
+
+---
+
+## 7. Candidate Pipeline Verification
+
+Recommended flow:
+
+```text
+Upload CV
+    ↓
+Parse CV
+    ↓
+Verify CandidateProfile
+    ↓
+Verify CandidateEmbedding
+```
+
+Endpoints:
+
+```http
+POST /api/cvs
+POST /api/cvs/{rawCvId}/parse
+GET  /api/cvs/{rawCvId}/profile
+```
+
+Expected candidate embedding version:
+
+```text
+candidate-text-v2
+```
+
+The embedding should eventually reach:
+
+```text
+READY
+```
+
+before matching is executed.
+
+---
+
+## 8. Matching Verification
+
+Run:
+
+```http
+POST /api/matching/candidates/{candidateProfileId}?force=true
 ```
 
 Verify:
 
 ```text
-upload response
-rawCvId
-
-parsed full JSON
-
-seniority
-experienceYears
-recent job titles
-work experiences
-skills
-warnings
-
-candidate_profiles Mongo document
-candidate_embeddings Mongo document
-
-embedding status
-dimension
-vector length
-normalization
+rankingVersion = hybrid-v6-balanced-r7
 ```
 
----
-
-# 6. Latest seniority regression expectation
-
-For tested real CV:
+A valid result should include:
 
 ```text
-experienceYears = 2.0
-seniority       = MID
-```
-
-Expected work experiences include:
-
-```text
-DATACENTERS
-THỰC TẬP SINH KINH DOANH
-INTERNSHIP
-```
-
-and:
-
-```text
-Trợ lý giám đốc
-EXECUTIVE_ASSISTANT
-```
-
-Must not produce:
-
-```text
-DIRECTOR
-```
-
-Career objective containing:
-
-```text
-sinh viên
-```
-
-must not override structured experience.
-
----
-
-# 7. Job pipeline smoke test
-
-Mock:
-
-```powershell
-Invoke-RestMethod `
-  -Method POST `
-  http://localhost:8080/api/admin/crawlers/mock/run
-```
-
-Then:
-
-```powershell
-Invoke-RestMethod `
-  "http://localhost:8080/api/raw-jobs?limit=20"
-```
-
-```powershell
-Invoke-RestMethod `
-  "http://localhost:8080/api/normalized-jobs?page=0&size=20"
-```
-
-Check job embedding:
-
-```text
-GET /api/job-embeddings/{normalizedJobId}
-```
-
----
-
-# 8. Live crawler test
-
-Example:
-
-```powershell
-Invoke-RestMethod `
-  -Method POST `
-  "http://localhost:8080/api/admin/crawlers/live/ITVIEC/run?limit=5"
-```
-
-Do not interpret external website failure automatically as parser bug.
-
-Possible causes:
-
-```text
-site HTML changed
-403/429
-network failure
-anti-bot
-redirect/login wall
-```
-
----
-
-# 9. Candidate embedding verification
-
-Expected:
-
-```text
-status = READY
-dimension = 384
-normalized = true
-vector.Count = dimension
-textVersion = candidate-text-v1
-```
-
----
-
-# 10. Matching real-data test
-
-Prerequisites:
-
-```text
-candidate profile exists
-candidate embedding READY
-normalized jobs exist
-job embeddings READY
-Qdrant contains compatible points
-```
-
-Run:
-
-```powershell
-Invoke-RestMethod `
-  -Method POST `
-  "http://localhost:8080/api/matching/candidates/$candidateProfileId?force=true"
-```
-
-Inspect:
-
-```text
-retrievedCount
-loadedJobCount
-matchedCount
-rankingVersion
-
 rank
-finalScore
-semanticScore
-skillScore
-seniorityScore
-locationScore
-freshnessScore
-
-matchTier
-matchedSkills
-missingSkills
+final score
+component scores
+matched skills
+missing skills
+match tier
 explanations
 ```
 
----
-
-# 11. Matching acceptance quality
-
-Do not validate only:
-
-```text
-rank #1
-```
-
-Review:
-
-```text
-top 5/top 10 job relevance
-obvious false positives
-skill overlap
-seniority gaps
-location behavior
-semantic-only matches
-expired/old jobs
-```
+Matching should not return incompatible or expired jobs merely to fill the result limit.
 
 ---
 
-# 12. Automated matching tests still needed
+## 9. CV Tailoring Verification
 
-Priority:
+Analyze a matched job:
 
-```text
-SemanticScoreNormalizerTest
-SkillScorerTest
-SeniorityScorerTest
-LocationScorerTest
-FreshnessScorerTest
-JobEligibilityFilterTest
-MatchAcceptanceFilterTest
-HybridRankingServiceTest
-HybridMatchingServiceTest
+```http
+POST /api/cv-tailoring/candidates/{candidateProfileId}/jobs/{normalizedJobId}/analyze
 ```
 
-Use anonymized real-data cases as golden fixtures where possible.
+Verify that suggestions are limited to:
+
+```text
+REWRITE
+EMPHASIZE
+GAP_WARNING
+```
+
+Then preview selected suggestions:
+
+```http
+POST /api/cv-tailoring/candidates/{candidateProfileId}/jobs/{normalizedJobId}/preview
+```
+
+The preview should:
+
+* use a temporary candidate representation;
+* generate a temporary embedding;
+* re-evaluate the target job;
+* return before/after scores;
+* leave the persisted candidate profile unchanged.
 
 ---
 
-# 13. Mongo verification
+## 10. Safety Verification
 
-```powershell
-docker exec -it autojob-mongo `
-  mongosh `
-  -u root `
-  -p password `
-  --authenticationDatabase admin `
-  autojob
+CV Tailoring should reject or avoid output that introduces unsupported information.
+
+Important cases include:
+
+```text
+invented skills
+invented technologies
+invented certifications
+invented education
+unsupported metrics
+unsupported dates
+unsupported job titles
+keyword stuffing
+cross-node evidence leakage
 ```
 
-Examples:
+AI provider success alone is not sufficient.
 
-```javascript
-db.candidate_profiles
-  .find()
-  .sort({ updatedAt: -1 })
-  .limit(5)
-
-db.candidate_embeddings
-  .find()
-  .sort({ updatedAt: -1 })
-  .limit(5)
-
-db.match_results
-  .find()
-  .sort({ generatedAt: -1 })
-  .limit(20)
-```
+Returned content must still pass backend validation.
 
 ---
 
-# 14. Qdrant verification
+## 11. Pre-Merge Checklist
 
-```powershell
-Invoke-RestMethod `
-  http://localhost:6333/collections
-```
-
-Expected collection:
+Before merging a significant change:
 
 ```text
-job_vectors_v1
+Backend tests pass
+Python tests pass when affected
+Frontend lint passes
+Frontend build passes
+Docker services start successfully
+Health checks pass
+Relevant pipeline has been manually verified
+Version changes are documented when required
 ```
 
----
-
-# 15. Definition of done
-
-Một CV → matching flow chỉ được coi là pass khi:
-
-```text
-CV upload succeeds
-parser returns valid profile
-candidate profile persisted
-candidate embedding READY
-matching search succeeds
-results persisted
-ranking manually looks reasonable
-```
+Changes aff

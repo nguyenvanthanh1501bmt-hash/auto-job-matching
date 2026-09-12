@@ -1,129 +1,256 @@
-# Architecture
+# System Architecture
 
-## 1. Tổng quan
+AutoJob is a full-stack intelligent job matching platform that transforms job postings and candidate CVs into structured, versioned data for semantic retrieval, explainable ranking, and evidence-grounded CV tailoring.
 
-AutoJob sử dụng:
+## Overview
+
+The system is built around two main pipelines.
+
+### Job Pipeline
 
 ```text
-Spring Boot Modular Monolith
-+
-Python AI Services
-+
-MongoDB
-+
+Job Sources
+    ↓
+Crawl
+    ↓
+Raw Job
+    ↓
+Normalize
+    ↓
+Job Embedding
+    ↓
 Qdrant
-+
-MinIO
+    ↓
+Matching
 ```
 
-Java composition root:
+### Candidate Pipeline
+
+```text
+CV Upload
+    ↓
+CV Parsing
+    ↓
+Candidate Profile
+    ↓
+Candidate Embedding
+    ↓
+Matching
+    ↓
+CV Tailoring
+```
+
+Rather than implementing job matching as a single AI request, AutoJob separates ingestion, normalization, semantic retrieval, structured scoring, and CV optimization into independent stages.
+
+---
+
+## 1. High-Level Architecture
+
+```mermaid
+flowchart TB
+
+    USER["Candidate / Admin"]
+    WEB["Next.js Web App"]
+
+    subgraph BACKEND["Spring Boot Modular Monolith"]
+        AUTH["Auth"]
+        CRAWLER["Job Crawler"]
+        NORMALIZER["Job Normalizer"]
+        JOBEMBED["Job Embedding"]
+        CV["CV"]
+        CANDEMBED["Candidate Embedding"]
+        MATCHING["Matching"]
+        TAILORING["CV Tailoring"]
+    end
+
+    subgraph AI["Python Services"]
+        EMBEDDING["Embedding Service"]
+        PARSER["CV Parser"]
+    end
+
+    SOURCES["Job Sources"]
+    LLM["Groq / Gemini"]
+
+    MONGO[("MongoDB")]
+    QDRANT[("Qdrant")]
+    MINIO[("MinIO")]
+
+    USER --> WEB
+    WEB --> BACKEND
+
+    SOURCES --> CRAWLER
+
+    CRAWLER --> MONGO
+    CRAWLER --> NORMALIZER
+
+    NORMALIZER --> MONGO
+    NORMALIZER --> JOBEMBED
+
+    JOBEMBED --> EMBEDDING
+    JOBEMBED --> MONGO
+    JOBEMBED --> QDRANT
+
+    CV --> MINIO
+    CV --> PARSER
+    CV --> MONGO
+
+    CANDEMBED --> EMBEDDING
+    CANDEMBED --> MONGO
+
+    MATCHING --> MONGO
+    MATCHING --> QDRANT
+
+    TAILORING --> MATCHING
+    TAILORING --> EMBEDDING
+    TAILORING --> LLM
+```
+
+The architecture consists of four primary layers:
+
+```text
+Next.js Frontend
+        ↓
+Spring Boot Backend
+        ↓
+Python AI Services
+        ↓
+MongoDB · Qdrant · MinIO
+```
+
+---
+
+## 2. Frontend
+
+Location:
+
+```text
+frontend/web-app
+```
+
+Main technologies:
+
+```text
+Next.js 16
+React 19
+TypeScript
+Tailwind CSS
+TanStack Query
+Axios
+next-intl
+Zustand
+```
+
+Main routes include:
+
+```text
+/login
+/register
+/jobs
+/cv
+/matches
+/admin
+```
+
+The application supports:
+
+```text
+Vietnamese
+English
+```
+
+with Vietnamese as the default locale.
+
+The frontend is responsible for:
+
+* authentication UI;
+* job browsing;
+* CV upload and profile visualization;
+* matching results;
+* CV tailoring workflow;
+* administrator interfaces.
+
+Backend authorization remains authoritative even when frontend role checks are used to control the UI.
+
+---
+
+## 3. Backend
+
+The Java backend follows a **modular monolith** architecture.
+
+Composition root:
 
 ```text
 backend/autojob-app
 ```
 
-Maven reactor hiện có:
+Current business modules:
 
 ```text
-common/common-dtos
-common/common-events
-common/embedding-client
-
-modules/job-crawler
-modules/job-normalizer
-modules/job-embedding
-
-modules/auth
-
-modules/cv
-modules/candidate-embedding
-
-modules/matching
-
-autojob-app
+auth
+job-crawler
+job-normalizer
+job-embedding
+cv
+candidate-embedding
+matching
+cv-tailoring
 ```
+
+Shared modules include:
+
+```text
+common-dtos
+common-events
+embedding-client
+```
+
+This structure provides explicit domain boundaries while keeping deployment and local development simpler than a distributed microservice architecture.
 
 ---
 
-## 2. Runtime
+## 4. Internal Processing
 
-```mermaid
-flowchart LR
+Spring application events connect major processing stages.
 
-    CLIENT[Client]
-
-    APP[autojob-app]
-    EMB[embedding-service]
-    CVP[cv-parser-service]
-
-    MONGO[(MongoDB)]
-    QDRANT[(Qdrant)]
-    MINIO[(MinIO)]
-
-    CLIENT --> APP
-
-    APP --> MONGO
-    APP --> QDRANT
-    APP --> MINIO
-
-    APP --> EMB
-    APP --> CVP
-
-    CVP --> MINIO
-```
-
-Python services không ghi trực tiếp candidate/job business document vào MongoDB.
-
-Java backend giữ ownership của persistence.
-
----
-
-## 3. Internal event architecture
-
-Java modules giao tiếp bằng synchronous Spring application events.
-
-Job:
-
-```text
-RawJobService
-→ JobRawCollectedEvent
-→ Job Normalizer
-→ JobNormalizedReadyEvent
-→ Job Embedding
-```
-
-CV:
-
-```text
-CvParsingService
-→ CandidateProfileReadyEvent
-→ Candidate Embedding
-```
-
-Hiện không dùng:
-
-```text
-RabbitMQ
-Kafka
-```
-
-cho các flow trên.
-
----
-
-## 4. Job architecture
+### Job flow
 
 ```text
 Crawler
-→ raw_jobs
-→ normalizer
-→ normalized_jobs
-→ job embedding
-→ job_embeddings
-→ Qdrant
+    ↓
+RawJob
+    ↓
+JobRawCollectedEvent
+    ↓
+Job Normalizer
+    ↓
+NormalizedJob
+    ↓
+JobNormalizedReadyEvent
+    ↓
+Job Embedding
 ```
 
-Crawler live:
+### Candidate flow
+
+```text
+CV Parser
+    ↓
+CandidateProfile
+    ↓
+CandidateProfileReadyEvent
+    ↓
+Candidate Embedding
+```
+
+These events are currently synchronous.
+
+A message broker is not required by the current MVP architecture.
+
+---
+
+## 5. Job Processing
+
+Supported crawler sources currently include:
 
 ```text
 MOCK
@@ -133,151 +260,266 @@ TOPDEV
 VIECLAM24H
 ```
 
-External live crawler có một Camel route cho mỗi source.
-
----
-
-## 5. CV architecture
+The job pipeline is:
 
 ```text
-POST /api/cvs
-→ validate
-→ MinIO
-→ raw_cvs
-```
-
-Sau đó:
-
-```text
-POST /api/cvs/{rawCvId}/parse
-→ CvParsingService
-→ CvParserClient
-→ cv-parser-service
-→ MinIO
-→ parsed response
-→ candidate_profiles
-→ raw_cvs.status = PARSED
-→ CandidateProfileReadyEvent
-```
-
-Downstream:
-
-```text
-CandidateProfileReadyEvent
-→ CandidateEmbeddingService
-→ embedding-service
-→ candidate_embeddings
-```
-
----
-
-## 6. Matching architecture
-
-Matching module đã thuộc runtime.
-
-```text
-candidate_profiles
-+
-candidate_embeddings
-+
+External Source
+    ↓
+Apache Camel Crawler
+    ↓
+raw_jobs
+    ↓
+Normalization
+    ↓
 normalized_jobs
-+
-Qdrant job vectors
-        |
-        v
-HybridMatchingService
-        |
-        v
-HybridRankingService
-        |
-        v
-match_results
+    ↓
+Embedding Service
+    ↓
+job_embeddings
+    ↓
+Qdrant
 ```
 
-Matching không parse raw CV.
+Current job versions:
 
-Matching không tạo job embedding.
+```text
+Normalization = rule-v4
+Job text      = job-text-v2
+```
 
-Matching yêu cầu upstream state đã ready.
+Separating raw jobs, normalized jobs, and embeddings allows derived data to be rebuilt without repeating the entire crawl process.
 
 ---
 
-## 7. Matching retrieval
+## 6. CV Processing
 
-Candidate embedding phải:
+The candidate pipeline begins with a CV upload.
 
-```text
-status = READY
-```
-
-và:
+Supported formats:
 
 ```text
-textVersion = candidate-text-v1
+PDF
+DOC
+DOCX
 ```
 
-Qdrant search được filter theo:
+Flow:
 
 ```text
-normalizationVersion
-embeddingVersion
-job textVersion
+CV Upload
+    ↓
+MinIO
+    ↓
+raw_cvs
+    ↓
+CV Parser Service
+    ↓
+candidate_profiles
+    ↓
+CandidateProfileReadyEvent
+    ↓
+Candidate Embedding
+    ↓
+candidate_embeddings
 ```
 
-Candidate và job phải dùng cùng:
+Current parser version:
 
 ```text
-embeddingVersion
+rule-v2
 ```
+
+Current candidate embedding text version:
+
+```text
+candidate-text-v2
+```
+
+Candidate profiles and candidate embeddings are stored separately so failed embedding generation does not invalidate successfully parsed CV data.
 
 ---
 
-## 8. Hybrid ranking
+## 7. AI Services
 
-Pipeline:
+AutoJob currently uses two Python services.
+
+### Embedding Service
+
+Location:
 
 ```text
-Qdrant hits
-→ load normalized_jobs
-→ hard eligibility filter
-→ semantic calibration
-→ score components
-→ acceptance filter
-→ sort
-→ limit
+ai-services/embedding-service
 ```
 
-Current components:
+Model:
 
 ```text
-semantic
-skill
+intfloat/multilingual-e5-small
+```
+
+Current vector configuration:
+
+```text
+Dimension     = 384
+Normalization = L2
+```
+
+The service is used for:
+
+```text
+job embeddings
+candidate embeddings
+CV-tailoring preview embeddings
+```
+
+### CV Parser Service
+
+Location:
+
+```text
+ai-services/cv-parser-service
+```
+
+Responsibilities include extracting:
+
+```text
+identity
+contact information
+skills
+work experience
+projects
+education
+certifications
+languages
+experience years
 seniority
-location
-freshness
+```
+
+Python services perform specialized computation, while Java remains responsible for business persistence.
+
+---
+
+## 8. Matching Engine
+
+The matching engine combines semantic retrieval with structured compatibility.
+
+```text
+Candidate Embedding
+        ↓
+Qdrant Retrieval
+        ↓
+Normalized Job Hydration
+        ↓
+Eligibility Filtering
+        ↓
+Hybrid Scoring
+        ↓
+Acceptance Filtering
+        ↓
+Ranked Results
+```
+
+Current ranking version:
+
+```text
+hybrid-v6-balanced-r7
 ```
 
 Current weights:
 
+| Component | Weight |
+| --------- | -----: |
+| Semantic  |    40% |
+| Skills    |    40% |
+| Seniority |    10% |
+| Location  |     5% |
+| Freshness |     5% |
+
+Semantic similarity is used as one ranking signal rather than being treated as a direct match probability.
+
+Matching results can expose:
+
 ```text
-0.40 semantic
-0.40 skill
-0.10 seniority
-0.05 location
-0.05 freshness
+score breakdown
+matched skills
+missing skills
+match tier
+explanations
 ```
-
-Unknown structured signal không được ép thành neutral weighted contribution.
-
-Khi một structured component không có evidence, weight active được renormalize trên các component còn lại.
 
 ---
 
-## 9. Data ownership
+## 9. CV Tailoring
 
-MongoDB:
+CV Tailoring uses the candidate profile, current job match, and available candidate evidence to generate job-specific improvements.
+
+Flow:
 
 ```text
+Candidate Profile
+        +
+Matched Job
+        ↓
+Evidence Analysis
+        ↓
+Suggestions
+        ↓
+Optional AI Rewrite
+        ↓
+Safety Validation
+        ↓
+Temporary Preview
+        ↓
+Before / After Matching
+```
+
+Supported suggestion types:
+
+```text
+REWRITE
+EMPHASIZE
+GAP_WARNING
+```
+
+AI rewriting is evidence-constrained.
+
+The system is designed to improve the presentation of existing candidate information without inventing unsupported:
+
+```text
+skills
+experience
+projects
+metrics
+certifications
+education
+job titles
+achievements
+```
+
+Current provider order when both are enabled:
+
+```text
+Groq
+ ↓
+Gemini
+```
+
+If AI rewriting is unavailable, deterministic emphasis and gap analysis can still operate.
+
+---
+
+## 10. Data Storage
+
+AutoJob uses three primary storage technologies.
+
+### MongoDB
+
+Stores application business data:
+
+```text
+users
+refresh_tokens
+
 raw_jobs
 normalized_jobs
 job_embeddings
@@ -287,134 +529,117 @@ candidate_profiles
 candidate_embeddings
 
 match_results
-
-users
-refresh_tokens
-
-website_sources
-source_discovery_results
 ```
 
-Qdrant chỉ dùng để giữ/search job vector.
+### Qdrant
 
-MinIO giữ CV file gốc.
+Stores searchable job vectors.
 
----
-
-## 10. Python services
-
-### embedding-service
-
-Responsibility:
+Current collection:
 
 ```text
-text
-→ multilingual-e5-small
-→ 384-dimensional vector
-→ L2 normalization
+job_vectors_v1
 ```
 
-Java validate:
+MongoDB remains the canonical source of job information.
+
+Qdrant is used as a semantic retrieval index.
+
+### MinIO
+
+Stores original uploaded CV files.
+
+Default local bucket:
 
 ```text
-dimension
-embeddingVersion
-textHash
-normalized
-```
-
-### cv-parser-service
-
-Responsibility:
-
-```text
-MinIO CV object
-→ text extraction
-→ section detection
-→ structured profile parsing
-→ parse warnings
-→ parse quality
-```
-
-Parser version:
-
-```text
-rule-v2
+autojob-cvs
 ```
 
 ---
 
-## 11. Seniority architecture
+## 11. Authentication and Authorization
 
-Shared taxonomy:
-
-```text
-configs/taxonomy/shared/seniority.yml
-```
-
-Cả:
+Authentication uses:
 
 ```text
-job normalizer
-cv parser
-matching
+JWT access token
++
+rotating refresh token
 ```
 
-dùng cùng concept seniority.
-
-Candidate resolution priority:
+Current roles:
 
 ```text
-headline
-→ current/latest work title
-→ years of experience
-→ career objective
-→ target role
+USER
+ADMIN
 ```
 
-Historical title không được tự động pin current seniority.
+General access model:
+
+```text
+Public
+├── authentication
+└── health / API documentation
+
+USER / ADMIN
+├── jobs
+├── CV
+├── matching
+└── CV tailoring
+
+ADMIN
+├── crawlers
+├── raw jobs
+├── normalization administration
+├── parser utilities
+└── embedding administration
+```
+
+Unconfigured `/api/**` routes are denied by default.
 
 ---
 
-## 12. Local ownership mode
+## 12. Version Compatibility
 
-Mặc định local:
+AutoJob explicitly versions machine-facing representations that influence matching.
 
-```dotenv
-AUTH_PUBLIC_API_MODE=true
-CV_PUBLIC_OWNER_USER_ID=public-local-user
-```
+Current configuration:
 
-Trong public mode, CV/matching dùng owner:
+| Component                | Version                 |
+| ------------------------ | ----------------------- |
+| CV Parser                | `rule-v2`               |
+| Job Normalization        | `rule-v4`               |
+| Job Embedding Text       | `job-text-v2`           |
+| Candidate Embedding Text | `candidate-text-v2`     |
+| Matching                 | `hybrid-v6-balanced-r7` |
+| CV Rewrite Prompt        | `cv-rewrite-v1`         |
+| Embedding Dimension      | `384`                   |
+| Qdrant Collection        | `job_vectors_v1`        |
 
-```text
-public-local-user
-```
-
-kể cả request có hoặc không có JWT.
-
-Khi public mode tắt:
-
-```text
-authentication.getName()
-```
-
-được dùng làm owner.
+Version compatibility prevents stale embeddings or previous representations from being silently mixed with the current matching pipeline.
 
 ---
 
-## 13. Remaining architecture gaps
+## 13. Architecture Principles
 
-Những phần chưa hoàn thiện chủ yếu là:
+The current implementation follows several core principles:
 
 ```text
-frontend production UI
-matching automated scorer coverage
-async durable messaging/retry
-crawler production hardening
-Source Discovery probing/review workflow
-observability/metrics
-AI CV recommendation
+Keep business persistence in Java.
+
+Use Python for specialized AI/document processing.
+
+Separate canonical business data from derived semantic indexes.
+
+Version representations that affect retrieval or ranking.
+
+Treat semantic similarity as evidence, not probability.
+
+Prefer fewer relevant matches over padded results.
+
+Do not fabricate candidate information during CV tailoring.
+
+Add distributed infrastructure only when operational requirements justify it.
 ```
 
-Core job → CV → embedding → matching runtime hiện đã tồn tại.
+AutoJob is currently designed as a full-stack MVP with clear module boundaries and a migration path toward more durable asynchronous processing, observability, and production infrastructure as the system evolves.

@@ -1,112 +1,307 @@
 # API Reference
 
-Base local:
+Local API base URL:
 
 ```text
 http://localhost:8080
 ```
 
+Unless explicitly marked public, API requests require authentication.
+
+Authenticated requests use:
+
+```http
+Authorization: Bearer <access-token>
+```
+
 ---
 
-## Auth
+## 1. Authentication
 
-```text
+### Register
+
+```http
 POST /api/auth/register
+```
+
+### Login
+
+```http
 POST /api/auth/login
+```
+
+### Refresh session
+
+```http
 POST /api/auth/refresh
+```
+
+Refresh tokens are rotated when a new session is issued.
+
+### Logout
+
+```http
 POST /api/auth/logout
-GET  /api/auth/me
 ```
 
-Local mặc định:
+### Current user
 
-```dotenv
-AUTH_PUBLIC_API_MODE=true
+```http
+GET /api/auth/me
 ```
+
+`/api/auth/me` requires `USER` or `ADMIN`.
 
 ---
 
-# CV API
+## 2. CV API
 
-## Upload
+### Upload CV
 
-```text
+```http
 POST /api/cvs
 Content-Type: multipart/form-data
 ```
 
-Field:
+Form field:
 
 ```text
 file
 ```
 
-Response:
+Supported formats:
 
-```json
-{
-  "id": "...",
-  "ownerUserId": "public-local-user",
-  "originalFilename": "cv.pdf",
-  "extension": "pdf",
-  "contentType": "application/pdf",
-  "sizeBytes": 123456,
-  "sha256": "...",
-  "status": "UPLOADED",
-  "uploadedAt": "..."
-}
+```text
+PDF
+DOC
+DOCX
+```
+
+Maximum upload size:
+
+```text
+10 MB
 ```
 
 ---
 
-## Raw CV metadata
+### Get CV metadata
 
-```text
+```http
 GET /api/cvs/{rawCvId}
 ```
 
 ---
 
-## Parse CV
+### Parse CV
 
-```text
+```http
 POST /api/cvs/{rawCvId}/parse
 ```
 
-Response là candidate profile.
-
-Parse:
-
-```text
-Java
-→ cv-parser-service
-→ candidate_profiles
-→ candidate embedding trigger
-```
+Successful parsing creates or updates the candidate profile and triggers candidate embedding generation.
 
 ---
 
-## Read candidate profile
+### Get candidate profile
 
-```text
+```http
 GET /api/cvs/{rawCvId}/profile
 ```
 
+CV endpoints enforce candidate ownership.
+
 ---
 
-# Candidate Embedding API
+## 3. Jobs API
 
-## Latest
+### List normalized jobs
+
+```http
+GET /api/normalized-jobs
+```
+
+Supported query parameters:
 
 ```text
-GET /api/admin/candidate-embeddings/{candidateProfileId}
+page
+size
+sourceCode
+normalizationVersion
+```
+
+Defaults:
+
+```text
+page = 0
+size = 20
+```
+
+Maximum page size:
+
+```text
+100
+```
+
+Example:
+
+```http
+GET /api/normalized-jobs?page=0&size=20&sourceCode=ITVIEC
 ```
 
 ---
 
-## Rebuild
+### Job detail
+
+```http
+GET /api/normalized-jobs/{id}
+```
+
+Normalized job APIs are available to `USER` and `ADMIN`.
+
+---
+
+## 4. Matching API
+
+### Run matching
+
+```http
+POST /api/matching/candidates/{candidateProfileId}
+```
+
+Optional:
 
 ```text
+?force=true
+```
+
+Without `force=true`, an existing compatible result may be reused.
+
+---
+
+### Get current matching result
+
+```http
+GET /api/matching/candidates/{candidateProfileId}
+```
+
+The response contains:
+
+```text
+candidateProfileId
+candidateEmbeddingId
+rankingVersion
+
+retrievedCount
+loadedJobCount
+matchedCount
+reusedExisting
+
+results[]
+```
+
+Each result contains:
+
+```text
+job snapshot
+rank
+
+score breakdown
+match tier
+explanations
+
+matched skills
+missing skills
+
+version metadata
+generated timestamp
+```
+
+Current ranking version:
+
+```text
+hybrid-v6-balanced-r7
+```
+
+---
+
+## 5. CV Tailoring API
+
+A job must belong to the candidate's current matching result before it can be analyzed.
+
+### Analyze CV for a job
+
+```http
+POST /api/cv-tailoring/candidates/{candidateProfileId}/jobs/{normalizedJobId}/analyze
+```
+
+Response includes:
+
+```text
+analysisId
+expiresAt
+
+job
+currentMatch
+
+evidence
+suggestions
+gaps
+```
+
+Suggestion types:
+
+```text
+REWRITE
+EMPHASIZE
+GAP_WARNING
+```
+
+---
+
+### Preview selected suggestions
+
+```http
+POST /api/cv-tailoring/candidates/{candidateProfileId}/jobs/{normalizedJobId}/preview
+```
+
+Example request:
+
+```json
+{
+  "analysisId": "analysis-id",
+  "acceptedSuggestionIds": [
+    "suggestion-id"
+  ]
+}
+```
+
+The response compares:
+
+```text
+before
+after
+```
+
+matching scores using a temporary candidate representation.
+
+Preview does not overwrite the persisted candidate profile.
+
+---
+
+## 6. Candidate Embedding Administration
+
+Requires `ADMIN`.
+
+### Get latest embedding
+
+```http
+GET /api/admin/candidate-embeddings/{candidateProfileId}
+```
+
+### Rebuild embedding
+
+```http
 POST /api/admin/candidate-embeddings/{candidateProfileId}/rebuild
 ```
 
@@ -118,252 +313,19 @@ Optional:
 
 ---
 
-# Matching API
+## 7. Job Embedding Administration
 
-## Run
+### Get latest job embedding
 
-```text
-POST /api/matching/candidates/{candidateProfileId}
-```
-
-Default:
-
-```text
-force=false
-```
-
-Force:
-
-```text
-POST /api/matching/candidates/{candidateProfileId}?force=true
-```
-
-Response top level:
-
-```json
-{
-  "candidateProfileId": "...",
-  "candidateEmbeddingId": "...",
-  "rankingVersion": "hybrid-v6-balanced-r4",
-  "retrievedCount": 100,
-  "loadedJobCount": 95,
-  "matchedCount": 12,
-  "reusedExisting": false,
-  "results": []
-}
-```
-
-Each result chứa:
-
-```text
-normalizedJobId
-qdrantPointId
-rank
-
-job snapshot
-
-finalScore
-semanticScore
-skillScore
-seniorityScore
-locationScore
-freshnessScore
-
-matchTier
-explanations
-
-matchedSkills
-missingSkills
-
-versions
-generatedAt
-```
-
----
-
-## Current matching result
-
-```text
-GET /api/matching/candidates/{candidateProfileId}
-```
-
-Đọc result của:
-
-```text
-current READY candidate embedding
-+
-current ranking version
-```
-
-Không tự rerun nếu chưa tồn tại.
-
----
-
-## Matching errors
-
-Possible:
-
-```text
-401 MATCHING_AUTHENTICATION_REQUIRED
-
-404 MATCHING_CANDIDATE_PROFILE_NOT_FOUND
-404 MATCHING_RESULT_NOT_FOUND
-
-409 MATCHING_CANDIDATE_EMBEDDING_NOT_READY
-409 MATCHING_CANDIDATE_EMBEDDING_STALE
-409 MATCHING_CANDIDATE_EMBEDDING_INVALID
-
-503 MATCHING_VECTOR_STORE_UNAVAILABLE
-```
-
----
-
-# Job Crawler API
-
-## Mock
-
-```text
-POST /api/admin/crawlers/mock/run
-```
-
----
-
-## Live
-
-```text
-POST /api/admin/crawlers/live/{sourceCode}/run
-```
-
-Query:
-
-```text
-limit=15
-```
-
-Supported:
-
-```text
-ITVIEC
-JOBOKO
-TOPDEV
-VIECLAM24H
-```
-
-Maximum:
-
-```text
-50
-```
-
-Example:
-
-```text
-POST /api/admin/crawlers/live/ITVIEC/run?limit=10
-```
-
----
-
-## Raw jobs
-
-```text
-GET /api/raw-jobs?limit=20
-```
-
-Limit normalized to:
-
-```text
-1..100
-```
-
----
-
-# Parser fixture API
-
-Dev/parser testing:
-
-```text
-POST /api/parsers/{sourceCode}/list-file
-POST /api/parsers/{sourceCode}/detail-file
-```
-
-Đây là local/debug utility đọc HTML file từ filesystem của backend.
-
----
-
-# Job Normalizer API
-
-## Normalize one raw job
-
-```text
-POST /api/raw-jobs/{rawJobId}/normalize
-```
-
-Optional:
-
-```text
-?force=true
-```
-
----
-
-## Renormalize batch
-
-```text
-POST /api/admin/job-normalization/renormalize
-```
-
----
-
-## List normalized jobs
-
-```text
-GET /api/normalized-jobs
-```
-
-Query:
-
-```text
-page
-size
-sourceCode
-normalizationVersion
-```
-
-Example:
-
-```text
-GET /api/normalized-jobs?page=0&size=20&sourceCode=ITVIEC
-```
-
-Max page size:
-
-```text
-100
-```
-
----
-
-## Normalized job detail
-
-```text
-GET /api/normalized-jobs/{id}
-```
-
----
-
-# Job Embedding API
-
-## Latest
-
-```text
+```http
 GET /api/job-embeddings/{normalizedJobId}
 ```
 
----
+Requires `ADMIN`.
 
-## Rebuild
+### Rebuild job embedding
 
-```text
+```http
 POST /api/admin/job-embeddings/{normalizedJobId}/rebuild
 ```
 
@@ -375,68 +337,166 @@ Optional:
 
 ---
 
-# Source Discovery
+## 8. Crawler Administration
 
-## Create website source
+Requires `ADMIN`.
+
+### Run mock crawler
+
+```http
+POST /api/admin/crawlers/mock/run
+```
+
+### Run live crawler
+
+```http
+POST /api/admin/crawlers/live/{sourceCode}/run
+```
+
+Optional query:
 
 ```text
+limit=15
+```
+
+Maximum:
+
+```text
+50
+```
+
+Supported live sources:
+
+```text
+ITVIEC
+JOBOKO
+TOPDEV
+VIECLAM24H
+```
+
+Example:
+
+```http
+POST /api/admin/crawlers/live/ITVIEC/run?limit=10
+```
+
+---
+
+## 9. Raw Job Administration
+
+Requires `ADMIN`.
+
+### List raw jobs
+
+```http
+GET /api/raw-jobs?limit=20
+```
+
+Accepted limit:
+
+```text
+1..100
+```
+
+### Normalize one job
+
+```http
+POST /api/raw-jobs/{rawJobId}/normalize
+```
+
+Optional:
+
+```text
+?force=true
+```
+
+### Batch renormalization
+
+```http
+POST /api/admin/job-normalization/renormalize
+```
+
+---
+
+## 10. Parser Utilities
+
+Development and parser-testing endpoints:
+
+```http
+POST /api/parsers/{sourceCode}/list-file
+POST /api/parsers/{sourceCode}/detail-file
+```
+
+These endpoints operate on local parser fixtures and require `ADMIN`.
+
+They are intended as development utilities rather than candidate-facing APIs.
+
+---
+
+## 11. Source Discovery
+
+Administrative source-discovery endpoints:
+
+### Register source
+
+```http
 POST /api/admin/source-discovery/website-sources
 ```
 
-Body:
+### Run discovery
 
-```json
-{
-  "sourceCode": "EXAMPLE",
-  "domain": "example.com"
-}
-```
-
----
-
-## Run
-
-```text
+```http
 POST /api/admin/source-discovery/website-sources/{id}/run
 ```
 
----
+### Read results
 
-## Results
-
-```text
+```http
 GET /api/admin/source-discovery/website-sources/{id}/results
 ```
 
-Current Source Discovery chỉ generate common candidate paths:
-
-```text
-/careers
-/jobs
-/tuyen-dung
-/viec-lam
-```
-
-Nó chưa probe URL, validate response hoặc approve/reject source tự động.
-
 ---
 
-# Health APIs
+## 12. Infrastructure Endpoints
 
-Java:
+Health:
 
-```text
+```http
 GET /actuator/health
 ```
 
-CV parser:
+OpenAPI:
 
 ```text
-GET http://localhost:8003/ready
+/v3/api-docs
 ```
 
-Embedding:
+Swagger UI:
 
 ```text
-GET http://localhost:8002/ready
+/swagger-ui/
 ```
+
+Health and API documentation are public.
+
+Other Actuator endpoints require `ADMIN`.
+
+---
+
+## 13. Authorization Summary
+
+| API                                 | Access       |
+| ----------------------------------- | ------------ |
+| Register / Login / Refresh / Logout | Public       |
+| Health / Swagger / OpenAPI          | Public       |
+| `/api/auth/me`                      | USER / ADMIN |
+| `/api/cvs/**`                       | USER / ADMIN |
+| `/api/normalized-jobs/**`           | USER / ADMIN |
+| `/api/matching/**`                  | USER / ADMIN |
+| `/api/cv-tailoring/**`              | USER / ADMIN |
+| `/api/admin/**`                     | ADMIN        |
+| `/api/raw-jobs/**`                  | ADMIN        |
+| `/api/parsers/**`                   | ADMIN        |
+| `/api/job-embeddings/**`            | ADMIN        |
+
+Any new `/api/**` route not explicitly configured in Spring Security is denied by default.

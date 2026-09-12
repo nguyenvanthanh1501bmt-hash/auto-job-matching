@@ -1,8 +1,6 @@
 # Data Storage
 
-## 1. Storage systems
-
-AutoJob sử dụng:
+AutoJob uses three primary storage technologies:
 
 ```text
 MongoDB
@@ -10,17 +8,25 @@ Qdrant
 MinIO
 ```
 
+Each system has a separate responsibility.
+
+```text
+MongoDB → business data and application state
+Qdrant  → semantic job retrieval
+MinIO   → original CV files
+```
+
 ---
 
-# MongoDB
+## 1. MongoDB
 
-Database local:
+Default local database:
 
 ```text
 autojob
 ```
 
-Collections:
+Main collections:
 
 ```text
 users
@@ -40,9 +46,42 @@ website_sources
 source_discovery_results
 ```
 
+MongoDB is the primary source of truth for application business data.
+
 ---
 
-## raw_jobs
+## 2. Authentication Data
+
+### `users`
+
+Stores application users.
+
+Main responsibilities:
+
+```text
+identity
+normalized email
+password hash
+roles
+account state
+timestamps
+```
+
+Passwords are stored as BCrypt hashes rather than plaintext.
+
+---
+
+### `refresh_tokens`
+
+Stores refresh-token sessions used for session rotation and revocation.
+
+Refresh tokens are managed separately from short-lived JWT access tokens.
+
+---
+
+## 3. Job Data
+
+### `raw_jobs`
 
 Owner:
 
@@ -50,26 +89,33 @@ Owner:
 job-crawler
 ```
 
-Purpose:
+Stores source-oriented job information collected by crawlers.
+
+Typical data includes:
 
 ```text
-structured data từ source website
-fingerprint
 source identity
-raw retention metadata
+source job ID
+fingerprint
+
+title
+company
+location
+salary
+experience
+skills
+
+job URLs
+apply information
+
+crawl timestamps
 ```
 
-Raw HTML/text mặc định không cần persist cho live crawler.
-
-Event:
-
-```text
-JobRawCollectedEvent
-```
+Raw job data represents information before canonical AutoJob normalization.
 
 ---
 
-## normalized_jobs
+### `normalized_jobs`
 
 Owner:
 
@@ -77,40 +123,42 @@ Owner:
 job-normalizer
 ```
 
-Current normalization:
+Current normalization version:
 
 ```text
 rule-v4
 ```
 
-Contains:
+Contains canonical job data such as:
 
 ```text
-normalized title/company
-skills
-salary
+title
+company
+
+canonical skills
 locations
+
+salary range
 experience range
 seniority
 job type
+
 description
 requirements
 benefits
-apply metadata
-dates
+
+application metadata
+posted date
+deadline
+
 normalization version
 ```
 
-Logical versioning dựa trên:
-
-```text
-rawJobId
-normalizationVersion
-```
+This is the primary job representation used by matching after Qdrant retrieval.
 
 ---
 
-## job_embeddings
+### `job_embeddings`
 
 Owner:
 
@@ -118,24 +166,32 @@ Owner:
 job-embedding
 ```
 
-Contains:
+Stores job embedding lifecycle and synchronization metadata.
+
+Typical fields:
 
 ```text
 normalizedJobId
 normalizationVersion
-textVersion
+
+modelName
+modelRevision
 embeddingVersion
+
 textHash
 dimension
 normalized
+
 status
+
 qdrantCollection
 qdrantPointId
-timestamps
+
+embeddedAt
 lastError
 ```
 
-Status:
+Status values:
 
 ```text
 PROCESSING
@@ -143,11 +199,13 @@ READY
 FAILED
 ```
 
-Vector job authoritative search copy nằm ở Qdrant.
+The searchable vector is indexed in Qdrant.
 
 ---
 
-## raw_cvs
+## 4. Candidate Data
+
+### `raw_cvs`
 
 Owner:
 
@@ -155,25 +213,29 @@ Owner:
 cv
 ```
 
-Contains:
+Stores metadata for uploaded CV files.
+
+Typical fields include:
 
 ```text
-id
 ownerUserId
+
 bucket
 objectKey
+
 originalFilename
 extension
 contentType
 sizeBytes
 sha256
+
 status
 lastError
-uploadedFromIp
+
 uploadedAt
 ```
 
-Status:
+Status values:
 
 ```text
 UPLOADED
@@ -182,9 +244,11 @@ PARSED
 FAILED
 ```
 
+The original document itself is stored in MinIO.
+
 ---
 
-## candidate_profiles
+### `candidate_profiles`
 
 Owner:
 
@@ -192,49 +256,44 @@ Owner:
 cv
 ```
 
-Created by:
+Stores the structured candidate representation produced from the CV parser response.
 
-```text
-cv-parser-service response
-→ Java validation/mapping
-→ Mongo persistence
-```
-
-Python không ghi trực tiếp Mongo.
-
-Contains structured CV data:
+Typical data includes:
 
 ```text
 identity
-contact
+contact information
 links
 
-career objective
 headline
 summary
+career objective
 
 skills
-work experiences
+work experience
 projects
 education
-certifications
 
-experienceYears
+certifications
+licenses
+languages
+
+experience years
 seniority
 
-recent job titles
-recent companies
-
 parser version
-parser warnings
+parse warnings
 parse quality
-raw text
 source metadata
 ```
 
+The Python parser returns structured data to Java.
+
+Python does not directly write candidate profiles to MongoDB.
+
 ---
 
-## candidate_embeddings
+### `candidate_embeddings`
 
 Owner:
 
@@ -242,43 +301,61 @@ Owner:
 candidate-embedding
 ```
 
-Contains:
+Stores the semantic representation of a candidate profile.
+
+Current text representation:
+
+```text
+candidate-text-v2
+```
+
+Typical fields:
 
 ```text
 candidateProfileId
 rawCvId
+
 parserVersion
 textVersion
 
 modelName
 modelRevision
 embeddingVersion
-textHash
 
+textHash
 dimension
 normalized
-vector
 
+vector
 status
+
 embeddedAt
 lastError
-timestamps
 ```
 
-Current:
+Status values:
 
 ```text
-textVersion = candidate-text-v1
-dimension   = 384
+PROCESSING
+READY
+FAILED
 ```
 
-Candidate vector hiện được persist trong Mongo và dùng trực tiếp làm query vector cho Qdrant job search.
+Current vector dimension:
 
-Không cần candidate collection riêng trong Qdrant.
+```text
+384
+```
+
+Candidate vectors are stored in MongoDB and used directly as query vectors against the Qdrant job collection.
+
+A separate candidate Qdrant collection is not required by the current architecture.
 
 ---
 
-## match_results
+## 5. Matching Data
+
+### `match_results`
 
 Owner:
 
@@ -286,116 +363,86 @@ Owner:
 matching
 ```
 
-Contains:
+Stores accepted job matches for a candidate and ranking version.
+
+Each record contains:
 
 ```text
-rawCvId
-candidateProfileId
-candidateEmbeddingId
+candidate identity
+candidate embedding identity
 
-normalizedJobId
-qdrantPointId
+job identity
+Qdrant point identity
 
 job display snapshot
 
-parserVersion
-normalizationVersion
-embeddingVersion
-candidateTextVersion
-jobTextVersion
-rankingVersion
+final score
+semantic score
+skill score
+seniority score
+location score
+freshness score
+
+component known/unknown state
+
+matched skills
+missing skills
+
+parser version
+normalization version
+embedding version
+candidate text version
+job text version
+ranking version
 
 rank
-
-finalScore
-semanticScore
-skillScore
-seniorityScore
-locationScore
-freshnessScore
-
-matchedSkills
-missingSkills
-
-generatedAt
+generated timestamp
 ```
 
-Unique:
+Current ranking version:
 
 ```text
-candidateProfileId
-candidateEmbeddingId
-rankingVersion
-normalizedJobId
+hybrid-v6-balanced-r7
 ```
 
-Index:
-
-```text
-candidateProfileId
-rankingVersion
-rank
-```
+Version metadata allows historical matching results to remain distinguishable after scoring logic changes.
 
 ---
 
-## website_sources
+## 6. Source Discovery Data
 
-Source Discovery input.
+### `website_sources`
 
-Current status lifecycle includes states such as:
+Stores websites registered for source-discovery experiments.
 
-```text
-PENDING_DISCOVERY
-DISCOVERING
-DISCOVERED
-NO_CANDIDATE_FOUND
-```
+### `source_discovery_results`
 
----
+Stores discovery results associated with a registered source.
 
-## source_discovery_results
-
-Candidate URLs generated từ:
-
-```text
-/careers
-/jobs
-/tuyen-dung
-/viec-lam
-```
-
-Current result status:
-
-```text
-PENDING_REVIEW
-```
-
-Source Discovery hiện chưa phải full crawler source onboarding engine.
+These collections support crawler/source exploration and are separate from the primary job pipeline.
 
 ---
 
-# Qdrant
+## 7. Qdrant
 
-Collection:
+Qdrant provides vector search for jobs.
+
+Current collection:
 
 ```text
 job_vectors_v1
 ```
 
-Dimension:
+Configuration:
 
 ```text
-384
+dimension = 384
+distance  = Cosine
 ```
 
-Distance:
+Each Qdrant point represents a job embedding and contains metadata used for compatibility filtering.
 
-```text
-Cosine
-```
-
-Job point metadata dùng cho compatibility filtering:
+Typical metadata includes:
 
 ```text
 normalizedJobId
@@ -404,60 +451,107 @@ embeddingVersion
 textVersion
 ```
 
-Matching search filter các version này trước khi hydrate Mongo documents.
+Qdrant is not the canonical job database.
+
+Matching uses:
+
+```text
+Qdrant
+   ↓
+retrieve relevant job IDs
+   ↓
+MongoDB
+   ↓
+load complete normalized jobs
+```
 
 ---
 
-# MinIO
+## 8. MinIO
 
-Bucket:
+MinIO stores original uploaded CV files.
+
+Default local bucket:
 
 ```text
 autojob-cvs
 ```
 
-Private bucket.
+The bucket is private.
 
-Object pattern:
+Typical flow:
 
 ```text
-raw/yyyy/MM/dd/{rawCvId}/{safeFilename}
+CV Upload
+    ↓
+Java validates file
+    ↓
+MinIO stores original object
+    ↓
+MongoDB stores RawCv metadata
+    ↓
+CV parser reads object
 ```
 
-MinIO chỉ giữ source CV binary.
-
-Business parsed state nằm trong MongoDB.
+Separating binary storage from structured candidate data keeps MongoDB focused on application records rather than large documents.
 
 ---
 
-# Version consistency
+## 9. CV Tailoring Data
 
-Important:
+CV-tailoring analysis sessions are currently temporary application state rather than permanent MongoDB records.
+
+Flow:
 
 ```text
-CV parser             rule-v2
-Job normalization     rule-v4
-Candidate text        candidate-text-v1
-Job text              job-text-v2
-Matching              hybrid-v6-balanced-r4
+Analyze
+    ↓
+temporary analysisId
+    ↓
+user selects suggestions
+    ↓
+Preview
 ```
 
-Version fields được persist để tránh ranking giữa incompatible artifacts.
+Preview applies selected suggestions to an in-memory candidate copy.
+
+The persisted `candidate_profiles` document is not modified by preview.
 
 ---
 
-# Ownership
+## 10. Versioned Data
 
-Trong local public mode:
+Several representations are explicitly versioned:
+
+| Representation           | Current version         |
+| ------------------------ | ----------------------- |
+| CV parser                | `rule-v2`               |
+| Job normalization        | `rule-v4`               |
+| Job embedding text       | `job-text-v2`           |
+| Candidate embedding text | `candidate-text-v2`     |
+| Matching                 | `hybrid-v6-balanced-r7` |
+| CV rewrite prompt        | `cv-rewrite-v1`         |
+
+Versioning prevents stale or incompatible representations from being silently combined.
+
+---
+
+## 11. Storage Responsibilities
+
+The overall ownership model is:
 
 ```text
-ownerUserId = public-local-user
+Java / MongoDB
+→ business state
+
+Qdrant
+→ searchable job vectors
+
+MinIO
+→ original candidate documents
+
+Python services
+→ computation only
 ```
 
-Khi auth public mode tắt:
-
-```text
-ownerUserId = authenticated principal
-```
-
-Matching validate candidate ownership trước khi đọc embedding/search job.
+Keeping these responsibilities explicit simplifies rebuilding derived data such as embeddings without losing canonical application state.

@@ -1,423 +1,393 @@
 # Troubleshooting
 
-## Docker service không chạy
-
-Check:
-
-```powershell
-docker compose --env-file .env ps
-```
-
-Logs:
-
-```powershell
-docker compose --env-file .env logs --tail=200
-```
+This document covers common issues when running AutoJob locally.
 
 ---
 
-## autojob-app không UP
+## 1. Backend Is Not Healthy
 
-```powershell
-docker compose --env-file .env `
-  logs --tail=200 autojob-app
+Check:
+
+```bash
+docker compose --env-file .env ps
+```
+
+Then inspect logs:
+
+```bash
+docker compose --env-file .env logs --tail=200 autojob-app
 ```
 
 Common causes:
 
 ```text
-Mongo unavailable
-CV parser unhealthy
-embedding service loading model
-invalid taxonomy
-invalid matching config
-version mismatch
+MongoDB unavailable
+Qdrant unavailable
+invalid environment variables
+JWT configuration issue
+AI service unavailable
+port conflict
+```
+
+Health endpoint:
+
+```text
+http://localhost:8080/actuator/health
 ```
 
 ---
 
-## CV parser version mismatch
+## 2. Embedding Service Is Not Ready
 
-Expected current:
+Check:
 
 ```text
-rule-v2
+http://localhost:8002/ready
 ```
 
-`.env`:
+Logs:
+
+```bash
+docker compose --env-file .env logs -f embedding-service
+```
+
+The service may require additional startup time while loading:
+
+```text
+intfloat/multilingual-e5-small
+```
+
+Do not use container startup alone as the readiness signal.
+
+---
+
+## 3. CV Parser Is Not Ready
+
+Check:
+
+```text
+http://localhost:8003/ready
+```
+
+Logs:
+
+```bash
+docker compose --env-file .env logs -f cv-parser-service
+```
+
+If parsing fails for one document, verify:
+
+```text
+supported file type
+file size
+document integrity
+MinIO connectivity
+parser logs
+```
+
+Supported formats:
+
+```text
+PDF
+DOC
+DOCX
+```
+
+---
+
+## 4. Frontend Cannot Reach Backend
+
+Verify:
+
+```text
+frontend/web-app/.env.local
+```
+
+contains:
 
 ```dotenv
-CV_PARSER_VERSION=rule-v2
-CV_PARSER_EXPECTED_VERSION=rule-v2
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 ```
 
-Rebuild:
+Restart the Next.js development server after changing environment variables.
 
-```powershell
-docker compose --env-file .env `
-  up -d --build cv-parser-service autojob-app
-```
-
-Important:
-
-`docker-compose.yml` vẫn có fallback `rule-v1` ở một số chỗ.
-
-Luôn dùng:
+Also verify backend CORS configuration allows:
 
 ```text
---env-file .env
+http://localhost:5173
 ```
 
 ---
 
-## CV parser không ready
+## 5. Requests Return 401
 
-```powershell
-Invoke-RestMethod `
-  http://localhost:8003/ready
+A `401 Unauthorized` usually means:
+
+```text
+access token expired
+token missing
+token invalid
+refresh session expired
 ```
 
-Logs:
+The frontend normally attempts automatic token refresh.
 
-```powershell
-docker compose --env-file .env `
-  logs --tail=200 cv-parser-service
+If refresh also fails:
+
+```text
+clear the current session
+log in again
+```
+
+For direct API testing, ensure the request contains:
+
+```http
+Authorization: Bearer <access-token>
 ```
 
 ---
 
-## antiword error
+## 6. Requests Return 403
 
-DOC extraction dùng `antiword`.
+A `403 Forbidden` usually indicates insufficient permissions.
 
-Nếu DOC parse fail:
+Administrative endpoints require:
 
 ```text
-antiword missing
-binary execution failure
-invalid old DOC file
-timeout
+ADMIN
 ```
 
-Rebuild parser image thay vì chạy parser local host.
+Examples:
+
+```text
+/api/admin/**
+/api/raw-jobs/**
+/api/parsers/**
+/api/job-embeddings/**
+```
+
+Normal registration creates a:
+
+```text
+USER
+```
+
+account.
 
 ---
 
-## CV parse status FAILED
+## 7. Matching Cannot Run
 
-Inspect:
-
-```javascript
-db.raw_cvs.findOne({ _id: "..." })
-```
-
-Check:
+Matching requires a candidate embedding with:
 
 ```text
-status
-lastError
-bucket
-objectKey
+status = READY
 ```
 
-Then parser/app logs.
+Check the candidate embedding through the administration endpoint.
+
+Common causes:
+
+```text
+CV not parsed
+candidate embedding still processing
+candidate embedding failed
+embedding version mismatch
+invalid vector
+candidate ownership mismatch
+```
+
+Matching does not automatically repair missing upstream data.
 
 ---
 
-## CV ra DIRECTOR sai
+## 8. Matching Returns No Jobs
 
-Check trước:
+An empty result is not necessarily an error.
 
-```text
-workExperiences[].jobTitle
-workExperiences[].normalizedJobTitle
-seniority
-experienceYears
-```
-
-`Trợ lý giám đốc` phải:
+Jobs may be rejected because of:
 
 ```text
-normalizedJobTitle = EXECUTIVE_ASSISTANT
-```
-
-và không tự tạo:
-
-```text
-DIRECTOR
-```
-
-Nếu vẫn sai, đảm bảo container đã rebuild từ seniority parser/taxonomy mới.
-
----
-
-## experienceYears=2 nhưng ENTRY_LEVEL
-
-Current expected:
-
-```text
-2.0 => MID
-```
-
-Nếu career objective `"sinh viên"` làm result thành ENTRY_LEVEL thì container đang chạy parser logic cũ.
-
-Rebuild:
-
-```powershell
-docker compose --env-file .env `
-  up -d --build cv-parser-service
-```
-
----
-
-## PowerShell làm hỏng tiếng Việt
-
-Windows PowerShell 5.1 có thể làm Unicode pipe thành:
-
-```text
-Tr? l? gi?m ??c
-```
-
-Không dùng Bash heredoc:
-
-```text
-python - <<'PY'
-```
-
-trong PowerShell.
-
-Với script test nên force UTF-8 hoặc dùng Unicode escape cho isolated Python smoke tests.
-
-Real CV file qua MinIO/API không phụ thuộc terminal literal theo cách đó.
-
----
-
-## Candidate embedding không có
-
-Check:
-
-```text
-candidate_profiles đã persist?
-raw_cvs.status = PARSED?
-CandidateProfileReadyEvent listener có chạy?
-embedding-service READY?
-```
-
-API:
-
-```text
-GET /api/admin/candidate-embeddings/{candidateProfileId}
-```
-
-Force:
-
-```text
-POST /api/admin/candidate-embeddings/{candidateProfileId}/rebuild?force=true
-```
-
----
-
-## Candidate embedding FAILED
-
-Logs:
-
-```powershell
-docker compose --env-file .env `
-  logs --tail=200 autojob-app
-```
-
-```powershell
-docker compose --env-file .env `
-  logs --tail=200 embedding-service
-```
-
-Check:
-
-```text
-embeddingVersion
-dimension
-textHash
-lastError
-```
-
----
-
-## Matching says embedding not ready
-
-Error:
-
-```text
-MATCHING_CANDIDATE_EMBEDDING_NOT_READY
-```
-
-Matching không tự build embedding.
-
-Build/rebuild candidate embedding trước.
-
----
-
-## Matching says embedding stale
-
-Error:
-
-```text
-MATCHING_CANDIDATE_EMBEDDING_STALE
-```
-
-Candidate profile đã thay đổi sau embedding.
-
-Rebuild:
-
-```text
-POST /api/admin/candidate-embeddings/{candidateProfileId}/rebuild?force=true
-```
-
-sau đó matching lại.
-
----
-
-## Matching returns no results
-
-Check lần lượt:
-
-```text
-Qdrant has compatible vectors
-normalizationVersion = rule-v4
-job textVersion = job-text-v2
-embeddingVersion matches candidate
-jobs not expired
-jobs not > max age
+low semantic relevance
+low skill compatibility
+expired deadline
+job age
+version mismatch
 acceptance thresholds
 ```
 
-Current acceptance:
+AutoJob intentionally prefers returning fewer valid matches over padding the result list with weak jobs.
+
+For debugging, inspect:
 
 ```text
-final >= 0.45
-semantic >= 0.50
+retrievedCount
+loadedJobCount
+matchedCount
 ```
 
-sau đó còn skill/structured/strong-semantic gates.
+in the matching response.
 
 ---
 
-## Matching returns fewer than 20
+## 9. Jobs Exist but Are Missing From Qdrant
 
-Đây có thể là behavior đúng.
-
-Acceptance filter chạy trước:
+Check whether job embeddings are:
 
 ```text
-result-limit = 20
+READY
 ```
 
-Nếu chỉ 8 job đủ relevance:
+and whether their version matches the current pipeline.
+
+Current expected values include:
 
 ```text
-matchedCount = 8
+normalization = rule-v4
+job text      = job-text-v2
+dimension     = 384
 ```
 
-Service không fill bằng job yếu.
+The embedding may need to be rebuilt after a version change.
 
 ---
 
-## Matching returns stale ranking
+## 10. Qdrant Collection Problems
 
-Check:
-
-```text
-reusedExisting
-rankingVersion
-candidateEmbeddingId
-```
-
-Nếu muốn rerun:
+Current collection:
 
 ```text
-?force=true
+job_vectors_v1
 ```
+
+Inspect collections:
+
+```text
+http://localhost:6333/collections
+```
+
+Expected vector dimension:
+
+```text
+384
+```
+
+If collection configuration does not match the embedding model, recreate or rebuild local vector data rather than mixing incompatible vectors.
 
 ---
 
-## Qdrant unavailable
+## 11. Live Crawler Stops Working
 
-Check:
+Live crawlers depend on third-party websites.
 
-```powershell
-Invoke-RestMethod `
-  http://localhost:6333/collections
-```
-
-Matching có thể trả:
+Common causes include:
 
 ```text
-503 MATCHING_VECTOR_STORE_UNAVAILABLE
+HTML structure changed
+CSS selectors changed
+redirect behavior changed
+rate limiting
+temporary remote failure
+anti-bot protection
 ```
 
----
-
-## Live crawler failed
-
-External sites có thể:
+First verify the deterministic:
 
 ```text
-change HTML
-return 403
-return 429
-redirect
-require login
-block automated request
+MOCK
 ```
 
-Không bypass anti-bot.
+crawler.
 
-Compare live HTML với fixture/parser assumptions trước khi sửa parser.
+If the mock pipeline works but a live source fails, the issue is likely source-specific.
+
+Do not attempt to bypass CAPTCHA, authentication walls, or anti-bot protections.
 
 ---
 
-## Mongo script SyntaxError với rawCvId
+## 12. CV Tailoring Returns No AI Rewrite
 
-UUID/string phải nằm trong quotes.
+AI rewriting requires:
 
-Correct mongosh:
-
-```javascript
-db.candidate_profiles.findOne({
-  rawCvId: "uuid-here"
-})
+```text
+CV_TAILORING_AI_ENABLED=true
 ```
 
-Không phải:
+and at least one configured provider.
 
-```javascript
-rawCvId: uuid-here
+Supported providers currently include:
+
+```text
+Groq
+Gemini
 ```
+
+If an AI provider is unavailable, AutoJob may still return deterministic:
+
+```text
+EMPHASIZE
+GAP_WARNING
+```
+
+suggestions.
+
+This fallback is expected behavior.
 
 ---
 
-## View latest candidate
+## 13. CV Tailoring Preview Fails
 
-```javascript
-db.candidate_profiles
-  .find()
-  .sort({ updatedAt: -1 })
-  .limit(1)
+Check that:
+
+```text
+analysisId is still valid
+job belongs to current match results
+suggestion IDs belong to the analysis
+candidate profile still exists
+candidate can be embedded
 ```
 
-Latest embedding:
+Tailoring analyses are temporary and should not be treated as permanent stored records.
 
-```javascript
-db.candidate_embeddings
-  .find()
-  .sort({ updatedAt: -1 })
-  .limit(1)
+---
+
+## 14. Port Conflicts
+
+Default local ports:
+
+```text
+5173  frontend
+8080  backend
+8002  embedding service
+8003  CV parser
+27018 MongoDB
+6333  Qdrant HTTP
+6334  Qdrant gRPC
+9000  MinIO
+9001  MinIO Console
+18080 mock job site
 ```
 
-Latest matching:
+Check whether another process already uses the required port before changing application configuration.
 
-```javascript
-db.match_results
-  .find()
-  .sort({ generatedAt: -1 })
-  .limit(20)
+---
+
+## 15. Reset Local Environment
+
+Restart services:
+
+```bash
+docker compose --env-file .env down
+docker compose --env-file .env up -d --build
 ```
+
+For a full local data reset:
+
+```bash
+docker compose --env-file .env down -v
+docker compose --env-file .env up -d --build
+```
+
+> Removing volumes deletes local MongoDB, Qdrant, and MinIO data.
+
+Use this only when a clean environment is intended.
