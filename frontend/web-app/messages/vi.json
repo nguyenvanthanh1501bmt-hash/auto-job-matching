@@ -465,7 +465,7 @@
       "titleLead": "Công việc tiếp theo nên",
       "titleAccent": "phù hợp với bạn hơn.",
       "description": "AutoJob biến CV thành một hồ sơ nghề nghiệp rõ ràng, hiểu điểm mạnh của bạn và ưu tiên những cơ hội thực sự đáng để xem.",
-      "primary": "Getting Started",
+      "primary": "Bắt đầu",
       "primarySignedIn": "Vào workspace",
       "secondary": "Xem cách hoạt động",
       "trustOne": "Xử lý CV riêng tư",
@@ -679,7 +679,7 @@
         "ready": "Profile đã sẵn sàng cho matching.",
         "waiting": "CV đã tải lên và đang chờ phân tích.",
         "failed": "Quá trình phân tích chưa hoàn tất.",
-        "loading": "Đang tải thông tin CV..."
+        "loading": "Đang tải thông tin CV hiện tại..."
       },
       "status": {
         "UPLOADED": "Đã tải lên",
@@ -879,7 +879,8 @@
         "refresh": "Cập nhật kết quả",
         "tryAgain": "Thử lại",
         "goToCv": "Đi tới hồ sơ CV",
-        "viewJob": "Xem chi tiết"
+        "viewJob": "Xem chi tiết",
+        "tailorCv": "Tối ưu CV"
       },
       "filters": {
         "all": "Tất cả"
@@ -950,6 +951,85 @@
         "authentication": "Phiên đăng nhập không còn hợp lệ. Hãy đăng nhập lại.",
         "invalidRequest": "Yêu cầu matching không hợp lệ. Hãy kiểm tra lại hồ sơ CV.",
         "generic": "Đã xảy ra lỗi khi xử lý matching. Hãy thử lại."
+      },
+      "tailoring": {
+        "eyebrow": "CV Tailoring / Xem trước matching",
+        "title": "Tối ưu CV cho công việc đã chọn",
+        "close": "Đóng CV Tailoring",
+        "jobUntitled": "Công việc chưa có tiêu đề",
+        "expiresAt": "Phân tích hết hạn lúc {value}.",
+        "matchedSkills": "Kỹ năng khớp",
+        "missingSkills": "Kỹ năng còn thiếu",
+        "none": "Không có",
+        "analyzeError": {
+          "eyebrow": "Không thể phân tích",
+          "title": "Không thể phân tích kết quả matching này"
+        },
+        "actions": {
+          "tryAnalyzeAgain": "Thử phân tích lại",
+          "preview": "Xem trước thay đổi đã chọn",
+          "previewing": "Đang tạo bản xem trước...",
+          "analyzeAgain": "Phân tích lại",
+          "tryPreviewAgain": "Thử xem trước lại"
+        },
+        "currentMatch": {
+          "eyebrow": "Matching hiện tại",
+          "rank": "Hạng",
+          "score": "Match",
+          "breakdown": "Chi tiết điểm matching hiện tại"
+        },
+        "suggestions": {
+          "eyebrow": "Đề xuất có bằng chứng",
+          "title": "Chọn những thay đổi muốn đưa vào bản xem trước",
+          "description": "Các đề xuất được backend tạo từ những bằng chứng đã tồn tại trong CV. Việc chọn đề xuất không lưu hoặc thay đổi CV hiện tại của bạn.",
+          "selectedCount": "Đã chọn {count}",
+          "empty": "Không có đề xuất Tailoring an toàn nào được tạo cho công việc này. Bạn vẫn có thể chạy preview CV hiện tại với lần đánh giá matching mới nhất.",
+          "selectAria": "Chọn đề xuất {type}",
+          "original": "Nội dung hiện tại",
+          "suggested": "Nội dung đề xuất",
+          "emphasizeSkill": "Kỹ năng nên làm nổi bật",
+          "reason": "Lý do",
+          "targetSkills": "Kỹ năng mục tiêu",
+          "evidence": "Bằng chứng hỗ trợ trong CV"
+        },
+        "suggestionTypes": {
+          "REWRITE": "Viết lại",
+          "EMPHASIZE": "Làm nổi bật"
+        },
+        "sections": {
+          "PROFESSIONAL_SUMMARY": "Tóm tắt chuyên môn",
+          "SKILLS": "Kỹ năng",
+          "WORK_EXPERIENCE": "Kinh nghiệm làm việc",
+          "PROJECT": "Dự án",
+          "EDUCATION": "Học vấn",
+          "CERTIFICATION": "Chứng chỉ",
+          "LICENSE": "Giấy phép",
+          "LANGUAGE": "Ngôn ngữ"
+        },
+        "gaps": {
+          "eyebrow": "Khoảng trống bằng chứng",
+          "title": "Những kỹ năng backend sẽ không tự thêm",
+          "description": "Các kỹ năng này có liên quan đến công việc nhưng chưa có bằng chứng chuyên môn hỗ trợ trong CV hiện tại. Chúng chỉ là cảnh báo và không thể được chọn."
+        },
+        "preview": {
+          "eyebrow": "Đánh giá tạm thời",
+          "title": "So sánh trước và sau",
+          "description": "Backend tạo candidate profile và embedding tạm thời rồi chạy matching lại. Không có thay đổi nào được lưu vào CV.",
+          "reanalyzeTitle": "Phân tích này không còn hiệu lực",
+          "reanalyzeDescription": "Phân tích đã hết hạn hoặc CV, công việc hay baseline matching đã thay đổi. Hãy phân tích lại trước khi tạo preview mới.",
+          "errorTitle": "Không thể tạo bản xem trước",
+          "scoreTransition": "Match preview: {before}% → {after}%",
+          "resultTitle": "Kết quả match preview",
+          "temporaryNotice": "Đây chỉ là bản xem trước matching tạm thời, không phải thay đổi CV đã được lưu.",
+          "appliedCount": "{count} đề xuất được áp dụng trong preview",
+          "before": "Trước",
+          "after": "Sau",
+          "status": {
+            "MATCHED": "Đã match",
+            "NOT_RETRIEVED": "Không được truy xuất",
+            "NOT_MATCHED": "Không match"
+          }
+        }
       }
     }
   }

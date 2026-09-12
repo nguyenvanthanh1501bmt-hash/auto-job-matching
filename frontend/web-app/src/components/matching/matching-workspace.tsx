@@ -15,6 +15,10 @@ import {
 } from "@/components/jobs/job-detail-drawer";
 
 import {
+  CvTailoringDrawer
+} from "@/components/matching/cv-tailoring-drawer";
+
+import {
   MatchResultCard
 } from "@/components/matching/match-result-card";
 
@@ -163,6 +167,14 @@ export function MatchingWorkspace() {
   const [
     selectedJobId,
     setSelectedJobId
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    tailoringJobId,
+    setTailoringJobId
   ] =
     useState<
       string | null
@@ -777,6 +789,9 @@ export function MatchingWorkspace() {
                     onOpen={
                       setSelectedJobId
                     }
+                    onTailor={
+                      setTailoringJobId
+                    }
                   />
                 )
               )}
@@ -791,6 +806,20 @@ export function MatchingWorkspace() {
         }
         onClose={() =>
           setSelectedJobId(
+            null
+          )
+        }
+      />
+
+      <CvTailoringDrawer
+        candidateProfileId={
+          candidateProfileId
+        }
+        jobId={
+          tailoringJobId
+        }
+        onClose={() =>
+          setTailoringJobId(
             null
           )
         }

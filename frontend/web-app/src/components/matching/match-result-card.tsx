@@ -52,9 +52,33 @@ function toPercent(
   );
 }
 
+function TailorIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      className="size-3.5"
+      aria-hidden="true"
+    >
+      <path
+        d="M10 2.5c.47 3.03 1.97 4.53 5 5-3.03.47-4.53 1.97-5 5-.47-3.03-1.97-4.53-5-5 3.03-.47 4.53-1.97 5-5Z"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
+
+      <path
+        d="M15.5 12.5c.2 1.29.84 1.93 2.13 2.13-1.29.2-1.93.84-2.13 2.13-.2-1.29-.84-1.93-2.13-2.13 1.29-.2 1.93-.84 2.13-2.13Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 export function MatchResultCard({
   item,
-  onOpen
+  onOpen,
+  onTailor
 }: MatchResultCardProps) {
   const t =
     useTranslations(
@@ -427,6 +451,22 @@ export function MatchResultCard({
               )}
 
               <ArrowRightIcon />
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                onTailor(
+                  item.normalizedJobId
+                )
+              }
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-[#cfe57d] bg-[#efffc3] px-[18px] text-[10px] font-semibold text-[#3f4d17] transition-[transform,border-color] hover:-translate-y-0.5 hover:border-[#b8d354]"
+            >
+              <TailorIcon />
+
+              {t(
+                "actions.tailorCv"
+              )}
             </button>
 
             {applyUrl ? (

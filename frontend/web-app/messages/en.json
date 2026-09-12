@@ -879,7 +879,8 @@
         "refresh": "Refresh matches",
         "tryAgain": "Try again",
         "goToCv": "Go to CV profile",
-        "viewJob": "View details"
+        "viewJob": "View details",
+        "tailorCv": "Tailor CV"
       },
       "filters": {
         "all": "All"
@@ -950,6 +951,85 @@
         "authentication": "Your session is no longer valid. Please sign in again.",
         "invalidRequest": "The matching request is invalid. Please check your CV profile.",
         "generic": "Something went wrong while matching jobs. Please try again."
+      },
+      "tailoring": {
+        "eyebrow": "CV Tailoring / Match preview",
+        "title": "Tailor this CV for the selected job",
+        "close": "Close CV tailoring",
+        "jobUntitled": "Untitled job",
+        "expiresAt": "Analysis expires at {value}.",
+        "matchedSkills": "Matched skills",
+        "missingSkills": "Missing skills",
+        "none": "None",
+        "analyzeError": {
+          "eyebrow": "Analysis unavailable",
+          "title": "We could not analyze this match"
+        },
+        "actions": {
+          "tryAnalyzeAgain": "Try analysis again",
+          "preview": "Preview selected changes",
+          "previewing": "Building preview...",
+          "analyzeAgain": "Analyze again",
+          "tryPreviewAgain": "Try preview again"
+        },
+        "currentMatch": {
+          "eyebrow": "Current match",
+          "rank": "Rank",
+          "score": "Match",
+          "breakdown": "Current score breakdown"
+        },
+        "suggestions": {
+          "eyebrow": "Evidence-backed suggestions",
+          "title": "Choose what to include in the preview",
+          "description": "Suggestions come from the backend analysis and are limited to evidence already present in your CV. Selecting a suggestion does not save or change your stored CV.",
+          "selectedCount": "{count} selected",
+          "empty": "No safe tailoring suggestions were generated for this job. You can still preview the current CV against the latest matching evaluation.",
+          "selectAria": "Select {type} suggestion",
+          "original": "Original",
+          "suggested": "Suggested rewrite",
+          "emphasizeSkill": "Skill to emphasize",
+          "reason": "Why",
+          "targetSkills": "Target skills",
+          "evidence": "Supporting CV evidence"
+        },
+        "suggestionTypes": {
+          "REWRITE": "Rewrite",
+          "EMPHASIZE": "Emphasize"
+        },
+        "sections": {
+          "PROFESSIONAL_SUMMARY": "Professional summary",
+          "SKILLS": "Skills",
+          "WORK_EXPERIENCE": "Work experience",
+          "PROJECT": "Project",
+          "EDUCATION": "Education",
+          "CERTIFICATION": "Certification",
+          "LICENSE": "License",
+          "LANGUAGE": "Language"
+        },
+        "gaps": {
+          "eyebrow": "Evidence gaps",
+          "title": "Skills the backend will not add",
+          "description": "These skills are relevant to the job but are not supported by professional evidence in the current CV. They are warnings only and cannot be selected."
+        },
+        "preview": {
+          "eyebrow": "Temporary evaluation",
+          "title": "Before vs. after preview",
+          "description": "The backend builds a temporary profile and embedding, then runs matching again. Nothing is saved to your CV.",
+          "reanalyzeTitle": "This analysis is no longer current",
+          "reanalyzeDescription": "The analysis expired or the CV, job, or matching baseline changed. Analyze again before building another preview.",
+          "errorTitle": "We could not build the preview",
+          "scoreTransition": "Match preview: {before}% → {after}%",
+          "resultTitle": "Match preview result",
+          "temporaryNotice": "This is a temporary matching preview, not a saved CV change.",
+          "appliedCount": "{count} applied in preview",
+          "before": "Before",
+          "after": "After",
+          "status": {
+            "MATCHED": "Matched",
+            "NOT_RETRIEVED": "Not retrieved",
+            "NOT_MATCHED": "Not matched"
+          }
+        }
       }
     }
   }

@@ -24,4 +24,5 @@ export type MatchingSummaryProps = {
 export type MatchResultCardProps = {
   item: MatchingResultItem;
   onOpen: (jobId: string) => void;
+  onTailor: (jobId: string) => void;
 };
