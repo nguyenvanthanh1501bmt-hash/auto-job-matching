@@ -1,27 +1,40 @@
 export type CvTailoringSuggestionType =
-  | "REWRITE"
-  | "EMPHASIZE"
-  | "GAP_WARNING";
+    | "REWRITE"
+    | "EMPHASIZE"
+    | "GAP_WARNING";
+
+export type CvTailoringSuggestionCategory =
+    | "REWRITE"
+    | "POSITION"
+    | "SURFACE";
+
+export type CvTailoringSuggestionPriority =
+    | "HIGH"
+    | "MEDIUM"
+    | "LOW";
+
+export type CvTailoringCoachingType =
+    "NEEDS_INPUT";
 
 export type CvTailoringSection =
-  | "PROFESSIONAL_SUMMARY"
-  | "SKILLS"
-  | "WORK_EXPERIENCE"
-  | "PROJECT"
-  | "EDUCATION"
-  | "CERTIFICATION"
-  | "LICENSE"
-  | "LANGUAGE";
+    | "PROFESSIONAL_SUMMARY"
+    | "SKILLS"
+    | "WORK_EXPERIENCE"
+    | "PROJECT"
+    | "EDUCATION"
+    | "CERTIFICATION"
+    | "LICENSE"
+    | "LANGUAGE";
 
 export type CvTailoringEvidenceKind =
-  | "TEXT"
-  | "SKILL"
-  | "TOOL"
-  | "EQUIPMENT"
-  | "EDUCATION"
-  | "CERTIFICATION"
-  | "LICENSE"
-  | "LANGUAGE";
+    | "TEXT"
+    | "SKILL"
+    | "TOOL"
+    | "EQUIPMENT"
+    | "EDUCATION"
+    | "CERTIFICATION"
+    | "LICENSE"
+    | "LANGUAGE";
 
 export type CvTailoringJobSnapshot = {
   normalizedJobId: string;
@@ -62,13 +75,29 @@ export type CvTailoringEvidenceItem = {
 export type CvTailoringSuggestionItem = {
   id: string;
   type: Exclude<
-    CvTailoringSuggestionType,
-    "GAP_WARNING"
+      CvTailoringSuggestionType,
+      "GAP_WARNING"
   >;
+  category: CvTailoringSuggestionCategory;
+  priority: CvTailoringSuggestionPriority;
   section: CvTailoringSection;
   sourceId: string | null;
   original: string | null;
   suggested: string | null;
+  diagnosis: string | null;
+  reason: string | null;
+  targetSkills: string[];
+  evidenceIds: string[];
+};
+
+export type CvTailoringCoachingItem = {
+  id: string;
+  type: CvTailoringCoachingType;
+  priority: CvTailoringSuggestionPriority;
+  section: CvTailoringSection;
+  sourceId: string | null;
+  original: string | null;
+  question: string | null;
   reason: string | null;
   targetSkills: string[];
   evidenceIds: string[];
@@ -77,6 +106,7 @@ export type CvTailoringSuggestionItem = {
 export type CvTailoringGapItem = {
   id: string;
   type: "GAP_WARNING";
+  priority: CvTailoringSuggestionPriority;
   skill: string | null;
   reason: string | null;
 };
@@ -90,13 +120,14 @@ export type CvTailoringAnalyzeResponse = {
   currentMatch: CvTailoringCurrentMatch;
   evidence: CvTailoringEvidenceItem[];
   suggestions: CvTailoringSuggestionItem[];
+  coaching: CvTailoringCoachingItem[];
   gaps: CvTailoringGapItem[];
 };
 
 export type CvTailoringPreviewStatus =
-  | "MATCHED"
-  | "NOT_RETRIEVED"
-  | "NOT_MATCHED";
+    | "MATCHED"
+    | "NOT_RETRIEVED"
+    | "NOT_MATCHED";
 
 export type CvTailoringPreviewScore = {
   status: CvTailoringPreviewStatus;

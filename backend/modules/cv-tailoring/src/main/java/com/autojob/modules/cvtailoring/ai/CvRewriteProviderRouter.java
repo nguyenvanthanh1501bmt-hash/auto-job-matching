@@ -25,7 +25,8 @@ public class CvRewriteProviderRouter {
                     CvRewriteProviderRouter.class
             );
 
-    private static final int MAX_TRANSIENT_RETRIES = 1;
+    private static final int MAX_TRANSIENT_RETRIES =
+            1;
 
     private final List<CvRewriteProvider> providers;
 
@@ -80,45 +81,81 @@ public class CvRewriteProviderRouter {
             return Optional.empty();
         }
 
-        for (CvRewriteProvider provider : providers) {
+        RewriteResponse bestEffortResponse =
+                null;
+
+        for (CvRewriteProvider provider :
+                providers) {
 
             if (provider == null
                     || !provider.isAvailable()
                     || isCoolingDown(
                     provider.name()
             )) {
-
                 continue;
             }
 
-            Optional<RewriteResponse> result =
+            ProviderAttempt attempt =
                     callProvider(
                             provider,
                             request,
                             usableResponse
                     );
 
-            if (result.isPresent()) {
-                return result;
+            if (attempt == null) {
+                continue;
+            }
+
+            if (attempt.usable()) {
+                return Optional.of(
+                        attempt.response()
+                );
+            }
+
+            /*
+             * Keep the first structurally valid response as
+             * best effort.
+             *
+             * Example:
+             *
+             * Provider A:
+             * - generated valid coaching,
+             * - but every rewrite was rejected.
+             *
+             * Provider B:
+             * - later times out / rate-limits / fails.
+             *
+             * We still want to preserve safe coaching from A
+             * rather than return an entirely empty result.
+             */
+            if (bestEffortResponse == null) {
+                bestEffortResponse =
+                        attempt.response();
             }
         }
 
-        /*
-         * Groq và Gemini đều unavailable/fail.
-         *
-         * Caller sẽ tiếp tục với rule-based:
-         * - GAP_WARNING
-         * - EMPHASIZE
-         */
+        if (bestEffortResponse != null) {
+
+            log.info(
+                    "Using best-effort CV tailoring provider response "
+                            + "after all providers were exhausted"
+            );
+
+            return Optional.of(
+                    bestEffortResponse
+            );
+        }
+
         return Optional.empty();
     }
 
-    private Optional<RewriteResponse> callProvider(
+    private ProviderAttempt callProvider(
             CvRewriteProvider provider,
             RewriteRequest request,
             Predicate<RewriteResponse> usableResponse
     ) {
-        int transientRetries = 0;
+        int transientRetries =
+                0;
 
         while (true) {
 
@@ -128,29 +165,45 @@ public class CvRewriteProviderRouter {
                                 request
                         );
 
-                if (response != null
-                        && usableResponse.test(
-                        response
-                )) {
+                if (response == null) {
 
-                    return Optional.of(
-                            response
+                    log.warn(
+                            "CV rewrite provider returned null "
+                                    + "provider={}",
+                            provider.name()
+                    );
+
+                    return null;
+                }
+
+                boolean usable =
+                        usableResponse.test(
+                                response
+                        );
+
+                if (!usable) {
+
+                    /*
+                     * Provider answered, but backend
+                     * business validation did not accept
+                     * the rewrite output.
+                     *
+                     * Do not retry the same model hoping
+                     * for luck.
+                     *
+                     * Go directly to the next provider.
+                     */
+                    log.warn(
+                            "CV rewrite provider output rejected "
+                                    + "provider={}",
+                            provider.name()
                     );
                 }
 
-                /*
-                 * Provider technically answered, but backend
-                 * safety/validation rejected its business output.
-                 *
-                 * Do not retry the same model hoping for luck.
-                 * Go directly to the next provider.
-                 */
-                log.warn(
-                        "CV rewrite provider output rejected provider={}",
-                        provider.name()
+                return new ProviderAttempt(
+                        response,
+                        usable
                 );
-
-                return Optional.empty();
 
             } catch (ProviderException exception) {
 
@@ -163,8 +216,8 @@ public class CvRewriteProviderRouter {
                     transientRetries++;
 
                     log.warn(
-                            "Retrying CV rewrite provider provider={} "
-                                    + "reason={} attempt={}",
+                            "Retrying CV rewrite provider "
+                                    + "provider={} reason={} attempt={}",
                             provider.name(),
                             exception.reason(),
                             transientRetries + 1
@@ -178,18 +231,19 @@ public class CvRewriteProviderRouter {
                         exception
                 );
 
-                return Optional.empty();
+                return null;
 
             } catch (RuntimeException exception) {
 
                 /*
-                 * AI provider tuyệt đối không được làm Analyze chết.
+                 * AI provider must never make
+                 * Tailoring Analyze fail.
                  *
-                 * Không log:
-                 * - request body
+                 * Never log:
                  * - CV text
                  * - JD text
-                 * - API key
+                 * - request body
+                 * - API keys
                  */
                 log.warn(
                         "CV rewrite provider failed "
@@ -198,7 +252,7 @@ public class CvRewriteProviderRouter {
                         exception
                 );
 
-                return Optional.empty();
+                return null;
             }
         }
     }
@@ -207,9 +261,14 @@ public class CvRewriteProviderRouter {
             ProviderException exception
     ) {
         return exception.reason()
-                == CvRewriteProvider.FailureReason.SERVER_ERROR
+                == CvRewriteProvider
+                .FailureReason
+                .SERVER_ERROR
+
                 || exception.reason()
-                == CvRewriteProvider.FailureReason.NETWORK_ERROR;
+                == CvRewriteProvider
+                .FailureReason
+                .NETWORK_ERROR;
     }
 
     private void handleFailure(
@@ -222,27 +281,17 @@ public class CvRewriteProviderRouter {
 
             cooldownUntil.put(
                     provider.name(),
-                    Instant.now(
-                            clock
-                    ).plus(
-                            properties
-                                    .getProviderCooldown()
-                    )
+                    Instant
+                            .now(
+                                    clock
+                            )
+                            .plus(
+                                    properties
+                                            .getProviderCooldown()
+                            )
             );
         }
 
-        /*
-         * Timeout:
-         * -> no retry
-         * -> immediately fall through to next provider.
-         *
-         * 429:
-         * -> cooldown
-         * -> immediately fall through.
-         *
-         * 5xx/network:
-         * -> retry exactly once before reaching here.
-         */
         log.warn(
                 "CV rewrite provider failed "
                         + "provider={} reason={} status={} detail={}",
@@ -259,9 +308,14 @@ public class CvRewriteProviderRouter {
             ProviderException exception
     ) {
         return exception.reason()
-                == CvRewriteProvider.FailureReason.RATE_LIMIT
+                == CvRewriteProvider
+                .FailureReason
+                .RATE_LIMIT
+
                 || exception.reason()
-                == CvRewriteProvider.FailureReason.AUTHENTICATION;
+                == CvRewriteProvider
+                .FailureReason
+                .AUTHENTICATION;
     }
 
     private boolean isCoolingDown(
@@ -317,7 +371,9 @@ public class CvRewriteProviderRouter {
                         )
                         .trim();
 
-        if (compact.length() <= 500) {
+        if (compact.length()
+                <= 500) {
+
             return compact;
         }
 
@@ -325,5 +381,11 @@ public class CvRewriteProviderRouter {
                 0,
                 500
         ) + "...";
+    }
+
+    private record ProviderAttempt(
+            RewriteResponse response,
+            boolean usable
+    ) {
     }
 }

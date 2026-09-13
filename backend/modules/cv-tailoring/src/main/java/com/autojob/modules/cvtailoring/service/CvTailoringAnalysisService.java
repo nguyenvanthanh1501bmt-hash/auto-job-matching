@@ -3,12 +3,15 @@ package com.autojob.modules.cvtailoring.service;
 import com.autojob.modules.cv.domain.CandidateProfile;
 import com.autojob.modules.cv.repository.CandidateProfileRepository;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse;
+import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.CoachingItem;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.CurrentMatch;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.EvidenceItem;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.GapItem;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.JobSnapshot;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.Section;
+import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionCategory;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionItem;
+import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionPriority;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionType;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.repository.NormalizedJobRepository;
@@ -16,6 +19,7 @@ import com.autojob.modules.matching.contract.MatchingRunResult;
 import com.autojob.modules.matching.domain.MatchResult;
 import com.autojob.modules.matching.service.HybridMatchingService;
 import com.autojob.modules.matching.service.MatchingPreconditionException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -36,6 +40,7 @@ public class CvTailoringAnalysisService {
     private final CvTailoringAnalysisStore analysisStore;
     private final NormalizedJobRepository normalizedJobRepository;
     private final CvSuggestionService cvSuggestionService;
+    private final CvCoachingService cvCoachingService;
 
     public CvTailoringAnalysisService(
             HybridMatchingService hybridMatchingService,
@@ -45,6 +50,29 @@ public class CvTailoringAnalysisService {
             CvTailoringAnalysisStore analysisStore,
             NormalizedJobRepository normalizedJobRepository,
             CvSuggestionService cvSuggestionService
+    ) {
+        this(
+                hybridMatchingService,
+                candidateProfileRepository,
+                cvEvidenceService,
+                suggestionValidator,
+                analysisStore,
+                normalizedJobRepository,
+                cvSuggestionService,
+                null
+        );
+    }
+
+    @Autowired
+    public CvTailoringAnalysisService(
+            HybridMatchingService hybridMatchingService,
+            CandidateProfileRepository candidateProfileRepository,
+            CvEvidenceService cvEvidenceService,
+            CvSuggestionValidator suggestionValidator,
+            CvTailoringAnalysisStore analysisStore,
+            NormalizedJobRepository normalizedJobRepository,
+            CvSuggestionService cvSuggestionService,
+            CvCoachingService cvCoachingService
     ) {
         this.hybridMatchingService =
                 Objects.requireNonNull(
@@ -87,6 +115,9 @@ public class CvTailoringAnalysisService {
                         cvSuggestionService,
                         "cvSuggestionService must not be null"
                 );
+
+        this.cvCoachingService =
+                cvCoachingService;
     }
 
     public CvTailoringAnalyzeResponse analyze(
@@ -191,6 +222,16 @@ public class CvTailoringAnalysisService {
                         generatedSuggestions
                 );
 
+        List<CoachingItem> coaching =
+                cvCoachingService == null
+                        ? List.of()
+                        : cvCoachingService
+                        .buildNeedsInputItems(
+                                profile,
+                                targetMatch,
+                                evidenceMap
+                        );
+
         List<GapItem> gaps =
                 buildGapWarnings(targetMatch);
 
@@ -255,6 +296,7 @@ public class CvTailoringAnalysisService {
                 ),
                 evidenceMap.items(),
                 validatedSuggestions,
+                coaching,
                 gaps
         );
     }
@@ -352,10 +394,13 @@ public class CvTailoringAnalysisService {
                     new SuggestionItem(
                             "emphasize-" + result.size(),
                             SuggestionType.EMPHASIZE,
+                            SuggestionCategory.SURFACE,
+                            SuggestionPriority.MEDIUM,
                             Section.SKILLS,
                             "skills",
                             null,
                             matchedSkill,
+                            "This job-relevant skill is supported by professional evidence but is buried outside the top-level Skills section.",
                             buildEmphasizeReason(
                                     supportingEvidence
                             ),
@@ -448,6 +493,7 @@ public class CvTailoringAnalysisService {
                     new GapItem(
                             "gap-" + result.size(),
                             SuggestionType.GAP_WARNING,
+                            SuggestionPriority.HIGH,
                             missingSkill,
                             "This skill is relevant to "
                                     + "the selected job, but the "

@@ -13,7 +13,6 @@ import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.matching.domain.MatchResult;
 import org.springframework.stereotype.Component;
 
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -23,16 +22,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 @Component
 public class CvRewriteCandidateSelector {
 
-    private static final Pattern DIACRITICS =
-            Pattern.compile("\\p{M}+");
-
     private static final Pattern NON_WORD =
-            Pattern.compile("[^a-z0-9]+");
+            Pattern.compile(
+                    "[^\\p{L}\\p{N}+#]+"
+            );
 
     private final CvTailoringAiProperties properties;
     private final CvEvidenceService evidenceService;
@@ -109,7 +108,9 @@ public class CvRewriteCandidateSelector {
         List<ScoredNode> scored =
                 new ArrayList<>();
 
-        for (EvidenceItem item : evidenceMap.items()) {
+        for (EvidenceItem item :
+                evidenceMap.items()) {
+
             if (!isEditableText(
                     item
             )) {
@@ -124,9 +125,7 @@ public class CvRewriteCandidateSelector {
                                 profile,
                                 item.id()
                         );
-
             } catch (IllegalArgumentException exception) {
-
                 continue;
             }
 
@@ -175,13 +174,11 @@ public class CvRewriteCandidateSelector {
         );
 
         List<ScoredNode> selected =
-                scored
-                        .stream()
-                        .limit(
-                                properties
-                                        .getMaxRewriteCandidates()
-                        )
-                        .toList();
+                selectWithCoverage(
+                        scored,
+                        properties
+                                .getMaxRewriteCandidates()
+                );
 
         Map<String, EvidenceValue> catalog =
                 new LinkedHashMap<>();
@@ -211,9 +208,11 @@ public class CvRewriteCandidateSelector {
 
             editableNodes.add(
                     new EditableNode(
-                            node.source()
+                            node
+                                    .source()
                                     .sourceId(),
-                            node.source()
+                            node
+                                    .source()
                                     .section()
                                     .name(),
                             localContext(
@@ -221,7 +220,8 @@ public class CvRewriteCandidateSelector {
                                     node.source()
                             ),
                             truncate(
-                                    node.source()
+                                    node
+                                            .source()
                                             .text(),
                                     properties
                                             .getMaxEvidenceTextChars()
@@ -262,6 +262,215 @@ public class CvRewriteCandidateSelector {
         );
     }
 
+    private List<ScoredNode> selectWithCoverage(
+            List<ScoredNode> scored,
+            int requestedLimit
+    ) {
+        int limit =
+                Math.max(
+                        1,
+                        requestedLimit
+                );
+
+        List<ScoredNode> selected =
+                new ArrayList<>();
+
+        Set<String> selectedSourceIds =
+                new LinkedHashSet<>();
+
+        Map<String, Integer> scopeCounts =
+                new LinkedHashMap<>();
+
+        addBest(
+                scored,
+                selected,
+                selectedSourceIds,
+                scopeCounts,
+                limit,
+                node ->
+                        node
+                                .source()
+                                .section()
+                                == Section.PROFESSIONAL_SUMMARY
+        );
+
+        addBest(
+                scored,
+                selected,
+                selectedSourceIds,
+                scopeCounts,
+                limit,
+                node ->
+                        node
+                                .source()
+                                .section()
+                                == Section.WORK_EXPERIENCE
+        );
+
+        addBest(
+                scored,
+                selected,
+                selectedSourceIds,
+                scopeCounts,
+                limit,
+                node ->
+                        node
+                                .source()
+                                .section()
+                                == Section.PROJECT
+        );
+
+        addBest(
+                scored,
+                selected,
+                selectedSourceIds,
+                scopeCounts,
+                limit,
+                node ->
+                        node
+                                .source()
+                                .kind()
+                                == CvSourceIdResolver
+                                .SourceKind
+                                .ACHIEVEMENT
+        );
+
+        /*
+         * First fill:
+         * avoid one Work/Project scope consuming every LLM slot.
+         */
+        for (ScoredNode node : scored) {
+
+            if (selected.size()
+                    >= limit) {
+                break;
+            }
+
+            if (selectedSourceIds.contains(
+                    node
+                            .source()
+                            .sourceId()
+            )) {
+                continue;
+            }
+
+            int scopeCount =
+                    scopeCounts
+                            .getOrDefault(
+                                    node
+                                            .source()
+                                            .scopeId(),
+                                    0
+                            );
+
+            if (scopeCount >= 2) {
+                continue;
+            }
+
+            addNode(
+                    node,
+                    selected,
+                    selectedSourceIds,
+                    scopeCounts
+            );
+        }
+
+        /*
+         * Small-profile fallback.
+         *
+         * If there are fewer scopes, use remaining available
+         * high-scoring nodes rather than wasting request capacity.
+         */
+        for (ScoredNode node : scored) {
+
+            if (selected.size()
+                    >= limit) {
+                break;
+            }
+
+            if (selectedSourceIds.contains(
+                    node
+                            .source()
+                            .sourceId()
+            )) {
+                continue;
+            }
+
+            addNode(
+                    node,
+                    selected,
+                    selectedSourceIds,
+                    scopeCounts
+            );
+        }
+
+        return List.copyOf(
+                selected
+        );
+    }
+
+    private void addBest(
+            List<ScoredNode> scored,
+            List<ScoredNode> selected,
+            Set<String> selectedSourceIds,
+            Map<String, Integer> scopeCounts,
+            int limit,
+            Predicate<ScoredNode> predicate
+    ) {
+        if (selected.size()
+                >= limit) {
+            return;
+        }
+
+        for (ScoredNode node : scored) {
+
+            if (!predicate.test(
+                    node
+            )
+                    || selectedSourceIds.contains(
+                    node
+                            .source()
+                            .sourceId()
+            )) {
+                continue;
+            }
+
+            addNode(
+                    node,
+                    selected,
+                    selectedSourceIds,
+                    scopeCounts
+            );
+
+            return;
+        }
+    }
+
+    private void addNode(
+            ScoredNode node,
+            List<ScoredNode> selected,
+            Set<String> selectedSourceIds,
+            Map<String, Integer> scopeCounts
+    ) {
+        selected.add(
+                node
+        );
+
+        selectedSourceIds.add(
+                node
+                        .source()
+                        .sourceId()
+        );
+
+        scopeCounts.merge(
+                node
+                        .source()
+                        .scopeId(),
+                1,
+                Integer::sum
+        );
+    }
+
     private List<EvidenceItem> allowedEvidence(
             CvSourceIdResolver.ResolvedSource source,
             List<EvidenceItem> allEvidence,
@@ -295,11 +504,10 @@ public class CvRewriteCandidateSelector {
         }
 
         /*
-         * Skill/tool/equipment evidence follows the existing
-         * scope rule:
+         * Summary may use profile-level supported skill evidence.
          *
-         * Summary -> whole confirmed profile.
-         * Work/Project -> same local scope only.
+         * Work/Project nodes may only use skill evidence from their
+         * own local scope.
          */
         for (EvidenceItem item :
                 allEvidence) {
@@ -316,7 +524,6 @@ public class CvRewriteCandidateSelector {
                     || !relevantSkillKeys.contains(
                     item.canonicalSkillKey()
             )) {
-
                 continue;
             }
 
@@ -337,13 +544,9 @@ public class CvRewriteCandidateSelector {
         }
 
         /*
-         * Education / certification / license / language are
-         * profile-level confirmed evidence.
-         *
-         * They may support Professional Summary only.
-         *
-         * They are intentionally NOT injected into Work or
-         * Project rewrite scopes.
+         * Education / certification / licence / language evidence
+         * may support the summary but is not allowed to leak into
+         * individual Work/Project claims.
          */
         if (source.section()
                 == Section.PROFESSIONAL_SUMMARY) {
@@ -359,7 +562,6 @@ public class CvRewriteCandidateSelector {
                         .contains(
                                 item.id()
                         )) {
-
                     continue;
                 }
 
@@ -428,58 +630,121 @@ public class CvRewriteCandidateSelector {
             }
         }
 
-        score += Math.min(
-                4,
-                matchedEvidenceSkills.size()
-        ) * 5;
+        score +=
+                Math.min(
+                        4,
+                        matchedEvidenceSkills.size()
+                ) * 5;
 
-        score += Math.min(
-                4,
-                matchedQualifications.size()
-        ) * 4;
+        score +=
+                Math.min(
+                        4,
+                        matchedQualifications.size()
+                ) * 4;
 
         String sourceKey =
                 compact(
                         source.text()
                 );
 
+        String sourceCanonical =
+                sourceKey.replace(
+                        " ",
+                        ""
+                );
+
+        boolean explicitRelevantSkillInText =
+                false;
+
         for (String skillKey :
                 relevantSkillKeys) {
 
-            if (!skillKey.isBlank()
-                    && sourceKey.contains(
-                    skillKey
+            String comparableSkillKey =
+                    compact(
+                            skillKey
+                    ).replace(
+                            " ",
+                            ""
+                    );
+
+            if (!comparableSkillKey.isBlank()
+                    && sourceCanonical.contains(
+                    comparableSkillKey
             )) {
 
                 score += 2;
+
+                explicitRelevantSkillInText =
+                        true;
             }
         }
 
-        if (source.section()
-                == Section.PROFESSIONAL_SUMMARY
-                && (
+        boolean titleRelevant =
+                containsAnyTerm(
+                        sourceKey,
+                        titleTerms
+                );
+
+        boolean hasJobSignal =
                 !matchedEvidenceSkills.isEmpty()
                         || !matchedQualifications.isEmpty()
-        )) {
+                        || explicitRelevantSkillInText
+                        || titleRelevant;
 
-            score += 3;
+        /*
+         * Important:
+         *
+         * Do NOT require a taxonomy hit to make a node eligible.
+         *
+         * A CV tailoring engine must work for domains where our
+         * structured skill taxonomy is weak or absent. The LLM sees
+         * the real job context and real source node and may decide
+         * whether a material rewrite is justified.
+         *
+         * Taxonomy/title signals therefore increase priority only.
+         */
+        if (hasJobSignal) {
+            score += 4;
+        }
+
+        if (source.section()
+                == Section.PROFESSIONAL_SUMMARY) {
+
+            score += 7;
         }
 
         if (source.kind()
-                == CvSourceIdResolver
-                .SourceKind
-                .ACHIEVEMENT) {
+                == CvSourceIdResolver.SourceKind.ACHIEVEMENT) {
+
+            score += 6;
+
+        } else if (source.kind()
+                == CvSourceIdResolver.SourceKind.RESPONSIBILITY) {
+
+            score += 4;
+
+        } else if (source.kind()
+                == CvSourceIdResolver.SourceKind.DESCRIPTION) {
 
             score += 1;
         }
 
-        if (score == 0
-                && containsAnyTerm(
-                sourceKey,
-                titleTerms
-        )) {
+        String original =
+                safeText(
+                        source.text()
+                ).trim();
 
-            score = 1;
+        if (original.length() < 90) {
+
+            score += 2;
+
+        } else if (original.length() > 260) {
+
+            score += 1;
+        }
+
+        if (titleRelevant) {
+            score += 2;
         }
 
         return score;
@@ -604,9 +869,13 @@ public class CvRewriteCandidateSelector {
                     item
             )
                     || item.id() == null
-                    || item.id().isBlank()
+                    || item
+                    .id()
+                    .isBlank()
                     || item.text() == null
-                    || item.text().isBlank()) {
+                    || item
+                    .text()
+                    .isBlank()) {
 
                 continue;
             }
@@ -698,9 +967,7 @@ public class CvRewriteCandidateSelector {
                         " "
                 )) {
 
-            if (token.length()
-                    >= 4) {
-
+            if (token.length() >= 4) {
                 result.add(
                         token
                 );
@@ -884,23 +1151,9 @@ public class CvRewriteCandidateSelector {
         }
 
         String normalized =
-                Normalizer
-                        .normalize(
-                                value,
-                                Normalizer.Form.NFD
-                        )
-                        .toLowerCase(
-                                Locale.ROOT
-                        );
-
-        normalized =
-                DIACRITICS
-                        .matcher(
-                                normalized
-                        )
-                        .replaceAll(
-                                ""
-                        );
+                value.toLowerCase(
+                        Locale.ROOT
+                );
 
         normalized =
                 NON_WORD

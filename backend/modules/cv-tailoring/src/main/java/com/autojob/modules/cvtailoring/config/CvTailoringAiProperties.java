@@ -21,7 +21,7 @@ public class CvTailoringAiProperties {
 
     @NotBlank
     private String promptVersion =
-            "cv-rewrite-v1";
+            "cv-coach-v2";
 
     @NotNull
     private Duration connectTimeout =
@@ -37,25 +37,25 @@ public class CvTailoringAiProperties {
 
     @NotNull
     private Duration cacheTtl =
-            Duration.ofMinutes(15);
+            Duration.ofMinutes(30);
 
     @Min(1)
-    private int maxRewriteCandidates = 6;
+    private int maxRewriteCandidates = 5;
 
     @Min(1)
-    private int maxEvidencePerCandidate = 10;
+    private int maxEvidencePerCandidate = 6;
 
     @Min(80)
-    private int maxEvidenceTextChars = 240;
+    private int maxEvidenceTextChars = 200;
 
     @Min(200)
-    private int maxJobDescriptionChars = 1_200;
+    private int maxJobDescriptionChars = 1_000;
 
     @Min(200)
-    private int maxJobRequirementsChars = 2_400;
+    private int maxJobRequirementsChars = 1_800;
 
     @Min(200)
-    private int maxOutputTokens = 1_400;
+    private int maxOutputTokens = 1_200;
 
     @Valid
     @NotNull

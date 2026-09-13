@@ -5,6 +5,10 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  useLocale
+} from "next-intl";
+
+import {
   cvTailoringService
 } from "@/services/cv-tailoring.service";
 
@@ -13,54 +17,51 @@ import type {
   CvTailoringPreviewResponse
 } from "@/types/cv-tailoring";
 
-export type AnalyzeCvTailoringVariables = {
-  candidateProfileId: string;
-  normalizedJobId: string;
-};
-
-export type PreviewCvTailoringVariables = {
-  candidateProfileId: string;
-  normalizedJobId: string;
-  analysisId: string;
-  acceptedSuggestionIds: string[];
-};
+import type {
+  AnalyzeCvTailoringVariables,
+  PreviewCvTailoringVariables
+} from "@/types/matching-ui";
 
 export function useAnalyzeCvTailoring() {
+  const locale =
+      useLocale();
+
   return useMutation<
-    CvTailoringAnalyzeResponse,
-    Error,
-    AnalyzeCvTailoringVariables
+      CvTailoringAnalyzeResponse,
+      Error,
+      AnalyzeCvTailoringVariables
   >({
     mutationFn: ({
-      candidateProfileId,
-      normalizedJobId
-    }) =>
-      cvTailoringService.analyze(
-        candidateProfileId,
-        normalizedJobId
-      )
+                   candidateProfileId,
+                   normalizedJobId
+                 }) =>
+        cvTailoringService.analyze(
+            candidateProfileId,
+            normalizedJobId,
+            locale
+        )
   });
 }
 
 export function usePreviewCvTailoring() {
   return useMutation<
-    CvTailoringPreviewResponse,
-    Error,
-    PreviewCvTailoringVariables
+      CvTailoringPreviewResponse,
+      Error,
+      PreviewCvTailoringVariables
   >({
     mutationFn: ({
-      candidateProfileId,
-      normalizedJobId,
-      analysisId,
-      acceptedSuggestionIds
-    }) =>
-      cvTailoringService.preview(
-        candidateProfileId,
-        normalizedJobId,
-        {
-          analysisId,
-          acceptedSuggestionIds
-        }
-      )
+                   candidateProfileId,
+                   normalizedJobId,
+                   analysisId,
+                   acceptedSuggestionIds
+                 }) =>
+        cvTailoringService.preview(
+            candidateProfileId,
+            normalizedJobId,
+            {
+              analysisId,
+              acceptedSuggestionIds
+            }
+        )
   });
 }

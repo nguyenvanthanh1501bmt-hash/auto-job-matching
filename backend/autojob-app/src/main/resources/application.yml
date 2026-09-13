@@ -143,23 +143,23 @@ autojob:
     ai:
       enabled: ${CV_TAILORING_AI_ENABLED:true}
 
-      prompt-version: ${CV_TAILORING_AI_PROMPT_VERSION:cv-rewrite-v1}
+      prompt-version: ${CV_TAILORING_AI_PROMPT_VERSION:cv-coach-v2}
 
       connect-timeout: ${CV_TAILORING_AI_CONNECT_TIMEOUT:3s}
       request-timeout: ${CV_TAILORING_AI_REQUEST_TIMEOUT:18s}
       provider-cooldown: ${CV_TAILORING_AI_PROVIDER_COOLDOWN:2m}
-      cache-ttl: ${CV_TAILORING_AI_CACHE_TTL:15m}
+      cache-ttl: ${CV_TAILORING_AI_CACHE_TTL:30m}
 
       # Free-tier optimization:
       # send only the most relevant editable CV nodes.
-      max-rewrite-candidates: ${CV_TAILORING_AI_MAX_REWRITE_CANDIDATES:6}
-      max-evidence-per-candidate: ${CV_TAILORING_AI_MAX_EVIDENCE_PER_CANDIDATE:10}
+      max-rewrite-candidates: ${CV_TAILORING_AI_MAX_REWRITE_CANDIDATES:5}
+      max-evidence-per-candidate: ${CV_TAILORING_AI_MAX_EVIDENCE_PER_CANDIDATE:6}
 
-      max-evidence-text-chars: ${CV_TAILORING_AI_MAX_EVIDENCE_TEXT_CHARS:240}
-      max-job-description-chars: ${CV_TAILORING_AI_MAX_JOB_DESCRIPTION_CHARS:1200}
-      max-job-requirements-chars: ${CV_TAILORING_AI_MAX_JOB_REQUIREMENTS_CHARS:2400}
+      max-evidence-text-chars: ${CV_TAILORING_AI_MAX_EVIDENCE_TEXT_CHARS:200}
+      max-job-description-chars: ${CV_TAILORING_AI_MAX_JOB_DESCRIPTION_CHARS:1000}
+      max-job-requirements-chars: ${CV_TAILORING_AI_MAX_JOB_REQUIREMENTS_CHARS:1800}
 
-      max-output-tokens: ${CV_TAILORING_AI_MAX_OUTPUT_TOKENS:1400}
+      max-output-tokens: ${CV_TAILORING_AI_MAX_OUTPUT_TOKENS:1200}
 
       gemini:
         enabled: ${GEMINI_ENABLED:true}
