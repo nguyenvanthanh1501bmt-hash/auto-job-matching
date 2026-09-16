@@ -31,6 +31,9 @@ public class HttpCvParserClient implements CvParserClient {
     private static final String PARSE_PATH =
             "/api/v1/cv/parse";
 
+    private static final String S2S_AUTH_HEADER =
+            "X-AutoJob-Service-Token";
+
     private static final MediaType JSON_MEDIA_TYPE =
             MediaType.get("application/json; charset=utf-8");
 
@@ -210,14 +213,23 @@ public class HttpCvParserClient implements CvParserClient {
                 JSON_MEDIA_TYPE
         );
 
-        return new Request.Builder()
+        Request.Builder requestBuilder = new Request.Builder()
                 .url(
                         properties.normalizedBaseUrl()
                                 + PARSE_PATH
                 )
                 .header("Accept", "application/json")
-                .post(requestBody)
-                .build();
+                .post(requestBody);
+
+        if (properties.getServiceToken() != null
+                && !properties.getServiceToken().isBlank()) {
+            requestBuilder.header(
+                    S2S_AUTH_HEADER,
+                    properties.getServiceToken()
+            );
+        }
+
+        return requestBuilder.build();
     }
 
     private String readParserErrorCode(

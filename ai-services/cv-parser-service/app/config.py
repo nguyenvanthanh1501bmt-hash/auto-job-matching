@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     log_level: str = Field(
         default="INFO",
         validation_alias="LOG_LEVEL",
+    )
+
+    s2s_auth_token: SecretStr = Field(
+        min_length=32,
+        validation_alias="S2S_AUTH_TOKEN",
     )
 
     minio_endpoint: str = Field(

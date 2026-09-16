@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,6 +32,8 @@ class EmbeddingSettings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = Field(default=8002, ge=1, le=65_535)
     log_level: str = "INFO"
+
+    s2s_auth_token: SecretStr = Field(min_length=32)
 
     embedding_provider: EmbeddingProviderName = (
         "sentence-transformer"

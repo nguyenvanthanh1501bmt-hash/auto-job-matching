@@ -44,6 +44,7 @@ services:
     ports:
       - "${EMBEDDING_SERVICE_PORT:-8002}:8002"
     environment:
+      S2S_AUTH_TOKEN: ${S2S_AUTH_TOKEN:?S2S_AUTH_TOKEN must be set in .env}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-sentence-transformer}
       EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-intfloat/multilingual-e5-small}
       EMBEDDING_MODEL_REVISION: ${EMBEDDING_MODEL_REVISION:-c007d7ef6fd86656326059b28395a7a03a7c5846}
@@ -118,6 +119,7 @@ services:
       - "${CV_PARSER_SERVICE_PORT:-8003}:8003"
 
     environment:
+      S2S_AUTH_TOKEN: ${S2S_AUTH_TOKEN:?S2S_AUTH_TOKEN must be set in .env}
       CV_PARSER_APP_NAME: ${CV_PARSER_APP_NAME:-autojob-cv-parser-service}
       CV_PARSER_VERSION: ${CV_PARSER_VERSION:-rule-v2}
       LOG_LEVEL: ${CV_PARSER_LOG_LEVEL:-INFO}
@@ -226,6 +228,9 @@ services:
 
     environment:
       SERVER_PORT: "8080"
+
+      AUTOJOB_EMBEDDING_SERVICE_TOKEN: ${S2S_AUTH_TOKEN:?S2S_AUTH_TOKEN must be set in .env}
+      AUTOJOB_CV_PARSER_SERVICE_TOKEN: ${S2S_AUTH_TOKEN:?S2S_AUTH_TOKEN must be set in .env}
 
       AUTOJOB_TAXONOMY_DIR: /app/config/taxonomy/job-normalizer
       AUTOJOB_SHARED_TAXONOMY_DIR: /app/config/taxonomy/shared

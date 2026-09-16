@@ -22,6 +22,9 @@ public class CvParserProperties {
     @NotBlank
     private String baseUrl = "http://localhost:8003";
 
+    @NotBlank
+    private String serviceToken;
+
     @NotNull
     private Duration connectTimeout = Duration.ofSeconds(3);
 

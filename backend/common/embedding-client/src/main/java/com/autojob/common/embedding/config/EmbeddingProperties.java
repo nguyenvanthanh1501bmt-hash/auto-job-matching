@@ -21,6 +21,9 @@ public class EmbeddingProperties {
     @NotBlank
     private String baseUrl = "http://localhost:8002";
 
+    @NotBlank
+    private String serviceToken;
+
     @Min(1)
     private int expectedDimension = 384;
 

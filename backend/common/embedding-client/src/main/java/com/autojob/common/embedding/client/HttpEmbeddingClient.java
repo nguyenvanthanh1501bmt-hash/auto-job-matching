@@ -27,6 +27,9 @@ public class HttpEmbeddingClient implements EmbeddingClient {
     private static final String EMBEDDING_PATH =
             "/api/v1/embeddings";
 
+    private static final String S2S_AUTH_HEADER =
+            "X-AutoJob-Service-Token";
+
     private static final double NORMALIZATION_TOLERANCE =
             1.0e-3;
 
@@ -52,12 +55,21 @@ public class HttpEmbeddingClient implements EmbeddingClient {
                         properties.getResponseTimeout()
                 );
 
-        this.webClient = webClientBuilder.clone()
+        WebClient.Builder clientBuilder = webClientBuilder.clone()
                 .baseUrl(properties.normalizedBaseUrl())
                 .clientConnector(
                         new ReactorClientHttpConnector(httpClient)
-                )
-                .build();
+                );
+
+        if (properties.getServiceToken() != null
+                && !properties.getServiceToken().isBlank()) {
+            clientBuilder.defaultHeader(
+                    S2S_AUTH_HEADER,
+                    properties.getServiceToken()
+            );
+        }
+
+        this.webClient = clientBuilder.build();
     }
 
     @Override

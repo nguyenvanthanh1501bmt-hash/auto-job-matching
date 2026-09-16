@@ -1,8 +1,10 @@
+import hmac
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.api.embeddings import create_embedding_router
@@ -16,6 +18,9 @@ from app.schemas import HealthResponse, ReadyResponse
 
 
 LOGGER = logging.getLogger(__name__)
+
+S2S_AUTH_HEADER = "X-AutoJob-Service-Token"
+S2S_PROTECTED_PREFIX = "/api/v1"
 
 
 def configure_logging(settings: EmbeddingSettings) -> None:
@@ -120,6 +125,42 @@ def create_app(
     application.state.settings = active_settings
     application.state.embedding_provider = active_provider
     application.state.provider_load_error = None
+
+    @application.middleware("http")
+    async def require_s2s_auth(
+            request: Request,
+            call_next,
+    ):
+        # Chỉ bảo vệ API nghiệp vụ nội bộ. Health/readiness vẫn public
+        # để Docker/Kubernetes có thể kiểm tra trạng thái service.
+        if request.url.path.startswith(S2S_PROTECTED_PREFIX):
+            provided_token = request.headers.get(
+                S2S_AUTH_HEADER,
+                "",
+            )
+            expected_token = (
+                active_settings
+                .s2s_auth_token
+                .get_secret_value()
+            )
+
+            if not hmac.compare_digest(
+                    provided_token.encode("utf-8"),
+                    expected_token.encode("utf-8"),
+            ):
+                LOGGER.warning(
+                    "Rejected unauthenticated S2S request path=%s",
+                    request.url.path,
+                )
+
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={
+                        "detail": "Invalid service credentials",
+                    },
+                )
+
+        return await call_next(request)
 
     # Đăng ký các endpoint liên quan đến embedding.
     application.include_router(

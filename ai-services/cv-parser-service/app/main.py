@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import hmac
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -31,6 +32,9 @@ from app.taxonomy.taxonomy_loader import (
 LOGGER = logging.getLogger(
     "autojob.cv_parser"
 )
+
+S2S_AUTH_HEADER = "X-AutoJob-Service-Token"
+S2S_PROTECTED_PREFIX = "/api/v1"
 
 
 def configure_logging(
@@ -162,6 +166,44 @@ app = FastAPI(
 app.include_router(
     cv_router
 )
+
+
+@app.middleware("http")
+async def require_s2s_auth(
+        request: Request,
+        call_next,
+):
+    # /health và /ready không nằm dưới /api/v1 nên vẫn public
+    # cho Docker/Kubernetes healthcheck.
+    if request.url.path.startswith(S2S_PROTECTED_PREFIX):
+        settings: Settings = get_settings()
+        provided_token = request.headers.get(
+            S2S_AUTH_HEADER,
+            "",
+        )
+        expected_token = (
+            settings
+            .s2s_auth_token
+            .get_secret_value()
+        )
+
+        if not hmac.compare_digest(
+                provided_token.encode("utf-8"),
+                expected_token.encode("utf-8"),
+        ):
+            LOGGER.warning(
+                "Rejected unauthenticated S2S request path=%s",
+                request.url.path,
+            )
+
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "detail": "Invalid service credentials",
+                },
+            )
+
+    return await call_next(request)
 
 
 @app.exception_handler(
