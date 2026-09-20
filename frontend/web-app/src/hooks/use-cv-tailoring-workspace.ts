@@ -112,3 +112,28 @@ export function usePreviewCvTailoringDraft() {
                 )
     });
 }
+
+export function useGenerateCvTailoringCoachingSuggestion() {
+    const locale =
+        useLocale();
+
+    return useMutation<
+        CvTailoringDraftResponse,
+        Error,
+        {
+            draftId: string;
+            coachingId: string;
+        }
+    >({
+        mutationFn: ({
+                         draftId,
+                         coachingId
+                     }) =>
+            cvTailoringWorkspaceService
+                .generateCoachingSuggestion(
+                    draftId,
+                    coachingId,
+                    locale
+                )
+    });
+}

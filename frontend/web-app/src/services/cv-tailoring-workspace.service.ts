@@ -117,6 +117,36 @@ async function updateDraft(
     return response.data;
 }
 
+async function generateCoachingSuggestion(
+    draftId: string,
+    coachingId: string,
+    locale: string
+): Promise<CvTailoringDraftResponse> {
+    const response =
+        await apiClient.post<CvTailoringDraftResponse>(
+            `${buildDraftPath(
+                draftId
+            )}/coaching/${encodeURIComponent(
+                requireId(
+                    coachingId,
+                    "Coaching id"
+                )
+            )}/generate`,
+            undefined,
+            {
+                timeout: TIMEOUT_MS,
+                headers: {
+                    "Accept-Language":
+                        normalizeLocale(
+                            locale
+                        )
+                }
+            }
+        );
+
+    return response.data;
+}
+
 async function previewDraft(
     draftId: string
 ): Promise<CvTailoringDraftPreviewResponse> {
@@ -138,5 +168,6 @@ export const cvTailoringWorkspaceService = {
     startOrRefreshDraft,
     getCurrentDraft,
     updateDraft,
+    generateCoachingSuggestion,
     previewDraft
 };

@@ -19,6 +19,13 @@ export type CvTailoringCoachingAnswer = {
     updatedAt: string;
 };
 
+export type CvTailoringGeneratedCoachingSuggestion = {
+    coachingId: string;
+    userEvidenceId: string;
+    suggestion: CvTailoringSuggestionItem;
+    generatedAt: string;
+};
+
 export type CvTailoringDraftResponse = {
     draftId: string;
     candidateProfileId: string;
@@ -33,6 +40,7 @@ export type CvTailoringDraftResponse = {
     suggestions: CvTailoringSuggestionItem[];
     coaching: CvTailoringCoachingItem[];
     gaps: CvTailoringGapItem[];
+    generatedCoachingSuggestions: CvTailoringGeneratedCoachingSuggestion[];
     acceptedSuggestionIds: string[];
     rejectedSuggestionIds: string[];
     coachingAnswers: CvTailoringCoachingAnswer[];

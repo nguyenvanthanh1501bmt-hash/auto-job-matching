@@ -11,9 +11,12 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -149,11 +152,10 @@ public class CvTailoringAnalysisStore {
                                 TTL
                         ),
                         /*
-                         * Preview rebuilds evidence from the current
-                         * CandidateProfile before revalidation, so the
-                         * analysis session does not need to retain CV
-                         * evidence text/PII in memory. Keep the field
-                         * only for backward binary/source compatibility.
+                         * Original CandidateProfile evidence is rebuilt fresh
+                         * before preview. Workspace-only user-confirmed evidence
+                         * may later be mirrored into this field by
+                         * replaceWorkspaceExtensions().
                          */
                         List.of(),
                         suggestions
@@ -230,6 +232,108 @@ public class CvTailoringAnalysisStore {
         }
 
         return context;
+    }
+
+    /**
+     * Rebind the in-memory analysis session to persistent workspace-only
+     * evidence and generated coaching suggestions immediately before preview.
+     *
+     * The original CandidateProfile remains immutable. The persisted draft is
+     * still the authority for user-confirmed evidence; this method only mirrors
+     * the currently valid subset into the short-lived analysis context so the
+     * existing DraftService can revalidate and apply it safely.
+     */
+    public AnalysisContext replaceWorkspaceExtensions(
+            String analysisId,
+            String ownerUserId,
+            String candidateProfileId,
+            String normalizedJobId,
+            List<EvidenceItem> workspaceEvidence,
+            List<SuggestionItem> baseSuggestions,
+            List<SuggestionItem> generatedSuggestions
+    ) {
+        AnalysisContext current = require(
+                analysisId,
+                ownerUserId,
+                candidateProfileId,
+                normalizedJobId
+        );
+
+        List<SuggestionItem> combined =
+                new ArrayList<>();
+
+        Set<String> seenIds =
+                new HashSet<>();
+
+        appendSuggestions(
+                combined,
+                seenIds,
+                baseSuggestions
+        );
+
+        appendSuggestions(
+                combined,
+                seenIds,
+                generatedSuggestions
+        );
+
+        AnalysisContext updated =
+                new AnalysisContext(
+                        current.analysisId(),
+                        current.ownerUserId(),
+                        current.candidateProfileId(),
+                        current.normalizedJobId(),
+                        current.candidateEmbeddingId(),
+                        current.rankingVersion(),
+                        current.matchingGeneratedAt(),
+                        current.jobRawContentHash(),
+                        current.jobNormalizedAt(),
+                        current.profileUpdatedAt(),
+                        current.parserVersion(),
+                        current.sourceSha256(),
+                        current.createdAt(),
+                        current.expiresAt(),
+                        workspaceEvidence == null
+                                ? List.of()
+                                : List.copyOf(workspaceEvidence),
+                        List.copyOf(combined)
+                );
+
+        contexts.put(
+                analysisId,
+                updated
+        );
+
+        return updated;
+    }
+
+    private void appendSuggestions(
+            List<SuggestionItem> target,
+            Set<String> seenIds,
+            List<SuggestionItem> suggestions
+    ) {
+        if (suggestions == null) {
+            return;
+        }
+
+        for (SuggestionItem suggestion : suggestions) {
+            if (suggestion == null
+                    || suggestion.id() == null
+                    || suggestion.id().isBlank()) {
+                continue;
+            }
+
+            if (!seenIds.add(
+                    suggestion.id()
+            )) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Duplicate CV tailoring suggestion id in workspace state"
+                );
+            }
+
+            target.add(suggestion);
+        }
     }
 
     public void assertProfileUnchanged(

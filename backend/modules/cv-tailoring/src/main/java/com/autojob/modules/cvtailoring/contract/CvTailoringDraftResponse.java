@@ -24,6 +24,7 @@ public record CvTailoringDraftResponse(
         List<SuggestionItem> suggestions,
         List<CoachingItem> coaching,
         List<GapItem> gaps,
+        List<GeneratedCoachingSuggestionResponse> generatedCoachingSuggestions,
         List<String> acceptedSuggestionIds,
         List<String> rejectedSuggestionIds,
         List<CoachingAnswerResponse> coachingAnswers,
@@ -36,6 +37,9 @@ public record CvTailoringDraftResponse(
         suggestions = copy(suggestions);
         coaching = copy(coaching);
         gaps = copy(gaps);
+        generatedCoachingSuggestions = copy(
+                generatedCoachingSuggestions
+        );
         acceptedSuggestionIds = copy(
                 acceptedSuggestionIds
         );
@@ -53,6 +57,14 @@ public record CvTailoringDraftResponse(
         return values == null
                 ? List.of()
                 : List.copyOf(values);
+    }
+
+    public record GeneratedCoachingSuggestionResponse(
+            String coachingId,
+            String userEvidenceId,
+            SuggestionItem suggestion,
+            Instant generatedAt
+    ) {
     }
 
     public record CoachingAnswerResponse(

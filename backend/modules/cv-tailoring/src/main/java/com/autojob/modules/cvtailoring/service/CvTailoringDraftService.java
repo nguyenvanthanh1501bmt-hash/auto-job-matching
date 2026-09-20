@@ -2,6 +2,7 @@ package com.autojob.modules.cvtailoring.service;
 
 import com.autojob.modules.cv.domain.CandidateProfile;
 import com.autojob.modules.cv.repository.CandidateProfileRepository;
+import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.EvidenceItem;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionItem;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.repository.NormalizedJobRepository;
@@ -218,8 +219,11 @@ public class CvTailoringDraftService {
          * Không blindly trust EvidenceMap trong session.
          */
         CvEvidenceService.EvidenceMap freshEvidence =
-                cvEvidenceService.build(
-                        profile
+                mergeWorkspaceEvidence(
+                        cvEvidenceService.build(
+                                profile
+                        ),
+                        context.evidence()
                 );
 
         /*
@@ -255,6 +259,52 @@ public class CvTailoringDraftService {
                                 SuggestionItem::id
                         )
                         .toList()
+        );
+    }
+
+    private CvEvidenceService.EvidenceMap mergeWorkspaceEvidence(
+            CvEvidenceService.EvidenceMap baseEvidence,
+            List<EvidenceItem> workspaceEvidence
+    ) {
+        if (workspaceEvidence == null
+                || workspaceEvidence.isEmpty()) {
+            return baseEvidence;
+        }
+
+        List<EvidenceItem> merged =
+                new ArrayList<>(
+                        baseEvidence.items()
+                );
+
+        Set<String> existingIds =
+                merged
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(EvidenceItem::id)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+        for (EvidenceItem item : workspaceEvidence) {
+            if (item == null
+                    || item.id() == null
+                    || item.id().isBlank()) {
+                continue;
+            }
+
+            if (!existingIds.add(
+                    item.id()
+            )) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Duplicate CV tailoring evidence id in workspace state"
+                );
+            }
+
+            merged.add(item);
+        }
+
+        return new CvEvidenceService.EvidenceMap(
+                merged
         );
     }
 

@@ -95,6 +95,25 @@ public class CvTailoringWorkspaceController {
         );
     }
 
+    @PostMapping(
+            "/drafts/{draftId}/coaching/{coachingId}/generate"
+    )
+    public CvTailoringDraftResponse generateCoachingSuggestion(
+            @PathVariable("draftId")
+            String draftId,
+
+            @PathVariable("coachingId")
+            String coachingId,
+
+            Authentication authentication
+    ) {
+        return workspaceService.generateCoachingSuggestion(
+                draftId,
+                coachingId,
+                resolveOwnerUserId(authentication)
+        );
+    }
+
     @PostMapping("/drafts/{draftId}/preview")
     public CvTailoringDraftPreviewResponse preview(
             @PathVariable("draftId")

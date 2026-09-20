@@ -4,16 +4,21 @@ import com.autojob.modules.cv.domain.CandidateProfile;
 import com.autojob.modules.cv.repository.CandidateProfileRepository;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.CoachingItem;
+import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.EvidenceItem;
+import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.EvidenceKind;
 import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.SuggestionItem;
 import com.autojob.modules.cvtailoring.contract.CvTailoringDraftPreviewResponse;
 import com.autojob.modules.cvtailoring.contract.CvTailoringDraftResponse;
 import com.autojob.modules.cvtailoring.contract.CvTailoringDraftResponse.CoachingAnswerResponse;
+import com.autojob.modules.cvtailoring.contract.CvTailoringDraftResponse.GeneratedCoachingSuggestionResponse;
 import com.autojob.modules.cvtailoring.contract.CvTailoringDraftUpdateRequest;
 import com.autojob.modules.cvtailoring.contract.CvTailoringDraftUpdateRequest.CoachingAnswerInput;
 import com.autojob.modules.cvtailoring.contract.CvTailoringPreviewRequest;
 import com.autojob.modules.cvtailoring.contract.CvTailoringPreviewResponse;
 import com.autojob.modules.cvtailoring.domain.TailoredCvDraft;
 import com.autojob.modules.cvtailoring.domain.TailoredCvDraft.CoachingAnswer;
+import com.autojob.modules.cvtailoring.domain.TailoredCvDraft.GeneratedCoachingSuggestion;
+import com.autojob.modules.cvtailoring.domain.TailoredCvDraft.UserConfirmedEvidence;
 import com.autojob.modules.cvtailoring.repository.TailoredCvDraftRepository;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
 import com.autojob.modules.jobnormalizer.repository.NormalizedJobRepository;
@@ -21,6 +26,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,6 +37,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -41,6 +50,9 @@ public class CvTailoringWorkspaceService {
 
     private final CvTailoringAnalysisService analysisService;
     private final CvTailoringPreviewService previewService;
+    private final CvInteractiveCoachingService interactiveCoachingService;
+    private final CvTailoringAnalysisStore analysisStore;
+    private final CvSourceIdResolver sourceIdResolver;
     private final TailoredCvDraftRepository draftRepository;
     private final CandidateProfileRepository candidateProfileRepository;
     private final NormalizedJobRepository normalizedJobRepository;
@@ -49,6 +61,9 @@ public class CvTailoringWorkspaceService {
     public CvTailoringWorkspaceService(
             CvTailoringAnalysisService analysisService,
             CvTailoringPreviewService previewService,
+            CvInteractiveCoachingService interactiveCoachingService,
+            CvTailoringAnalysisStore analysisStore,
+            CvSourceIdResolver sourceIdResolver,
             TailoredCvDraftRepository draftRepository,
             CandidateProfileRepository candidateProfileRepository,
             NormalizedJobRepository normalizedJobRepository,
@@ -61,6 +76,18 @@ public class CvTailoringWorkspaceService {
         this.previewService = Objects.requireNonNull(
                 previewService,
                 "previewService must not be null"
+        );
+        this.interactiveCoachingService = Objects.requireNonNull(
+                interactiveCoachingService,
+                "interactiveCoachingService must not be null"
+        );
+        this.analysisStore = Objects.requireNonNull(
+                analysisStore,
+                "analysisStore must not be null"
+        );
+        this.sourceIdResolver = Objects.requireNonNull(
+                sourceIdResolver,
+                "sourceIdResolver must not be null"
         );
         this.draftRepository = Objects.requireNonNull(
                 draftRepository,
@@ -116,7 +143,12 @@ public class CvTailoringWorkspaceService {
                 )
                 .orElse(null);
 
-        PreservedState preserved = preserveState(existing, analysis);
+        PreservedState preserved = preserveState(
+                existing,
+                analysis,
+                profile,
+                job
+        );
         Instant now = Instant.now(clock);
 
         TailoredCvDraft draft = new TailoredCvDraft(
@@ -141,11 +173,14 @@ public class CvTailoringWorkspaceService {
                 analysis.suggestions(),
                 analysis.coaching(),
                 analysis.gaps(),
+                preserved.userConfirmedEvidence(),
+                preserved.generatedCoachingSuggestions(),
                 preserved.acceptedSuggestionIds(),
                 preserved.rejectedSuggestionIds(),
                 preserved.coachingAnswers(),
                 existing == null ? now : existing.createdAt(),
-                now
+                now,
+                existing == null ? null : existing.version()
         );
 
         return toResponse(draftRepository.save(draft));
@@ -201,31 +236,98 @@ public class CvTailoringWorkspaceService {
             );
         }
 
+        List<SuggestionItem> availableBeforeUpdate =
+                availableSuggestions(draft);
+
         List<String> accepted = validateSuggestionSelection(
                 "acceptedSuggestionIds",
                 request.acceptedSuggestionIds(),
-                draft.suggestions()
+                availableBeforeUpdate
         );
 
         List<String> rejected = validateSuggestionSelection(
                 "rejectedSuggestionIds",
                 request.rejectedSuggestionIds(),
-                draft.suggestions()
+                availableBeforeUpdate
         );
-
-        Set<String> overlap = new HashSet<>(accepted);
-        overlap.retainAll(rejected);
-
-        if (!overlap.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "The same suggestion cannot be both accepted and rejected"
-            );
-        }
 
         List<CoachingAnswer> answers = validateCoachingAnswers(
                 request.coachingAnswers(),
                 draft.coaching()
+        );
+
+        CandidateProfile profile = loadOwnedProfile(
+                draft.candidateProfileId(),
+                ownerUserId
+        );
+
+        List<UserConfirmedEvidence> confirmedEvidence =
+                buildUserConfirmedEvidence(
+                        draft,
+                        answers,
+                        profile
+                );
+
+        Map<String, UserConfirmedEvidence> evidenceById =
+                confirmedEvidence
+                        .stream()
+                        .collect(Collectors.toMap(
+                                UserConfirmedEvidence::id,
+                                Function.identity(),
+                                (left, right) -> left
+                        ));
+
+        List<GeneratedCoachingSuggestion> retainedGenerated =
+                draft.generatedCoachingSuggestions()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .filter(generated -> {
+                            UserConfirmedEvidence evidence =
+                                    evidenceById.get(
+                                            generated.userEvidenceId()
+                                    );
+
+                            return evidence != null
+                                    && Objects.equals(
+                                    evidence.coachingId(),
+                                    generated.coachingId()
+                            )
+                                    && Objects.equals(
+                                    evidence.answerHash(),
+                                    generated.answerHash()
+                            );
+                        })
+                        .toList();
+
+        List<SuggestionItem> availableAfterUpdate =
+                combineSuggestions(
+                        draft.suggestions(),
+                        retainedGenerated
+                                .stream()
+                                .map(GeneratedCoachingSuggestion::suggestion)
+                                .toList()
+                );
+
+        Set<String> availableIds = availableAfterUpdate
+                .stream()
+                .map(SuggestionItem::id)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        accepted = accepted
+                .stream()
+                .filter(availableIds::contains)
+                .toList();
+
+        rejected = rejected
+                .stream()
+                .filter(availableIds::contains)
+                .toList();
+
+        validateSelectionState(
+                accepted,
+                rejected,
+                availableAfterUpdate
         );
 
         TailoredCvDraft updated = new TailoredCvDraft(
@@ -248,14 +350,239 @@ public class CvTailoringWorkspaceService {
                 draft.suggestions(),
                 draft.coaching(),
                 draft.gaps(),
+                confirmedEvidence,
+                retainedGenerated,
                 accepted,
                 rejected,
                 answers,
                 draft.createdAt(),
-                Instant.now(clock)
+                Instant.now(clock),
+                draft.version()
         );
 
         return toResponse(draftRepository.save(updated));
+    }
+
+    public CvTailoringDraftResponse generateCoachingSuggestion(
+            String draftId,
+            String coachingId,
+            String ownerUserId
+    ) {
+        requireText(coachingId, "coachingId");
+
+        TailoredCvDraft draft = refreshIfExpired(
+                requireOwnedDraft(draftId, ownerUserId),
+                ownerUserId
+        );
+
+        try {
+            return generateCoachingSuggestionAgainstLiveAnalysis(
+                    draft,
+                    coachingId.trim(),
+                    ownerUserId
+            );
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode().value()
+                    != HttpStatus.NOT_FOUND.value()) {
+                throw exception;
+            }
+
+            CvTailoringDraftResponse refreshed = startOrRefresh(
+                    draft.candidateProfileId(),
+                    draft.normalizedJobId(),
+                    ownerUserId
+            );
+
+            TailoredCvDraft refreshedDraft = requireOwnedDraft(
+                    refreshed.draftId(),
+                    ownerUserId
+            );
+
+            return generateCoachingSuggestionAgainstLiveAnalysis(
+                    refreshedDraft,
+                    coachingId.trim(),
+                    ownerUserId
+            );
+        }
+    }
+
+    private CvTailoringDraftResponse
+    generateCoachingSuggestionAgainstLiveAnalysis(
+            TailoredCvDraft draft,
+            String coachingId,
+            String ownerUserId
+    ) {
+        CoachingItem coaching = draft.coaching()
+                .stream()
+                .filter(item -> item != null
+                        && coachingId.equals(
+                        item.id()
+                ))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "The coaching item is no longer compatible with the current analysis"
+                ));
+
+        CoachingAnswer answer = draft.coachingAnswers()
+                .stream()
+                .filter(item -> item != null
+                        && coachingId.equals(
+                        item.coachingId()
+                ))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Save a non-empty coaching answer before generating a rewrite"
+                ));
+
+        UserConfirmedEvidence confirmedEvidence =
+                draft.userConfirmedEvidence()
+                        .stream()
+                        .filter(item -> item != null
+                                && coachingId.equals(
+                                item.coachingId()
+                        ))
+                        .filter(item -> Objects.equals(
+                                item.answerHash(),
+                                answerHash(
+                                        answer.answer()
+                                )
+                        ))
+                        .findFirst()
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.CONFLICT,
+                                "The saved coaching evidence is stale. Save the draft again before generating."
+                        ));
+
+        Optional<GeneratedCoachingSuggestion> existing =
+                draft.generatedCoachingSuggestions()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .filter(item -> coachingId.equals(
+                                item.coachingId()
+                        ))
+                        .filter(item -> Objects.equals(
+                                item.answerHash(),
+                                confirmedEvidence.answerHash()
+                        ))
+                        .filter(item -> Objects.equals(
+                                item.userEvidenceId(),
+                                confirmedEvidence.id()
+                        ))
+                        .findFirst();
+
+        if (existing.isPresent()) {
+            return toResponse(draft);
+        }
+
+        CandidateProfile profile = loadOwnedProfile(
+                draft.candidateProfileId(),
+                ownerUserId
+        );
+
+        NormalizedJob job = normalizedJobRepository
+                .findById(draft.normalizedJobId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Selected job is no longer available"
+                ));
+
+        CvTailoringAnalysisStore.AnalysisContext context =
+                analysisStore.require(
+                        draft.analysisId(),
+                        ownerUserId,
+                        draft.candidateProfileId(),
+                        draft.normalizedJobId()
+                );
+
+        analysisStore.assertProfileUnchanged(
+                context,
+                profile
+        );
+
+        analysisStore.assertJobUnchanged(
+                context,
+                job
+        );
+
+        GeneratedCoachingSuggestion generated =
+                interactiveCoachingService.generate(
+                        profile,
+                        job,
+                        coaching,
+                        confirmedEvidence
+                );
+
+        List<GeneratedCoachingSuggestion> nextGenerated =
+                new ArrayList<>();
+
+        for (GeneratedCoachingSuggestion item :
+                draft.generatedCoachingSuggestions()) {
+            if (item != null
+                    && !coachingId.equals(
+                    item.coachingId()
+            )) {
+                nextGenerated.add(item);
+            }
+        }
+
+        nextGenerated.add(generated);
+
+        Set<String> validIds = combineSuggestions(
+                draft.suggestions(),
+                nextGenerated
+                        .stream()
+                        .map(GeneratedCoachingSuggestion::suggestion)
+                        .toList()
+        )
+                .stream()
+                .map(SuggestionItem::id)
+                .collect(Collectors.toSet());
+
+        List<String> accepted = draft.acceptedSuggestionIds()
+                .stream()
+                .filter(validIds::contains)
+                .toList();
+
+        List<String> rejected = draft.rejectedSuggestionIds()
+                .stream()
+                .filter(validIds::contains)
+                .toList();
+
+        TailoredCvDraft updated = new TailoredCvDraft(
+                draft.id(),
+                draft.ownerUserId(),
+                draft.candidateProfileId(),
+                draft.normalizedJobId(),
+                draft.status(),
+                draft.analysisId(),
+                draft.analysisExpiresAt(),
+                draft.baseProfileUpdatedAt(),
+                draft.baseParserVersion(),
+                draft.baseSourceSha256(),
+                draft.jobRawContentHash(),
+                draft.jobNormalizedAt(),
+                draft.rankingVersion(),
+                draft.job(),
+                draft.baselineMatch(),
+                draft.evidence(),
+                draft.suggestions(),
+                draft.coaching(),
+                draft.gaps(),
+                draft.userConfirmedEvidence(),
+                List.copyOf(nextGenerated),
+                accepted,
+                rejected,
+                draft.coachingAnswers(),
+                draft.createdAt(),
+                Instant.now(clock),
+                draft.version()
+        );
+
+        return toResponse(
+                draftRepository.save(updated)
+        );
     }
 
     public CvTailoringDraftPreviewResponse preview(
@@ -306,6 +633,11 @@ public class CvTailoringWorkspaceService {
             TailoredCvDraft draft,
             String ownerUserId
     ) {
+        syncAnalysisExtensions(
+                draft,
+                ownerUserId
+        );
+
         return previewService.preview(
                 draft.candidateProfileId(),
                 draft.normalizedJobId(),
@@ -374,10 +706,14 @@ public class CvTailoringWorkspaceService {
 
     private PreservedState preserveState(
             TailoredCvDraft existing,
-            CvTailoringAnalyzeResponse analysis
+            CvTailoringAnalyzeResponse analysis,
+            CandidateProfile profile,
+            NormalizedJob job
     ) {
         if (existing == null) {
             return new PreservedState(
+                    List.of(),
+                    List.of(),
                     List.of(),
                     List.of(),
                     List.of()
@@ -404,21 +740,6 @@ public class CvTailoringWorkspaceService {
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        List<String> accepted = existing.acceptedSuggestionIds()
-                .stream()
-                .filter(stableSuggestionIds::contains)
-                .distinct()
-                .toList();
-
-        Set<String> acceptedSet = new HashSet<>(accepted);
-
-        List<String> rejected = existing.rejectedSuggestionIds()
-                .stream()
-                .filter(stableSuggestionIds::contains)
-                .filter(id -> !acceptedSet.contains(id))
-                .distinct()
-                .toList();
-
         Map<String, CoachingItem> previousCoaching = byCoachingId(
                 existing.coaching()
         );
@@ -426,22 +747,158 @@ public class CvTailoringWorkspaceService {
                 analysis.coaching()
         );
 
-        List<CoachingAnswer> answers = existing.coachingAnswers()
+        Set<String> compatibleCoachingIds = currentCoaching
+                .entrySet()
                 .stream()
-                .filter(answer -> {
+                .filter(entry -> {
                     CoachingItem previous = previousCoaching.get(
-                            answer.coachingId()
-                    );
-                    CoachingItem current = currentCoaching.get(
-                            answer.coachingId()
+                            entry.getKey()
                     );
                     return previous != null
-                            && current != null
-                            && sameCoaching(previous, current);
+                            && sameCoaching(previous, entry.getValue());
                 })
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<CoachingAnswer> answers = preserveCoachingAnswers(
+                existing.coachingAnswers(),
+                existing.coaching(),
+                analysis.coaching()
+        );
+
+        List<UserConfirmedEvidence> confirmedEvidence =
+                buildUserConfirmedEvidence(
+                        answers,
+                        analysis.coaching(),
+                        profile,
+                        existing.userConfirmedEvidence()
+                );
+
+        Map<String, UserConfirmedEvidence> evidenceById =
+                confirmedEvidence
+                        .stream()
+                        .collect(Collectors.toMap(
+                                UserConfirmedEvidence::id,
+                                Function.identity(),
+                                (left, right) -> left
+                        ));
+
+        boolean sameBaseRevision =
+                Objects.equals(
+                        existing.baseProfileUpdatedAt(),
+                        profile.getUpdatedAt()
+                )
+                        && Objects.equals(
+                        existing.baseParserVersion(),
+                        profile.getParserVersion()
+                )
+                        && Objects.equals(
+                        existing.baseSourceSha256(),
+                        profile.getSourceSha256()
+                )
+                        && Objects.equals(
+                        existing.jobRawContentHash(),
+                        job.getRawContentHash()
+                )
+                        && Objects.equals(
+                        existing.jobNormalizedAt(),
+                        job.getNormalizedAt()
+                );
+
+        List<GeneratedCoachingSuggestion> generated =
+                sameBaseRevision
+                        ? existing.generatedCoachingSuggestions()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .filter(item -> compatibleCoachingIds.contains(
+                                item.coachingId()
+                        ))
+                        .filter(item -> {
+                            UserConfirmedEvidence evidence =
+                                    evidenceById.get(
+                                            item.userEvidenceId()
+                                    );
+
+                            CoachingItem coaching =
+                                    currentCoaching.get(
+                                            item.coachingId()
+                                    );
+
+                            SuggestionItem suggestion =
+                                    item.suggestion();
+
+                            return evidence != null
+                                    && coaching != null
+                                    && suggestion != null
+                                    && Objects.equals(
+                                    evidence.answerHash(),
+                                    item.answerHash()
+                            )
+                                    && Objects.equals(
+                                    suggestion.sourceId(),
+                                    coaching.sourceId()
+                            )
+                                    && Objects.equals(
+                                    suggestion.original(),
+                                    coaching.original()
+                            )
+                                    && suggestion.section()
+                                    == coaching.section();
+                        })
+                        .toList()
+                        : List.of();
+
+        Set<String> preservableIds =
+                new LinkedHashSet<>(
+                        stableSuggestionIds
+                );
+
+        for (GeneratedCoachingSuggestion item : generated) {
+            if (item.suggestion() != null
+                    && hasText(
+                    item.suggestion().id()
+            )) {
+                preservableIds.add(
+                        item.suggestion().id()
+                );
+            }
+        }
+
+        List<String> accepted = existing.acceptedSuggestionIds()
+                .stream()
+                .filter(preservableIds::contains)
+                .distinct()
                 .toList();
 
-        return new PreservedState(accepted, rejected, answers);
+        Set<String> acceptedSet =
+                new HashSet<>(accepted);
+
+        List<String> rejected = existing.rejectedSuggestionIds()
+                .stream()
+                .filter(preservableIds::contains)
+                .filter(id -> !acceptedSet.contains(id))
+                .distinct()
+                .toList();
+
+        validateSelectionState(
+                accepted,
+                rejected,
+                combineSuggestions(
+                        analysis.suggestions(),
+                        generated
+                                .stream()
+                                .map(GeneratedCoachingSuggestion::suggestion)
+                                .toList()
+                )
+        );
+
+        return new PreservedState(
+                confirmedEvidence,
+                generated,
+                accepted,
+                rejected,
+                answers
+        );
     }
 
     private Map<String, SuggestionItem> bySuggestionId(
@@ -485,6 +942,166 @@ public class CvTailoringWorkspaceService {
                 && Objects.equals(left.sourceId(), right.sourceId())
                 && Objects.equals(left.question(), right.question())
                 && Objects.equals(left.original(), right.original());
+    }
+
+    private List<CoachingAnswer> preserveCoachingAnswers(
+            List<CoachingAnswer> previousAnswers,
+            List<CoachingItem> previousCoaching,
+            List<CoachingItem> currentCoaching
+    ) {
+        Map<String, CoachingItem> previousById =
+                byCoachingId(
+                        safeList(previousCoaching)
+                );
+
+        List<CoachingItem> current =
+                new ArrayList<>(
+                        safeList(currentCoaching)
+                );
+
+        Set<String> usedCurrentIds =
+                new HashSet<>();
+
+        List<CoachingAnswer> preserved =
+                new ArrayList<>();
+
+        for (CoachingAnswer answer : safeList(previousAnswers)) {
+            if (answer == null
+                    || !hasText(answer.coachingId())
+                    || !hasText(answer.answer())) {
+                continue;
+            }
+
+            CoachingItem previous =
+                    previousById.get(
+                            answer.coachingId()
+                    );
+
+            if (previous == null) {
+                continue;
+            }
+
+            CoachingItem compatible = current
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .filter(item -> hasText(item.id()))
+                    .filter(item -> !usedCurrentIds.contains(
+                            item.id()
+                    ))
+                    .filter(item -> sameCoaching(
+                            previous,
+                            item
+                    ))
+                    .findFirst()
+                    .orElse(null);
+
+            if (compatible == null) {
+                continue;
+            }
+
+            usedCurrentIds.add(
+                    compatible.id()
+            );
+
+            preserved.add(
+                    new CoachingAnswer(
+                            compatible.id(),
+                            answer.answer(),
+                            answer.updatedAt()
+                    )
+            );
+        }
+
+        return List.copyOf(preserved);
+    }
+
+    private List<SuggestionItem> availableSuggestions(
+            TailoredCvDraft draft
+    ) {
+        return combineSuggestions(
+                draft.suggestions(),
+                draft.generatedCoachingSuggestions()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(GeneratedCoachingSuggestion::suggestion)
+                        .toList()
+        );
+    }
+
+    private List<SuggestionItem> combineSuggestions(
+            List<SuggestionItem> base,
+            List<SuggestionItem> generated
+    ) {
+        List<SuggestionItem> result =
+                new ArrayList<>();
+
+        Set<String> seen =
+                new HashSet<>();
+
+        for (SuggestionItem item : safeList(base)) {
+            if (item != null
+                    && hasText(item.id())
+                    && seen.add(item.id())) {
+                result.add(item);
+            }
+        }
+
+        for (SuggestionItem item : safeList(generated)) {
+            if (item != null
+                    && hasText(item.id())
+                    && seen.add(item.id())) {
+                result.add(item);
+            }
+        }
+
+        return List.copyOf(result);
+    }
+
+    private void validateSelectionState(
+            List<String> accepted,
+            List<String> rejected,
+            List<SuggestionItem> available
+    ) {
+        Set<String> overlap =
+                new HashSet<>(accepted);
+        overlap.retainAll(rejected);
+
+        if (!overlap.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "The same suggestion cannot be both accepted and rejected"
+            );
+        }
+
+        Map<String, SuggestionItem> byId =
+                bySuggestionId(available);
+
+        Set<String> acceptedRewriteSources =
+                new HashSet<>();
+
+        for (String id : accepted) {
+            SuggestionItem suggestion =
+                    byId.get(id);
+
+            if (suggestion == null
+                    || suggestion.type()
+                    != CvTailoringAnalyzeResponse.SuggestionType.REWRITE) {
+                continue;
+            }
+
+            if (!hasText(suggestion.sourceId())) {
+                continue;
+            }
+
+            if (!acceptedRewriteSources.add(
+                    suggestion.sourceId()
+            )) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Only one rewrite can be accepted for the same CV node"
+                );
+            }
+        }
     }
 
     private List<String> validateSuggestionSelection(
@@ -572,6 +1189,119 @@ public class CvTailoringWorkspaceService {
         return List.copyOf(result);
     }
 
+    private List<UserConfirmedEvidence> buildUserConfirmedEvidence(
+            TailoredCvDraft draft,
+            List<CoachingAnswer> answers,
+            CandidateProfile profile
+    ) {
+        return buildUserConfirmedEvidence(
+                answers,
+                draft.coaching(),
+                profile,
+                draft.userConfirmedEvidence()
+        );
+    }
+
+    private List<UserConfirmedEvidence> buildUserConfirmedEvidence(
+            List<CoachingAnswer> answers,
+            List<CoachingItem> coachingItems,
+            CandidateProfile profile,
+            List<UserConfirmedEvidence> previousEvidence
+    ) {
+        Map<String, CoachingItem> coachingById =
+                byCoachingId(coachingItems);
+
+        Map<String, UserConfirmedEvidence> previousById =
+                safeList(previousEvidence)
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .filter(item -> hasText(item.id()))
+                        .collect(Collectors.toMap(
+                                UserConfirmedEvidence::id,
+                                Function.identity(),
+                                (left, right) -> left
+                        ));
+
+        List<UserConfirmedEvidence> result =
+                new ArrayList<>();
+
+        for (CoachingAnswer answer : safeList(answers)) {
+            if (answer == null
+                    || !hasText(answer.answer())) {
+                continue;
+            }
+
+            CoachingItem coaching =
+                    coachingById.get(
+                            answer.coachingId()
+                    );
+
+            if (coaching == null
+                    || !hasText(coaching.sourceId())) {
+                continue;
+            }
+
+            CvSourceIdResolver.ResolvedSource source;
+
+            try {
+                source = sourceIdResolver.resolve(
+                        profile,
+                        coaching.sourceId()
+                );
+            } catch (IllegalArgumentException exception) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "The coached CV node changed. Analyze again before saving coaching evidence."
+                );
+            }
+
+            if (source.section() != coaching.section()
+                    || !Objects.equals(
+                    source.text(),
+                    coaching.original()
+            )) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "The coached CV node changed. Analyze again before saving coaching evidence."
+                );
+            }
+
+            String answerHash =
+                    answerHash(
+                            answer.answer()
+                    );
+
+            String evidenceId =
+                    userEvidenceId(
+                            coaching.id(),
+                            answerHash
+                    );
+
+            UserConfirmedEvidence previous =
+                    previousById.get(
+                            evidenceId
+                    );
+
+            result.add(
+                    new UserConfirmedEvidence(
+                            evidenceId,
+                            coaching.id(),
+                            answerHash,
+                            coaching.section(),
+                            coaching.sourceId(),
+                            source.scopeId(),
+                            coaching.question(),
+                            answer.answer(),
+                            previous == null
+                                    ? Instant.now(clock)
+                                    : previous.confirmedAt()
+                    )
+            );
+        }
+
+        return List.copyOf(result);
+    }
+
     private String normalizeAnswer(
             String answer
     ) {
@@ -593,6 +1323,128 @@ public class CvTailoringWorkspaceService {
         return normalized;
     }
 
+    private void syncAnalysisExtensions(
+            TailoredCvDraft draft,
+            String ownerUserId
+    ) {
+        Set<String> referencedEvidenceIds =
+                draft.generatedCoachingSuggestions()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(GeneratedCoachingSuggestion::userEvidenceId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+        List<EvidenceItem> workspaceEvidence =
+                draft.userConfirmedEvidence()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .filter(item -> referencedEvidenceIds.contains(
+                                item.id()
+                        ))
+                        .map(item -> new EvidenceItem(
+                                item.id(),
+                                item.section(),
+                                item.scopeId(),
+                                EvidenceKind.TEXT,
+                                item.text(),
+                                null
+                        ))
+                        .toList();
+
+        List<SuggestionItem> generatedSuggestions =
+                draft.generatedCoachingSuggestions()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(GeneratedCoachingSuggestion::suggestion)
+                        .filter(Objects::nonNull)
+                        .toList();
+
+        analysisStore.replaceWorkspaceExtensions(
+                draft.analysisId(),
+                ownerUserId,
+                draft.candidateProfileId(),
+                draft.normalizedJobId(),
+                workspaceEvidence,
+                draft.suggestions(),
+                generatedSuggestions
+        );
+    }
+
+    private String userEvidenceId(
+            String coachingId,
+            String answerHash
+    ) {
+        return "user-confirmed-"
+                + sha256(
+                coachingId
+                        + "\n"
+                        + answerHash
+        ).substring(0, 24);
+    }
+
+    private String answerHash(
+            String answer
+    ) {
+        return sha256(
+                answer == null
+                        ? ""
+                        : answer.trim()
+        );
+    }
+
+    private String sha256(
+            String value
+    ) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(
+                    "SHA-256"
+            );
+
+            byte[] hash = digest.digest(
+                    value.getBytes(
+                            StandardCharsets.UTF_8
+                    )
+            );
+
+            StringBuilder builder =
+                    new StringBuilder(
+                            hash.length * 2
+                    );
+
+            for (byte item : hash) {
+                builder.append(
+                        String.format(
+                                "%02x",
+                                item & 0xff
+                        )
+                );
+            }
+
+            return builder.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException(
+                    "SHA-256 is not available",
+                    exception
+            );
+        }
+    }
+
+    private <T> List<T> safeList(
+            List<T> values
+    ) {
+        return values == null
+                ? List.of()
+                : values;
+    }
+
+    private boolean hasText(
+            String value
+    ) {
+        return value != null
+                && !value.isBlank();
+    }
+
     private CvTailoringDraftResponse toResponse(
             TailoredCvDraft draft
     ) {
@@ -605,6 +1457,19 @@ public class CvTailoringWorkspaceService {
                         answer.updatedAt()
                 ))
                 .toList();
+
+        List<GeneratedCoachingSuggestionResponse> generated =
+                draft.generatedCoachingSuggestions()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .filter(item -> item.suggestion() != null)
+                        .map(item -> new GeneratedCoachingSuggestionResponse(
+                                item.coachingId(),
+                                item.userEvidenceId(),
+                                item.suggestion(),
+                                item.generatedAt()
+                        ))
+                        .toList();
 
         return new CvTailoringDraftResponse(
                 draft.id(),
@@ -620,6 +1485,7 @@ public class CvTailoringWorkspaceService {
                 draft.suggestions(),
                 draft.coaching(),
                 draft.gaps(),
+                generated,
                 draft.acceptedSuggestionIds(),
                 draft.rejectedSuggestionIds(),
                 answers,
@@ -641,6 +1507,8 @@ public class CvTailoringWorkspaceService {
     }
 
     private record PreservedState(
+            List<UserConfirmedEvidence> userConfirmedEvidence,
+            List<GeneratedCoachingSuggestion> generatedCoachingSuggestions,
             List<String> acceptedSuggestionIds,
             List<String> rejectedSuggestionIds,
             List<CoachingAnswer> coachingAnswers
