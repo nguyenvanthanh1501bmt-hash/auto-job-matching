@@ -28,6 +28,34 @@ public class CvRewriteProviderRouter {
     private static final int MAX_TRANSIENT_RETRIES =
             1;
 
+    private static final RoutingPolicy STANDARD_POLICY =
+            new RoutingPolicy(
+                    "standard",
+                    MAX_TRANSIENT_RETRIES,
+                    true
+            );
+
+    /**
+     * Interactive coaching is a user-blocking action.
+     *
+     * A single provider may already wait until the configured HTTP request
+     * timeout. Retrying the same provider before trying the fallback can make
+     * one button click take longer than the frontend request timeout.
+     *
+     * Therefore interactive routing:
+     * - never retries the same provider,
+     * - still falls back to the next provider,
+     * - still returns the first structurally valid rejected response as
+     *   best-effort so the caller can distinguish "AI answered but safety
+     *   rejected it" (422) from "no provider answered" (503).
+     */
+    private static final RoutingPolicy INTERACTIVE_POLICY =
+            new RoutingPolicy(
+                    "interactive",
+                    0,
+                    true
+            );
+
     private final List<CvRewriteProvider> providers;
 
     private final CvTailoringAiProperties properties;
@@ -63,9 +91,45 @@ public class CvRewriteProviderRouter {
                 );
     }
 
+    /**
+     * Normal CV analysis routing.
+     *
+     * Existing behavior is preserved: transient server/network failures may be
+     * retried once before falling back to another provider.
+     */
     public Optional<RewriteResponse> generate(
             RewriteRequest request,
             Predicate<RewriteResponse> usableResponse
+    ) {
+        return generate(
+                request,
+                usableResponse,
+                STANDARD_POLICY
+        );
+    }
+
+    /**
+     * Fast-fail routing for an interactive coaching rewrite.
+     *
+     * This intentionally avoids same-provider transient retries because the
+     * user is waiting on a single UI action. The next configured provider is
+     * still attempted as a fallback.
+     */
+    public Optional<RewriteResponse> generateInteractive(
+            RewriteRequest request,
+            Predicate<RewriteResponse> usableResponse
+    ) {
+        return generate(
+                request,
+                usableResponse,
+                INTERACTIVE_POLICY
+        );
+    }
+
+    private Optional<RewriteResponse> generate(
+            RewriteRequest request,
+            Predicate<RewriteResponse> usableResponse,
+            RoutingPolicy policy
     ) {
         Objects.requireNonNull(
                 request,
@@ -75,6 +139,11 @@ public class CvRewriteProviderRouter {
         Objects.requireNonNull(
                 usableResponse,
                 "usableResponse must not be null"
+        );
+
+        Objects.requireNonNull(
+                policy,
+                "policy must not be null"
         );
 
         if (!properties.isEnabled()) {
@@ -99,7 +168,8 @@ public class CvRewriteProviderRouter {
                     callProvider(
                             provider,
                             request,
-                            usableResponse
+                            usableResponse,
+                            policy
                     );
 
             if (attempt == null) {
@@ -113,22 +183,17 @@ public class CvRewriteProviderRouter {
             }
 
             /*
-             * Keep the first structurally valid response as
-             * best effort.
+             * Keep the first structurally valid response as best effort.
              *
-             * Example:
+             * This is important for both flows:
              *
-             * Provider A:
-             * - generated valid coaching,
-             * - but every rewrite was rejected.
-             *
-             * Provider B:
-             * - later times out / rate-limits / fails.
-             *
-             * We still want to preserve safe coaching from A
-             * rather than return an entirely empty result.
+             * - normal Analyze can still preserve safe coaching if all
+             *   rewrites were rejected;
+             * - interactive coaching can distinguish a safety rejection (422)
+             *   from complete provider unavailability (503).
              */
-            if (bestEffortResponse == null) {
+            if (policy.allowBestEffort()
+                    && bestEffortResponse == null) {
                 bestEffortResponse =
                         attempt.response();
             }
@@ -138,7 +203,8 @@ public class CvRewriteProviderRouter {
 
             log.info(
                     "Using best-effort CV tailoring provider response "
-                            + "after all providers were exhausted"
+                            + "after all providers were exhausted mode={}",
+                    policy.mode()
             );
 
             return Optional.of(
@@ -152,7 +218,8 @@ public class CvRewriteProviderRouter {
     private ProviderAttempt callProvider(
             CvRewriteProvider provider,
             RewriteRequest request,
-            Predicate<RewriteResponse> usableResponse
+            Predicate<RewriteResponse> usableResponse,
+            RoutingPolicy policy
     ) {
         int transientRetries =
                 0;
@@ -169,8 +236,9 @@ public class CvRewriteProviderRouter {
 
                     log.warn(
                             "CV rewrite provider returned null "
-                                    + "provider={}",
-                            provider.name()
+                                    + "provider={} mode={}",
+                            provider.name(),
+                            policy.mode()
                     );
 
                     return null;
@@ -184,19 +252,17 @@ public class CvRewriteProviderRouter {
                 if (!usable) {
 
                     /*
-                     * Provider answered, but backend
-                     * business validation did not accept
-                     * the rewrite output.
+                     * Provider answered, but backend business validation did
+                     * not accept the rewrite output.
                      *
-                     * Do not retry the same model hoping
-                     * for luck.
-                     *
-                     * Go directly to the next provider.
+                     * Do not retry the same model hoping for luck. Go directly
+                     * to the next provider.
                      */
                     log.warn(
                             "CV rewrite provider output rejected "
-                                    + "provider={}",
-                            provider.name()
+                                    + "provider={} mode={}",
+                            provider.name(),
+                            policy.mode()
                     );
                 }
 
@@ -211,16 +277,17 @@ public class CvRewriteProviderRouter {
                         exception
                 )
                         && transientRetries
-                        < MAX_TRANSIENT_RETRIES) {
+                        < policy.maxTransientRetries()) {
 
                     transientRetries++;
 
                     log.warn(
                             "Retrying CV rewrite provider "
-                                    + "provider={} reason={} attempt={}",
+                                    + "provider={} reason={} attempt={} mode={}",
                             provider.name(),
                             exception.reason(),
-                            transientRetries + 1
+                            transientRetries + 1,
+                            policy.mode()
                     );
 
                     continue;
@@ -228,7 +295,8 @@ public class CvRewriteProviderRouter {
 
                 handleFailure(
                         provider,
-                        exception
+                        exception,
+                        policy.mode()
                 );
 
                 return null;
@@ -236,8 +304,8 @@ public class CvRewriteProviderRouter {
             } catch (RuntimeException exception) {
 
                 /*
-                 * AI provider must never make
-                 * Tailoring Analyze fail.
+                 * A provider implementation failure must never escape the
+                 * routing boundary and break CV analysis/workspace state.
                  *
                  * Never log:
                  * - CV text
@@ -247,8 +315,9 @@ public class CvRewriteProviderRouter {
                  */
                 log.warn(
                         "CV rewrite provider failed "
-                                + "provider={} reason=unexpected",
+                                + "provider={} reason=unexpected mode={}",
                         provider.name(),
+                        policy.mode(),
                         exception
                 );
 
@@ -273,7 +342,8 @@ public class CvRewriteProviderRouter {
 
     private void handleFailure(
             CvRewriteProvider provider,
-            ProviderException exception
+            ProviderException exception,
+            String mode
     ) {
         if (shouldCooldown(
                 exception
@@ -294,13 +364,14 @@ public class CvRewriteProviderRouter {
 
         log.warn(
                 "CV rewrite provider failed "
-                        + "provider={} reason={} status={} detail={}",
+                        + "provider={} reason={} status={} detail={} mode={}",
                 provider.name(),
                 exception.reason(),
                 exception.statusCode(),
                 safeDetail(
                         exception.getMessage()
-                )
+                ),
+                mode
         );
     }
 
@@ -381,6 +452,13 @@ public class CvRewriteProviderRouter {
                 0,
                 500
         ) + "...";
+    }
+
+    private record RoutingPolicy(
+            String mode,
+            int maxTransientRetries,
+            boolean allowBestEffort
+    ) {
     }
 
     private record ProviderAttempt(

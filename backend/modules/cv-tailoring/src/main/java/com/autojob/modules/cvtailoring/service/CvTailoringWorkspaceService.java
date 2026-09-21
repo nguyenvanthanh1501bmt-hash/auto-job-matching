@@ -370,15 +370,31 @@ public class CvTailoringWorkspaceService {
     ) {
         requireText(coachingId, "coachingId");
 
+        String requestedCoachingId =
+                coachingId.trim();
+
+        TailoredCvDraft requestedDraft =
+                requireOwnedDraft(
+                        draftId,
+                        ownerUserId
+                );
+
         TailoredCvDraft draft = refreshIfExpired(
-                requireOwnedDraft(draftId, ownerUserId),
+                requestedDraft,
                 ownerUserId
         );
+
+        String liveCoachingId =
+                resolveCompatibleCoachingId(
+                        requestedDraft,
+                        requestedCoachingId,
+                        draft
+                );
 
         try {
             return generateCoachingSuggestionAgainstLiveAnalysis(
                     draft,
-                    coachingId.trim(),
+                    liveCoachingId,
                     ownerUserId
             );
         } catch (ResponseStatusException exception) {
@@ -398,12 +414,54 @@ public class CvTailoringWorkspaceService {
                     ownerUserId
             );
 
+            String refreshedCoachingId =
+                    resolveCompatibleCoachingId(
+                            draft,
+                            liveCoachingId,
+                            refreshedDraft
+                    );
+
             return generateCoachingSuggestionAgainstLiveAnalysis(
                     refreshedDraft,
-                    coachingId.trim(),
+                    refreshedCoachingId,
                     ownerUserId
             );
         }
+    }
+
+
+    private String resolveCompatibleCoachingId(
+            TailoredCvDraft previousDraft,
+            String previousCoachingId,
+            TailoredCvDraft currentDraft
+    ) {
+        CoachingItem previous = previousDraft
+                .coaching()
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(item -> Objects.equals(
+                        previousCoachingId,
+                        item.id()
+                ))
+                .findFirst()
+                .orElse(null);
+
+        if (previous == null) {
+            return previousCoachingId;
+        }
+
+        return currentDraft
+                .coaching()
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(item -> hasText(item.id()))
+                .filter(item -> sameCoaching(
+                        previous,
+                        item
+                ))
+                .map(CoachingItem::id)
+                .findFirst()
+                .orElse(previousCoachingId);
     }
 
     private CvTailoringDraftResponse

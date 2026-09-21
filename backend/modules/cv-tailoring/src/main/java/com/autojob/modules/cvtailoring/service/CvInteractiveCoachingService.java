@@ -18,6 +18,8 @@ import com.autojob.modules.cvtailoring.contract.CvTailoringAnalyzeResponse.Sugge
 import com.autojob.modules.cvtailoring.domain.TailoredCvDraft.GeneratedCoachingSuggestion;
 import com.autojob.modules.cvtailoring.domain.TailoredCvDraft.UserConfirmedEvidence;
 import com.autojob.modules.jobnormalizer.domain.NormalizedJob;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -41,6 +44,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class CvInteractiveCoachingService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(
+                    CvInteractiveCoachingService.class
+            );
 
     private final CvRewriteProviderRouter providerRouter;
     private final CvRewriteSafetyGuard safetyGuard;
@@ -170,7 +178,7 @@ public class CvInteractiveCoachingService {
                 new AtomicReference<>();
 
         Optional<RewriteResponse> routed =
-                providerRouter.generate(
+                providerRouter.generateInteractive(
                         request,
                         response -> {
                             GeneratedCoachingSuggestion generated =
@@ -373,6 +381,7 @@ public class CvInteractiveCoachingService {
         String context = String.join(
                 "\n",
                 "Interactive coaching rewrite for exactly one CV node.",
+                "Return at most one suggestion for this exact sourceId and keep the coaching array empty for this request.",
                 "Coaching question: " + safeText(
                         coaching.question()
                 ),
@@ -380,7 +389,10 @@ public class CvInteractiveCoachingService {
                         coaching.reason()
                 ),
                 "Use USER_CONFIRMED_EVIDENCE only as factual evidence explicitly confirmed by the candidate.",
-                "If the confirmed answer says a metric is unknown or unavailable, do not invent or infer that metric."
+                "Prefer conservative wording that is a direct paraphrase of the original node plus allowed evidence.",
+                "Every newly introduced number, technology, skill, scope, outcome, or ownership claim must appear explicitly in the allowed evidence.",
+                "Do not add flattering adjectives such as scalable, high-volume, robust, optimized, production-grade, or high-impact unless the allowed evidence explicitly supports them.",
+                "If the confirmed answer says a metric is unknown or unavailable, omit that metric and do not invent, estimate, or imply it."
         );
 
         EditableNode node =
@@ -411,6 +423,13 @@ public class CvInteractiveCoachingService {
             List<String> allowedEvidenceIds
     ) {
         if (response == null) {
+            log.warn(
+                    "Interactive coaching response rejected "
+                            + "coachingId={} sourceId={} reason=null-response",
+                    coaching.id(),
+                    source.sourceId()
+            );
+
             return null;
         }
 
@@ -419,21 +438,48 @@ public class CvInteractiveCoachingService {
                         safeList(allowedEvidenceIds)
                 );
 
+        int rawSuggestions = 0;
+        int rejectedNull = 0;
+        int rejectedWrongSource = 0;
+        int rejectedEmpty = 0;
+        int rejectedUnchanged = 0;
+        int rejectedValidator = 0;
+
+        Map<CvRewriteSafetyGuard.SafetyFailureReason, Integer>
+                safetyRejections =
+                new EnumMap<>(
+                        CvRewriteSafetyGuard
+                                .SafetyFailureReason
+                                .class
+                );
+
         for (RewriteSuggestion raw : safeList(
                 response.suggestions()
         )) {
-            if (raw == null
-                    || !Objects.equals(
+            rawSuggestions++;
+
+            if (raw == null) {
+                rejectedNull++;
+                continue;
+            }
+
+            if (!Objects.equals(
                     source.sourceId(),
                     raw.sourceId()
-            )
-                    || !hasText(raw.suggested())) {
+            )) {
+                rejectedWrongSource++;
+                continue;
+            }
+
+            if (!hasText(raw.suggested())) {
+                rejectedEmpty++;
                 continue;
             }
 
             String suggested = raw.suggested().trim();
 
             if (suggested.equals(source.text())) {
+                rejectedUnchanged++;
                 continue;
             }
 
@@ -483,19 +529,29 @@ public class CvInteractiveCoachingService {
                             coaching.reason(),
                             /*
                              * Keep targetSkills empty here. The rewritten text
-                             * still passes SafetyGuard against the augmented
-                             * evidence corpus, while we avoid treating model
-                             * metadata as candidate truth.
+                             * is still checked against the augmented evidence
+                             * corpus. SafetyGuard additionally recognizes
+                             * skill phrases that appear literally in persisted
+                             * user-confirmed evidence.
                              */
                             List.of(),
                             List.copyOf(evidenceIds)
                     );
 
-            if (!safetyGuard.isSafe(
-                    suggestion,
-                    augmentedEvidence,
-                    job
-            )) {
+            CvRewriteSafetyGuard.SafetyAssessment safety =
+                    safetyGuard.assess(
+                            suggestion,
+                            augmentedEvidence,
+                            job
+                    );
+
+            if (!safety.safe()) {
+                safetyRejections.merge(
+                        safety.reason(),
+                        1,
+                        Integer::sum
+                );
+
                 continue;
             }
 
@@ -508,8 +564,20 @@ public class CvInteractiveCoachingService {
                         );
 
                 if (validated.isEmpty()) {
+                    rejectedValidator++;
                     continue;
                 }
+
+                log.info(
+                        "Interactive coaching rewrite accepted "
+                                + "coachingId={} sourceId={} rawSuggestions={} "
+                                + "priorSafetyRejections={} priorValidatorRejections={}",
+                        coaching.id(),
+                        source.sourceId(),
+                        rawSuggestions,
+                        safetyRejections,
+                        rejectedValidator
+                );
 
                 return new GeneratedCoachingSuggestion(
                         coaching.id(),
@@ -519,9 +587,26 @@ public class CvInteractiveCoachingService {
                         Instant.now(clock)
                 );
             } catch (IllegalArgumentException exception) {
-                // Try the next provider suggestion, if any.
+                rejectedValidator++;
             }
         }
+
+        log.warn(
+                "Interactive coaching response rejected "
+                        + "coachingId={} sourceId={} rawSuggestions={} "
+                        + "rejectedNull={} rejectedWrongSource={} "
+                        + "rejectedEmpty={} rejectedUnchanged={} "
+                        + "rejectedValidator={} safetyRejections={}",
+                coaching.id(),
+                source.sourceId(),
+                rawSuggestions,
+                rejectedNull,
+                rejectedWrongSource,
+                rejectedEmpty,
+                rejectedUnchanged,
+                rejectedValidator,
+                safetyRejections
+        );
 
         return null;
     }

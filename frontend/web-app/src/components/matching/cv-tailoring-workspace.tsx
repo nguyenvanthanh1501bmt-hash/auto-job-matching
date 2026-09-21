@@ -15,6 +15,7 @@ import {
 
 import {
     useCurrentCvTailoringDraft,
+    useGenerateCvTailoringCoachingSuggestion,
     usePreviewCvTailoringDraft,
     useStartOrRefreshCvTailoringDraft,
     useUpdateCvTailoringDraft
@@ -414,6 +415,9 @@ export function CvTailoringWorkspace({
     const previewMutation =
         usePreviewCvTailoringDraft();
 
+    const generateCoachingMutation =
+        useGenerateCvTailoringCoachingSuggestion();
+
     const applyDraftState = useCallback(
         (
             nextDraft: CvTailoringDraftResponse
@@ -523,6 +527,42 @@ export function CvTailoringWorkspace({
         [draft?.suggestions]
     );
 
+    const allSuggestions = useMemo(
+        () => [
+            ...(draft?.suggestions ?? []),
+            ...(draft?.generatedCoachingSuggestions ?? [])
+                .map((item) => item.suggestion)
+        ],
+        [
+            draft?.generatedCoachingSuggestions,
+            draft?.suggestions
+        ]
+    );
+
+    const generatedByCoachingId = useMemo(
+        () =>
+            new Map(
+                (draft?.generatedCoachingSuggestions ?? [])
+                    .map((item) => [
+                        item.coachingId,
+                        item
+                    ] as const)
+            ),
+        [draft?.generatedCoachingSuggestions]
+    );
+
+    const savedCoachingAnswerById = useMemo(
+        () =>
+            new Map(
+                (draft?.coachingAnswers ?? [])
+                    .map((item) => [
+                        item.coachingId,
+                        item.answer
+                    ] as const)
+            ),
+        [draft?.coachingAnswers]
+    );
+
     const acceptedSet = useMemo(
         () => new Set(acceptedIds),
         [acceptedIds]
@@ -539,11 +579,37 @@ export function CvTailoringWorkspace({
     }
 
     function acceptSuggestion(id: string) {
-        setAcceptedIds((current) =>
-            current.includes(id)
-                ? current
-                : [...current, id]
+        const selected = allSuggestions.find(
+            (item) => item.id === id
         );
+
+        setAcceptedIds((current) => {
+            const withoutConflictingRewrite =
+                selected?.type === "REWRITE" &&
+                selected.sourceId
+                    ? current.filter((value) => {
+                        if (value === id) {
+                            return false;
+                        }
+
+                        const other = allSuggestions.find(
+                            (item) => item.id === value
+                        );
+
+                        return !(
+                            other?.type === "REWRITE" &&
+                            other.sourceId === selected.sourceId
+                        );
+                    })
+                    : current.filter(
+                        (value) => value !== id
+                    );
+
+            return [
+                ...withoutConflictingRewrite,
+                id
+            ];
+        });
 
         setRejectedIds((current) =>
             current.filter(
@@ -625,6 +691,40 @@ export function CvTailoringWorkspace({
         applyDraftState(saved);
 
         return saved;
+    }
+
+    async function generateCoachingRewrite(
+        coachingId: string
+    ) {
+        if (!draft) {
+            return;
+        }
+
+        const answer =
+            coachingAnswers[coachingId]?.trim() ?? "";
+
+        if (!answer) {
+            return;
+        }
+
+        try {
+            const saved = await saveDraft();
+
+            if (!saved) {
+                return;
+            }
+
+            const generated =
+                await generateCoachingMutation.mutateAsync({
+                    draftId: saved.draftId,
+                    coachingId
+                });
+
+            applyDraftState(generated);
+            setPreviewDirty(true);
+        } catch {
+            // Mutation state renders the error.
+        }
     }
 
     async function runPreview() {
@@ -761,11 +861,13 @@ export function CvTailoringWorkspace({
 
     const actionError = updateMutation.isError
         ? updateMutation.error
-        : previewMutation.isError
-            ? previewMutation.error
-            : startMutation.isError
-                ? startMutation.error
-                : null;
+        : generateCoachingMutation.isError
+            ? generateCoachingMutation.error
+            : previewMutation.isError
+                ? previewMutation.error
+                : startMutation.isError
+                    ? startMutation.error
+                    : null;
 
     const applyUrl =
         draft.job.applyUrl?.trim() ||
@@ -775,6 +877,7 @@ export function CvTailoringWorkspace({
     const busy =
         startMutation.isPending ||
         updateMutation.isPending ||
+        generateCoachingMutation.isPending ||
         previewMutation.isPending;
 
     return (
@@ -1146,65 +1249,212 @@ export function CvTailoringWorkspace({
 
                         <div className="mt-5 space-y-4">
                             {draft.coaching.length ? (
-                                draft.coaching.map((item) => (
-                                    <article
-                                        key={item.id}
-                                        className="rounded-[18px] border border-[#eadca7] bg-[#fffdf5] p-4 sm:p-5"
-                                    >
-                                        <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-[#eadca7] bg-white px-2.5 py-1 font-mono text-[8px] font-semibold text-[#746020]">
-                        {tSections(item.section)}
-                      </span>
+                                draft.coaching.map((item) => {
+                                    const localAnswer =
+                                        coachingAnswers[item.id]?.trim() ?? "";
 
-                                            <span className="rounded-full bg-[#fff5cf] px-2.5 py-1 font-mono text-[8px] font-semibold text-[#746020]">
-                        {item.priority}
-                      </span>
-                                        </div>
+                                    const savedAnswer =
+                                        savedCoachingAnswerById
+                                            .get(item.id)
+                                            ?.trim() ?? "";
 
-                                        {item.original?.trim() ? (
-                                            <p className="mt-4 rounded-[12px] bg-white/80 px-3.5 py-3 text-[9px] leading-[18px] text-black/42">
-                                                {item.original}
+                                    const answerMatchesSaved =
+                                        localAnswer.length > 0 &&
+                                        localAnswer === savedAnswer;
+
+                                    const generated =
+                                        answerMatchesSaved
+                                            ? generatedByCoachingId.get(
+                                            item.id
+                                        ) ?? null
+                                            : null;
+
+                                    const suggestion =
+                                        generated?.suggestion ?? null;
+
+                                    const accepted =
+                                        suggestion
+                                            ? acceptedSet.has(
+                                                suggestion.id
+                                            )
+                                            : false;
+
+                                    const rejected =
+                                        suggestion
+                                            ? rejectedSet.has(
+                                                suggestion.id
+                                            )
+                                            : false;
+
+                                    const isGenerating =
+                                        generateCoachingMutation.isPending &&
+                                        generateCoachingMutation.variables
+                                            ?.coachingId === item.id;
+
+                                    return (
+                                        <article
+                                            key={item.id}
+                                            className="rounded-[18px] border border-[#eadca7] bg-[#fffdf5] p-4 sm:p-5"
+                                        >
+                                            <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-[#eadca7] bg-white px-2.5 py-1 font-mono text-[8px] font-semibold text-[#746020]">
+                            {tSections(item.section)}
+                          </span>
+
+                                                <span className="rounded-full bg-[#fff5cf] px-2.5 py-1 font-mono text-[8px] font-semibold text-[#746020]">
+                            {item.priority}
+                          </span>
+                                            </div>
+
+                                            {item.original?.trim() ? (
+                                                <div className="mt-4 rounded-[12px] bg-white/80 px-3.5 py-3">
+                                                    <p className="font-mono text-[8px] font-semibold uppercase text-black/28">
+                                                        {t("original")}
+                                                    </p>
+
+                                                    <p className="mt-2 text-[9px] leading-[18px] text-black/42">
+                                                        {item.original}
+                                                    </p>
+                                                </div>
+                                            ) : null}
+
+                                            <p className="mt-4 text-[11px] font-semibold leading-5 text-[#4f451f]">
+                                                {item.question}
                                             </p>
-                                        ) : null}
 
-                                        <p className="mt-4 text-[11px] font-semibold leading-5 text-[#4f451f]">
-                                            {item.question}
-                                        </p>
+                                            {item.reason?.trim() ? (
+                                                <p className="mt-2 text-[9px] leading-[18px] text-[#675b32]/75">
+                                                    {item.reason}
+                                                </p>
+                                            ) : null}
 
-                                        {item.reason?.trim() ? (
-                                            <p className="mt-2 text-[9px] leading-[18px] text-[#675b32]/75">
-                                                {item.reason}
-                                            </p>
-                                        ) : null}
+                                            <textarea
+                                                value={
+                                                    coachingAnswers[item.id] ?? ""
+                                                }
+                                                onChange={(event) => {
+                                                    setCoachingAnswers(
+                                                        (current) => ({
+                                                            ...current,
+                                                            [item.id]:
+                                                            event.target.value
+                                                        })
+                                                    );
 
-                                        <textarea
-                                            value={
-                                                coachingAnswers[item.id] ?? ""
-                                            }
-                                            onChange={(event) => {
-                                                setCoachingAnswers(
-                                                    (current) => ({
-                                                        ...current,
-                                                        [item.id]:
-                                                        event.target.value
-                                                    })
-                                                );
+                                                    markChanged();
+                                                }}
+                                                maxLength={4000}
+                                                rows={4}
+                                                placeholder={t(
+                                                    "answerPlaceholder"
+                                                )}
+                                                className="mt-4 w-full resize-y rounded-[14px] border border-black/[0.08] bg-white px-4 py-3 text-[10px] leading-5 outline-none placeholder:text-black/25 focus:border-black/[0.18]"
+                                            />
 
-                                                markChanged();
-                                            }}
-                                            maxLength={4000}
-                                            rows={4}
-                                            placeholder={t(
-                                                "answerPlaceholder"
-                                            )}
-                                            className="mt-4 w-full resize-y rounded-[14px] border border-black/[0.08] bg-white px-4 py-3 text-[10px] leading-5 outline-none placeholder:text-black/25 focus:border-black/[0.18]"
-                                        />
+                                            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <p className="text-[8px] leading-4 text-black/32">
+                                                    {t("answerHint")}
+                                                </p>
 
-                                        <p className="mt-2 text-[8px] leading-4 text-black/32">
-                                            {t("answerHint")}
-                                        </p>
-                                    </article>
-                                ))
+                                                {!suggestion ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            void generateCoachingRewrite(
+                                                                item.id
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            busy ||
+                                                            !localAnswer
+                                                        }
+                                                        className="h-9 shrink-0 rounded-full border border-[#dccb8c] bg-white px-4 text-[9px] font-semibold text-[#65551e] disabled:opacity-40"
+                                                    >
+                                                        {isGenerating
+                                                            ? t("generatingRewrite")
+                                                            : t("generateRewrite")}
+                                                    </button>
+                                                ) : null}
+                                            </div>
+
+                                            {suggestion ? (
+                                                <div className="mt-5 rounded-[16px] border border-[#dfeab8] bg-[#fbfff1] p-4">
+                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                        <div className="min-w-0">
+                                                            <p className="font-mono text-[8px] font-semibold uppercase tracking-[0.1em] text-[#617523]/70">
+                                                                {t("suggested")}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="flex shrink-0 flex-wrap gap-2">
+                                                            {accepted || rejected ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        resetSuggestion(
+                                                                            suggestion.id
+                                                                        )
+                                                                    }
+                                                                    className="h-8 rounded-full border border-black/[0.065] bg-white px-3 text-[8px] font-semibold text-black/45"
+                                                                >
+                                                                    {t("undo")}
+                                                                </button>
+                                                            ) : (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            rejectSuggestion(
+                                                                                suggestion.id
+                                                                            )
+                                                                        }
+                                                                        className="h-8 rounded-full border border-black/[0.065] bg-white px-3 text-[8px] font-semibold text-black/45"
+                                                                    >
+                                                                        {t("reject")}
+                                                                    </button>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            acceptSuggestion(
+                                                                                suggestion.id
+                                                                            )
+                                                                        }
+                                                                        className="h-8 rounded-full border border-[#cfe57d] bg-[#efffc3] px-3 text-[8px] font-semibold text-[#3f4d17]"
+                                                                    >
+                                                                        {t("accept")}
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {accepted ? (
+                                                        <p className="mt-3 text-[9px] font-semibold text-[#617523]">
+                                                            ✓ {t("accepted")}
+                                                        </p>
+                                                    ) : null}
+
+                                                    {rejected ? (
+                                                        <p className="mt-3 text-[9px] font-semibold text-black/35">
+                                                            {t("rejected")}
+                                                        </p>
+                                                    ) : null}
+
+                                                    <div className="mt-4">
+                                                        <p className="font-mono text-[8px] font-semibold uppercase text-[#617523]/70">
+                                                            {t("suggested")}
+                                                        </p>
+
+                                                        <p className="mt-2 text-[10px] font-medium leading-5 text-[#3e471e]">
+                                                            {suggestion.suggested}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                        </article>
+                                    );
+                                })
                             ) : (
                                 <p className="rounded-[16px] bg-[#fafaf7] px-4 py-5 text-[10px] text-black/40">
                                     {t("noCoaching")}

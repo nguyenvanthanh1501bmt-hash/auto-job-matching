@@ -173,7 +173,67 @@ public class CvRewriteSafetyGuard {
                 );
     }
 
+    public enum SafetyFailureReason {
+        NONE,
+        INVALID_INPUT,
+        UNCHANGED,
+        UNKNOWN_EVIDENCE,
+        UNSUPPORTED_NUMBER,
+        UNSUPPORTED_HIGH_RISK_CLAIM,
+        EXCESSIVE_EXPANSION,
+        KEYWORD_STUFFING,
+        JOB_ONLY_TERM,
+        UNTRACKED_SKILL
+    }
+
+    public record SafetyAssessment(
+            boolean safe,
+            SafetyFailureReason reason
+    ) {
+        public SafetyAssessment {
+            reason = reason == null
+                    ? SafetyFailureReason.INVALID_INPUT
+                    : reason;
+        }
+
+        private static SafetyAssessment accepted() {
+            return new SafetyAssessment(
+                    true,
+                    SafetyFailureReason.NONE
+            );
+        }
+
+        private static SafetyAssessment rejected(
+                SafetyFailureReason reason
+        ) {
+            return new SafetyAssessment(
+                    false,
+                    reason
+            );
+        }
+    }
+
     public boolean isSafe(
+            SuggestionItem suggestion,
+            CvEvidenceService.EvidenceMap evidenceMap,
+            NormalizedJob job
+    ) {
+        return assess(
+                suggestion,
+                evidenceMap,
+                job
+        ).safe();
+    }
+
+    /**
+     * Same safety decision as {@link #isSafe(SuggestionItem,
+     * CvEvidenceService.EvidenceMap, NormalizedJob)}, but with a coarse,
+     * non-sensitive rejection reason for diagnostics.
+     *
+     * The reason never contains CV text, JD text, evidence text, or provider
+     * output. It is safe to include in application logs.
+     */
+    public SafetyAssessment assess(
             SuggestionItem suggestion,
             CvEvidenceService.EvidenceMap evidenceMap,
             NormalizedJob job
@@ -185,7 +245,9 @@ public class CvRewriteSafetyGuard {
                 || suggestion.original() == null
                 || suggestion.original().isBlank()) {
 
-            return false;
+            return SafetyAssessment.rejected(
+                    SafetyFailureReason.INVALID_INPUT
+            );
         }
 
         String original =
@@ -203,7 +265,9 @@ public class CvRewriteSafetyGuard {
                 original
         )) {
 
-            return false;
+            return SafetyAssessment.rejected(
+                    SafetyFailureReason.UNCHANGED
+            );
         }
 
         Map<String, EvidenceItem> evidenceById =
@@ -227,7 +291,9 @@ public class CvRewriteSafetyGuard {
                     );
 
             if (item == null) {
-                return false;
+                return SafetyAssessment.rejected(
+                        SafetyFailureReason.UNKNOWN_EVIDENCE
+                );
             }
 
             citedEvidence.add(
@@ -252,7 +318,9 @@ public class CvRewriteSafetyGuard {
                 evidenceCorpus
         )) {
 
-            return false;
+            return SafetyAssessment.rejected(
+                    SafetyFailureReason.UNSUPPORTED_NUMBER
+            );
         }
 
         /*
@@ -274,7 +342,9 @@ public class CvRewriteSafetyGuard {
                 citedEvidence
         )) {
 
-            return false;
+            return SafetyAssessment.rejected(
+                    SafetyFailureReason.UNSUPPORTED_HIGH_RISK_CLAIM
+            );
         }
 
         /*
@@ -286,7 +356,9 @@ public class CvRewriteSafetyGuard {
                 suggested
         )) {
 
-            return false;
+            return SafetyAssessment.rejected(
+                    SafetyFailureReason.EXCESSIVE_EXPANSION
+            );
         }
 
         /*
@@ -299,7 +371,9 @@ public class CvRewriteSafetyGuard {
                 evidenceCorpus
         )) {
 
-            return false;
+            return SafetyAssessment.rejected(
+                    SafetyFailureReason.KEYWORD_STUFFING
+            );
         }
 
         /*
@@ -308,23 +382,6 @@ public class CvRewriteSafetyGuard {
          * Nếu model lấy một term chỉ xuất hiện trong JD
          * rồi đưa nó vào CV trong khi evidence không có,
          * suggestion bị reject.
-         *
-         * Ví dụ:
-         *
-         * CV:
-         *   Developed backend services using Java.
-         *
-         * JD:
-         *   Financial services platform...
-         *
-         * AI:
-         *   Developed financial services using Java.
-         *
-         * => reject.
-         *
-         * Những skill thật như Java/Spring Boot không bị
-         * ảnh hưởng vì chúng đã xuất hiện trong cited
-         * candidate evidence.
          */
         if (introducesJobOnlyTerms(
                 suggested,
@@ -332,21 +389,33 @@ public class CvRewriteSafetyGuard {
                 job
         )) {
 
-            return false;
+            return SafetyAssessment.rejected(
+                    SafetyFailureReason.JOB_ONLY_TERM
+            );
         }
 
         /*
          * Skill mới xuất hiện rõ trong rewrite phải:
          *
-         * - được tracking trong targetSkills
-         * - và sau đó CvSuggestionValidator sẽ kiểm tra
-         *   candidate evidence thực sự support skill đó.
+         * - được tracking trong targetSkills, hoặc
+         * - xuất hiện trực tiếp trong USER_CONFIRMED_EVIDENCE.
+         *
+         * User-confirmed evidence is intentionally stored outside the immutable
+         * CandidateProfile. Allowing a literally confirmed skill phrase here
+         * makes interactive coaching useful without weakening normal Analyze.
          */
-        return newlyExplicitSkillsAreTracked(
+        if (!newlyExplicitSkillsAreTracked(
                 suggestion,
                 evidenceMap,
                 job
-        );
+        )) {
+
+            return SafetyAssessment.rejected(
+                    SafetyFailureReason.UNTRACKED_SKILL
+            );
+        }
+
+        return SafetyAssessment.accepted();
     }
 
     private boolean introducesUnsupportedNumber(
@@ -1240,6 +1309,13 @@ public class CvRewriteSafetyGuard {
                         suggestion.suggested()
                 );
 
+        String userConfirmedCorpus =
+                compact(
+                        userConfirmedEvidenceCorpus(
+                                evidenceMap.items()
+                        )
+                );
+
         for (
                 Map.Entry<String, String> watched
                 : watchedSkills.entrySet()
@@ -1257,11 +1333,18 @@ public class CvRewriteSafetyGuard {
                             watched.getKey()
                     );
 
+            boolean explicitlyConfirmedByUser =
+                    containsPhrase(
+                            userConfirmedCorpus,
+                            watched.getKey()
+                    );
+
             if (!existedBefore
                     && existsAfter
                     && !targetSkillKeys.contains(
                     watched.getValue()
-            )) {
+            )
+                    && !explicitlyConfirmedByUser) {
 
                 return false;
             }
@@ -1481,6 +1564,35 @@ public class CvRewriteSafetyGuard {
         return Set.copyOf(
                 result
         );
+    }
+
+    private String userConfirmedEvidenceCorpus(
+            List<EvidenceItem> items
+    ) {
+        StringBuilder builder =
+                new StringBuilder();
+
+        for (EvidenceItem item : safeList(items)) {
+            if (item == null
+                    || item.id() == null
+                    || !item.id().startsWith(
+                    "user-confirmed-"
+            )
+                    || item.text() == null
+                    || item.text().isBlank()) {
+                continue;
+            }
+
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+
+            builder.append(
+                    item.text()
+            );
+        }
+
+        return builder.toString();
     }
 
     private boolean isSkillEvidence(
